@@ -9,6 +9,7 @@ import {
   Product,
   Order,
   DashboardStats,
+  CartItem,
 } from '../types';
 
 // Base API URL - Update this with the actual Nivasity API endpoint
@@ -96,11 +97,15 @@ export const profileAPI = {
 
   uploadAvatar: async (imageUri: string): Promise<{ avatarUrl: string }> => {
     const formData = new FormData();
-    formData.append('avatar', {
+    
+    // React Native FormData accepts Blob-like objects for file uploads
+    const fileData: { uri: string; type: string; name: string } = {
       uri: imageUri,
       type: 'image/jpeg',
       name: 'avatar.jpg',
-    } as any);
+    };
+    
+    formData.append('avatar', fileData as unknown as Blob);
 
     const response = await api.post('/profile/avatar', formData, {
       headers: {
@@ -126,7 +131,7 @@ export const storeAPI = {
 
 // Order APIs
 export const orderAPI = {
-  createOrder: async (items: any[]): Promise<Order> => {
+  createOrder: async (items: CartItem[]): Promise<Order> => {
     const response = await api.post('/orders', { items });
     return response.data;
   },

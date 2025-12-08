@@ -49,7 +49,6 @@ const StudentTabs = () => {
         component={StudentDashboardScreen}
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🏠</span>,
           headerShown: false,
         }}
       />
@@ -58,7 +57,6 @@ const StudentTabs = () => {
         component={StoreScreen}
         options={{
           tabBarLabel: 'Store',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>🛍️</span>,
         }}
       />
       <Tab.Screen
@@ -66,7 +64,6 @@ const StudentTabs = () => {
         component={ProfileEditScreen}
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>👤</span>,
         }}
       />
     </Tab.Navigator>
@@ -87,7 +84,6 @@ const AdminTabs = () => {
         component={AdminDashboardScreen}
         options={{
           tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>📊</span>,
           headerShown: false,
         }}
       />
@@ -96,7 +92,6 @@ const AdminTabs = () => {
         component={ProfileEditScreen}
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <span style={{ fontSize: 24 }}>👤</span>,
         }}
       />
     </Tab.Navigator>
