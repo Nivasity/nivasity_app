@@ -11,8 +11,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import AppIcon from '../components/AppIcon';
 import { RegisterCredentials } from '../types';
 
 interface RegisterScreenProps {
@@ -21,6 +23,7 @@ interface RegisterScreenProps {
 
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { register } = useAuth();
+  const { colors, toggle, isDark } = useTheme();
   const [credentials, setCredentials] = useState<RegisterCredentials>({
     name: '',
     email: '',
@@ -77,17 +80,42 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Nivasity today</Text>
+            <View style={styles.topRow}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={[styles.iconButton, { backgroundColor: colors.surface }]}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+              >
+                <AppIcon name="arrow-back" size={18} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={toggle}
+                style={[styles.iconButton, { backgroundColor: colors.surface }]}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle theme"
+              >
+                <AppIcon
+                  name={isDark ? 'sunny-outline' : 'moon-outline'}
+                  size={18}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            </View>
 
-            <View style={styles.form}>
+            <Text style={[styles.title, { color: colors.text }]}>Create account</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+              Join Nivasity today
+            </Text>
+
+            <View style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Input
                 label="Full Name"
                 placeholder="Enter your full name"
@@ -145,9 +173,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               />
 
               <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Already have an account? </Text>
+                <Text style={[styles.loginText, { color: colors.textMuted }]}>
+                  Already have an account?{' '}
+                </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.loginLink}>Login</Text>
+                  <Text style={[styles.loginLink, { color: colors.secondary }]}>
+                    Login
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -161,7 +193,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   keyboardView: {
     flex: 1,
@@ -171,26 +202,40 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.4,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
+    marginBottom: 18,
   },
   form: {
     width: '100%',
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
   },
   registerButton: {
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   loginContainer: {
     flexDirection: 'row',
@@ -198,13 +243,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginText: {
-    color: '#666',
     fontSize: 14,
   },
   loginLink: {
-    color: '#007AFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 

@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -25,24 +26,31 @@ const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   style,
 }) => {
+  const { colors } = useTheme();
+
   const getButtonStyle = (): ViewStyle => {
     const baseStyle = styles.button;
     switch (variant) {
       case 'secondary':
-        return { ...baseStyle, ...styles.secondaryButton };
+        return { ...baseStyle, backgroundColor: colors.secondary };
       case 'outline':
-        return { ...baseStyle, ...styles.outlineButton };
+        return {
+          ...baseStyle,
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderColor: colors.border,
+        };
       default:
-        return baseStyle;
+        return { ...baseStyle, backgroundColor: colors.accent };
     }
   };
 
   const getTextStyle = (): TextStyle => {
     switch (variant) {
       case 'outline':
-        return { ...styles.buttonText, ...styles.outlineButtonText };
+        return { ...styles.buttonText, color: colors.text };
       default:
-        return styles.buttonText;
+        return { ...styles.buttonText, color: colors.onAccent };
     }
   };
 
@@ -54,7 +62,9 @@ const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator
+          color={variant === 'outline' ? colors.text : colors.onAccent}
+        />
       ) : (
         <Text style={getTextStyle()}>{title}</Text>
       )}
@@ -64,33 +74,19 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#007AFF',
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
-  },
-  secondaryButton: {
-    backgroundColor: '#5856D6',
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    minHeight: 52,
   },
   disabledButton: {
-    backgroundColor: '#ccc',
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  outlineButtonText: {
-    color: '#007AFF',
+    fontWeight: '700',
   },
 });
 

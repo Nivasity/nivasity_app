@@ -1,14 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AppIcon from '../components/AppIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Loading from '../components/Loading';
 import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
@@ -17,27 +11,32 @@ interface AdminDashboardScreenProps {
   navigation: any;
 }
 
-const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navigation }) => {
+const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = () => {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       const statsData = await dashboardAPI.getAdminStats();
       setStats(statsData);
+      setIsOffline(false);
     } catch (error) {
-      console.error('Error loading dashboard:', error);
+      setStats({ totalUsers: 0, totalRevenue: 0, totalOrders: 0, pendingOrders: 0 });
+      setIsOffline(true);
+      console.warn('Admin dashboard offline: could not reach API');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -49,82 +48,48 @@ const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navigation 
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Admin Dashboard</Text>
-          <Text style={styles.subtitle}>Hello, {user?.name}!</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Admin dashboard</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            Hello, {user?.name || 'Admin'}
+          </Text>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, styles.primaryCard]}>
-            <Text style={styles.statValue}>{stats?.totalUsers || 0}</Text>
-            <Text style={styles.statLabel}>Total Users</Text>
+        <View style={styles.grid}>
+          <StatCard icon="people-outline" label="Total Users" value={`${stats?.totalUsers || 0}`} />
+          <StatCard icon="cash-outline" label="Total Revenue" value={`₦${(stats?.totalRevenue || 0).toLocaleString()}`} />
+          <StatCard icon="receipt-outline" label="Total Orders" value={`${stats?.totalOrders || 0}`} />
+          <StatCard icon="time-outline" label="Pending Orders" value={`${stats?.pendingOrders || 0}`} />
+        </View>
+
+        {isOffline && (
+          <View style={[styles.offline, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.offlineIcon, { backgroundColor: colors.surfaceAlt }]}>
+              <AppIcon name="sparkles-outline" size={16} color={colors.secondary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.offlineTitle, { color: colors.text }]}>Offline mode</Text>
+              <Text style={[styles.offlineText, { color: colors.textMuted }]}>
+                Pull to refresh when you're back online.
+              </Text>
+            </View>
           </View>
-          <View style={[styles.statCard, styles.successCard]}>
-            <Text style={styles.statValue}>
-              ₦{stats?.totalRevenue?.toLocaleString() || 0}
+        )}
+
+        <View style={[styles.notice, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.noticeIcon, { backgroundColor: colors.surfaceAlt }]}>
+            <AppIcon name="sparkles-outline" size={18} color={colors.secondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.noticeTitle, { color: colors.text }]}>Admin tools</Text>
+            <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+              User, order, and product management screens can be added next.
             </Text>
-            <Text style={styles.statLabel}>Total Revenue</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats?.totalOrders || 0}</Text>
-            <Text style={styles.statLabel}>Total Orders</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats?.pendingOrders || 0}</Text>
-            <Text style={styles.statLabel}>Pending Orders</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Admin Actions</Text>
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('ManageUsers')}
-            >
-              <Text style={styles.actionEmoji}>👥</Text>
-              <Text style={styles.actionText}>Manage Users</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('ManageOrders')}
-            >
-              <Text style={styles.actionEmoji}>📦</Text>
-              <Text style={styles.actionText}>Manage Orders</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('ManageProducts')}
-            >
-              <Text style={styles.actionEmoji}>🛍️</Text>
-              <Text style={styles.actionText}>Manage Products</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Reports')}
-            >
-              <Text style={styles.actionEmoji}>📊</Text>
-              <Text style={styles.actionText}>View Reports</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityCard}>
-            <Text style={styles.activityText}>No recent activity</Text>
           </View>
         </View>
       </ScrollView>
@@ -132,118 +97,135 @@ const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navigation 
   );
 };
 
+const StatCard = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  label: string;
+  value: string;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.cardIcon, { backgroundColor: colors.surfaceAlt }]}>
+        <AppIcon name={icon} size={18} color={colors.secondary} />
+      </View>
+      <Text style={[styles.cardValue, { color: colors.text }]} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{label}</Text>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 110,
   },
   header: {
-    backgroundColor: '#5856D6',
-    padding: 24,
-    paddingTop: 40,
+    marginBottom: 14,
   },
-  greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  statsContainer: {
+  grid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: 16,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    alignItems: 'center',
+  card: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  primaryCard: {
-    backgroundColor: '#007AFF',
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  successCard: {
-    backgroundColor: '#34C759',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+  cardValue: {
+    fontSize: 16,
+    fontWeight: '900',
     marginBottom: 4,
   },
-  statLabel: {
+  cardLabel: {
     fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+    fontWeight: '700',
   },
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  actionsContainer: {
+  notice: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 12,
-    marginHorizontal: 4,
+    gap: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  actionEmoji: {
-    fontSize: 36,
-    marginBottom: 8,
-  },
-  actionText: {
-    fontSize: 13,
-    color: '#333',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  activityCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
+  noticeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
   },
-  activityText: {
+  noticeTitle: {
     fontSize: 14,
-    color: '#666',
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  noticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  offline: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  offlineIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  offlineText: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });
 

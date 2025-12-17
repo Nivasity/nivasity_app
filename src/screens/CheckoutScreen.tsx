@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, Linking, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/Button';
-import { paymentAPI, orderAPI } from '../services/api';
+import AppIcon from '../components/AppIcon';
+import { orderAPI, paymentAPI } from '../services/api';
 import { CartItem } from '../types';
 
 interface CheckoutScreenProps {
@@ -20,276 +14,351 @@ interface CheckoutScreenProps {
 
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { cartItems = [] } = route.params || {};
   const [loading, setLoading] = useState(false);
 
-  const calculateTotal = () => {
-    return cartItems.reduce(
-      (total: number, item: CartItem) => total + item.price * item.quantity,
-      0
-    );
-  };
+  const total = useMemo(
+    () =>
+      (cartItems as CartItem[]).reduce(
+        (sum: number, item: CartItem) => sum + item.price * item.quantity,
+        0
+      ),
+    [cartItems]
+  );
 
   const handlePayment = async () => {
-    if (cartItems.length === 0) {
-      Alert.alert('Error', 'Your cart is empty');
+    if (!cartItems || cartItems.length === 0) {
+      Alert.alert('Cart is empty', 'Add at least one item to checkout.');
       return;
     }
 
     setLoading(true);
     try {
-      // Create order first
       const order = await orderAPI.createOrder(cartItems);
-      
-      // Initiate payment with Interswitch
-      const payment = await paymentAPI.initiatePayment(order.id, calculateTotal());
-      
-      // Navigate to payment webview or open payment URL
-      navigation.navigate('PaymentWebView', {
-        paymentUrl: payment.paymentUrl,
-        reference: payment.reference,
-        orderId: order.id,
-      });
+      const payment = await paymentAPI.initiatePayment(order.id, total);
+      await Linking.openURL(payment.paymentUrl);
     } catch (error: any) {
-      Alert.alert(
-        'Payment Failed',
-        error.response?.data?.message || 'Failed to initiate payment'
-      );
+      Alert.alert('Payment Failed', error.response?.data?.message || 'Failed to initiate payment');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Checkout</Text>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipping Information</Text>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>Name</Text>
-              <Text style={styles.infoValue}>{user?.name}</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{user?.email}</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Order Summary</Text>
-            {cartItems.map((item: CartItem, index: number) => (
-              <View key={index} style={styles.itemCard}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-                </View>
-                <Text style={styles.itemPrice}>
-                  ₦{(item.price * item.quantity).toLocaleString()}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            <View style={styles.paymentCard}>
-              <Text style={styles.paymentMethod}>💳 Interswitch Payment</Text>
-              <Text style={styles.paymentDescription}>
-                Secure payment powered by Interswitch
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.totalSection}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>₦{calculateTotal().toLocaleString()}</Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Delivery Fee</Text>
-              <Text style={styles.totalValue}>₦0</Text>
-            </View>
-            <View style={[styles.totalRow, styles.grandTotalRow]}>
-              <Text style={styles.grandTotalLabel}>Total</Text>
-              <Text style={styles.grandTotalValue}>
-                ₦{calculateTotal().toLocaleString()}
-              </Text>
-            </View>
-          </View>
-
-          <Button
-            title="Proceed to Payment"
-            onPress={handlePayment}
-            loading={loading}
-            style={styles.paymentButton}
-          />
-
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.cancelButton}
+            style={[styles.iconButton, { backgroundColor: colors.surface }]}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <AppIcon name="arrow-back" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.topTitle, { color: colors.text }]}>Checkout</Text>
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: colors.surface }]}
+            accessibilityRole="button"
+            accessibilityLabel="Favorite"
+          >
+            <AppIcon name="heart-outline" size={18} color={colors.text} />
           </TouchableOpacity>
         </View>
+
+        <View style={[styles.mediaCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.media, { backgroundColor: colors.surfaceAlt }]}>
+            <AppIcon name="shield-checkmark-outline" size={40} color={colors.secondary} />
+            <View style={[styles.playButton, { backgroundColor: colors.surface }]}>
+              <AppIcon name="play" size={18} color={colors.accent} />
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.detailsHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.detailsTitle, { color: colors.text }]}>Secure payment</Text>
+              <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>
+                Powered by Interswitch
+              </Text>
+            </View>
+            <Text style={[styles.price, { color: colors.text }]}>₦{total.toLocaleString()}</Text>
+          </View>
+
+          <Text style={[styles.paragraph, { color: colors.textMuted }]}>
+            Confirm your items and proceed to payment. You can return to the app after completing the payment.
+          </Text>
+
+          <View style={styles.metaRow}>
+            <MetaPill title="Email" value={(user?.email || '—').toLowerCase()} />
+            <MetaPill title="Items" value={`${cartItems.length}`} />
+            <MetaPill title="Delivery" value="Free" />
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Order summary</Text>
+          <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+            {cartItems.length} items
+          </Text>
+        </View>
+
+        <View style={styles.list}>
+          {cartItems.map((item: CartItem, index: number) => (
+            <View
+              key={`${item.id}-${index}`}
+              style={[styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View style={[styles.itemIcon, { backgroundColor: colors.surfaceAlt }]}>
+                <AppIcon name="cube-outline" size={18} color={colors.secondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
+                  Qty {item.quantity} · ₦{item.price.toLocaleString()}
+                </Text>
+              </View>
+              <Text style={[styles.itemTotal, { color: colors.text }]}>
+                ₦{(item.price * item.quantity).toLocaleString()}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TotalRow label="Subtotal" value={`₦${total.toLocaleString()}`} />
+          <TotalRow label="Delivery" value="₦0" />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <TotalRow label="Total" value={`₦${total.toLocaleString()}`} bold />
+        </View>
+
+        <Button title="Proceed to Payment" onPress={handlePayment} loading={loading} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.cancel}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+        >
+          <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
+  );
+};
+
+const MetaPill = ({ title, value }: { title: string; value: string }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.metaPill, { backgroundColor: colors.surfaceAlt }]}>
+      <Text style={[styles.metaTitle, { color: colors.textMuted }]}>{title}</Text>
+      <Text style={[styles.metaValue, { color: colors.text }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+};
+
+const TotalRow = ({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.totalRow}>
+      <Text style={[styles.totalLabel, { color: colors.textMuted }, bold && { color: colors.text }]}>
+        {label}
+      </Text>
+      <Text style={[styles.totalValue, { color: colors.text }, bold && { fontWeight: '900' }]}>
+        {value}
+      </Text>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 24,
+    paddingTop: 10,
+    paddingBottom: 28,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  infoCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  infoLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  infoValue: {
+  topTitle: {
     fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontWeight: '900',
   },
-  itemCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
+  mediaCard: {
+    borderRadius: 22,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  media: {
+    height: 180,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  playButton: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  detailsCard: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 14,
+  },
+  detailsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
   },
-  itemInfo: {
+  detailsTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  detailsSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  paragraph: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  metaPill: {
     flex: 1,
+    borderRadius: 14,
+    padding: 10,
+  },
+  metaTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  metaValue: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  sectionHeader: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  sectionHint: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  list: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  itemRow: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  itemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 2,
   },
-  itemQuantity: {
-    fontSize: 14,
-    color: '#666',
+  itemMeta: {
+    fontSize: 12,
+    fontWeight: '700',
   },
-  itemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
+  itemTotal: {
+    fontSize: 12,
+    fontWeight: '900',
   },
-  paymentCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  paymentMethod: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  paymentDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  totalSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  totalCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 14,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   totalLabel: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 12,
+    fontWeight: '800',
   },
   totalValue: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 12,
+    fontWeight: '800',
   },
-  grandTotalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingTop: 12,
-    marginBottom: 0,
+  divider: {
+    height: 1,
+    marginVertical: 6,
   },
-  grandTotalLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  grandTotalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  paymentButton: {
-    marginBottom: 12,
-  },
-  cancelButton: {
-    padding: 16,
+  cancel: {
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#666',
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

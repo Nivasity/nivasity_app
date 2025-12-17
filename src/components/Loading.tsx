@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LoadingProps {
   message?: string;
 }
 
 const Loading: React.FC<LoadingProps> = ({ message = 'Loading...' }) => {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      {message && <Text style={styles.message}>{message}</Text>}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ActivityIndicator size="large" color={colors.accent} />
+      {message && <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>}
     </View>
   );
 };
@@ -19,12 +21,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   message: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
   },
 });
 

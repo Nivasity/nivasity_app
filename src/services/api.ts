@@ -14,13 +14,16 @@ import {
 
 // Base API URL - Update this with the actual Nivasity API endpoint
 const API_BASE_URL = 'https://api.nivasity.com/v1';
+const RESOLVED_BASE_URL =
+  (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) || API_BASE_URL;
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: RESOLVED_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000,
 });
 
 // Request interceptor to add auth token

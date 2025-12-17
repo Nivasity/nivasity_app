@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  TextInputProps,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
+import AppIcon from './AppIcon';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -22,28 +17,39 @@ const Input: React.FC<InputProps> = ({
   isPassword = false,
   ...props
 }) => {
+  const { colors } = useTheme();
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.text }]}>{label}</Text>}
       <View style={styles.inputContainer}>
         <TextInput
-          style={[styles.input, error && styles.inputError]}
-          placeholderTextColor="#999"
+          style={[
+            styles.input,
+            { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
+            error && { borderColor: colors.danger },
+          ]}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry={isPassword && !isPasswordVisible}
           {...props}
         />
         {isPassword && (
           <TouchableOpacity
             style={styles.eyeIcon}
-            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            onPress={() => setIsPasswordVisible((value) => !value)}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.eyeText}>{isPasswordVisible ? '👁️' : '👁️‍🗨️'}</Text>
+            <AppIcon
+              name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textMuted}
+            />
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
     </View>
   );
 };
@@ -54,37 +60,29 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 6,
-    color: '#333',
   },
   inputContainer: {
     position: 'relative',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#FF3B30',
   },
   errorText: {
-    color: '#FF3B30',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: '500',
   },
   eyeIcon: {
     position: 'absolute',
-    right: 16,
+    right: 14,
     top: 12,
-  },
-  eyeText: {
-    fontSize: 20,
+    padding: 4,
   },
 });
 

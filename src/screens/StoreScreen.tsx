@@ -1,80 +1,95 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon from '../components/AppIcon';
 import { storeAPI } from '../services/api';
-import { Product, CartItem } from '../types';
+import { CartItem, Product } from '../types';
 
 interface StoreScreenProps {
   navigation: any;
 }
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
+  const { colors } = useTheme();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const data = await storeAPI.getProducts();
+      setProducts(data || []);
+      setIsOffline(false);
+    } catch (error) {
+      setProducts([]);
+      setIsOffline(true);
+      console.warn('Store offline: could not reach API');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [loadProducts]);
 
-  const loadProducts = async () => {
-    try {
-      const data = await storeAPI.getProducts();
-      setProducts(data);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      Alert.alert('Error', 'Failed to load products');
-    } finally {
-      setLoading(false);
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadProducts();
   };
 
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+
   const addToCart = (product: Product) => {
-    const existingItem = cart.find((item) => item.id === product.id);
-    if (existingItem) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-    Alert.alert('Success', `${product.name} added to cart`);
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id);
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...current, { ...product, quantity: 1 }];
+    });
   };
 
   const goToCheckout = () => {
-    if (cart.length === 0) {
-      Alert.alert('Error', 'Your cart is empty');
+    if (cartCount === 0) {
+      Alert.alert('Cart is empty', 'Add at least one item to checkout.');
       return;
     }
     navigation.navigate('Checkout', { cartItems: cart });
   };
 
   const renderProduct = ({ item }: { item: Product }) => (
-    <View style={styles.productCard}>
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productDescription}>{item.description}</Text>
-        <Text style={styles.productPrice}>₦{item.price.toLocaleString()}</Text>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.thumb, { backgroundColor: colors.surfaceAlt }]}>
+        <AppIcon name="cube-outline" size={22} color={colors.secondary} />
       </View>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => addToCart(item)}
-      >
-        <Text style={styles.addButtonText}>Add to Cart</Text>
-      </TouchableOpacity>
+      <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <Text style={[styles.desc, { color: colors.textMuted }]} numberOfLines={2}>
+        {item.description}
+      </Text>
+      <View style={styles.cardFooter}>
+        <Text style={[styles.price, { color: colors.accent }]} numberOfLines={1}>
+          ₦{item.price.toLocaleString()}
+        </Text>
+        <TouchableOpacity
+          onPress={() => addToCart(item)}
+          style={[styles.addBtn, { backgroundColor: colors.accent }]}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${item.name} to cart`}
+        >
+          <AppIcon name="add" size={18} color={colors.onAccent} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -83,34 +98,45 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Store</Text>
-        {cart.length > 0 && (
-          <TouchableOpacity style={styles.cartBadge} onPress={goToCheckout}>
-            <Text style={styles.cartBadgeText}>🛒 {cart.length}</Text>
-          </TouchableOpacity>
-        )}
+        <Text style={[styles.title, { color: colors.text }]}>Store</Text>
+        <TouchableOpacity
+          style={[styles.cartButton, { backgroundColor: colors.surface }]}
+          onPress={goToCheckout}
+          accessibilityRole="button"
+          accessibilityLabel="Go to checkout"
+        >
+          <AppIcon name="cart-outline" size={20} color={colors.text} />
+          {cartCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.accent }]}>
+              <Text style={[styles.badgeText, { color: colors.onAccent }]}>{cartCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.columns}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products available</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              {isOffline ? 'Offline — pull to refresh' : 'No products available'}
+            </Text>
           </View>
         }
       />
 
-      {cart.length > 0 && (
-        <View style={styles.footer}>
-          <Button
-            title={`Checkout (${cart.length} items)`}
-            onPress={goToCheckout}
-          />
+      {cartCount > 0 && (
+        <View style={[styles.footer, { backgroundColor: colors.background }]}>
+          <Button title={`Checkout (${cartCount} items)`} onPress={goToCheckout} />
         </View>
       )}
     </SafeAreaView>
@@ -120,93 +146,111 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
-  cartBadge: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  cartButton: {
+    width: 44,
+    height: 44,
     borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cartBadgeText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '900',
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 130,
   },
-  productCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+  columns: {
+    gap: 12,
+  },
+  card: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  productInfo: {
-    marginBottom: 12,
+  thumb: {
+    height: 92,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  productName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+  name: {
+    fontSize: 14,
+    fontWeight: '800',
     marginBottom: 4,
   },
-  productDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+  desc: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+    minHeight: 32,
   },
-  productPrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  addButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  cardFooter: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  price: {
+    fontSize: 13,
+    fontWeight: '900',
+    flex: 1,
+    paddingRight: 8,
+  },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 60,
+    alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 96,
   },
 });
 
