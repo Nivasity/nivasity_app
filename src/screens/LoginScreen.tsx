@@ -20,7 +20,17 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { login } = useAuth();
+  const { login, demoLogin } = useAuth();
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    try {
+      await demoLogin();
+    } catch (error) {
+      Alert.alert('Demo Login Failed', 'Could not log in as demo user.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -108,9 +118,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
+
               <Button
                 title="Login"
                 onPress={handleLogin}
+                loading={loading}
+                style={styles.loginButton}
+              />
+
+              <Button
+                title="Demo Login"
+                onPress={handleDemoLogin}
                 loading={loading}
                 style={styles.loginButton}
               />

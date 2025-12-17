@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  demoLogin: () => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const savedUser = await AsyncStorage.getItem('user');
-      
+
       if (token && savedUser) {
         setUser(JSON.parse(savedUser));
       }
@@ -48,6 +49,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const demoLogin = async () => {
+    // Demo user data (customize as needed)
+    const demoUser: User = {
+      id: 'demo',
+      email: 'demo@nivasity.com',
+      name: 'Demo User',
+      role: 'student',
+      avatar: undefined,
+    };
+    await AsyncStorage.setItem('authToken', 'demo-token');
+    await AsyncStorage.setItem('user', JSON.stringify(demoUser));
+    setUser(demoUser);
   };
 
   const login = async (credentials: LoginCredentials) => {
@@ -93,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading,
         isAuthenticated: !!user,
         login,
+        demoLogin,
         register,
         logout,
         updateUser,
