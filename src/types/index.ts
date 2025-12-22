@@ -2,7 +2,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'student' | 'admin';
   avatar?: string;
 }
 
@@ -18,9 +17,14 @@ export interface LoginCredentials {
 
 export interface RegisterCredentials {
   name: string;
+  firstName?: string;
+  lastName?: string;
+  school?: string;
+  phone?: string;
+  gender?: 'female' | 'male';
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
 }
 
 export interface ForgotPasswordData {
@@ -39,6 +43,9 @@ export interface Product {
   description: string;
   price: number;
   image?: string;
+  category?: string;
+  available?: boolean;
+  createdAt?: string;
 }
 
 export interface CartItem extends Product {
@@ -58,6 +65,4 @@ export interface DashboardStats {
   totalOrders?: number;
   totalSpent?: number;
   pendingOrders?: number;
-  totalUsers?: number;
-  totalRevenue?: number;
 }

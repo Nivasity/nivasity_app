@@ -57,7 +57,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       id: 'demo',
       email: 'demo@nivasity.com',
       name: 'Demo User',
-      role: 'student',
       avatar: undefined,
     };
     await AsyncStorage.setItem('authToken', 'demo-token');

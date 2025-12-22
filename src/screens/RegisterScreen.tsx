@@ -1,62 +1,103 @@
 import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
+  Button as PaperButton,
+  Checkbox,
+  Dialog,
+  HelperText,
+  List,
+  Portal,
+  TextInput as PaperTextInput,
+} from 'react-native-paper';
+import AuthScaffold from '../components/auth/AuthScaffold';
+import AppText from '../components/AppText';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import AppIcon from '../components/AppIcon';
 import { RegisterCredentials } from '../types';
 
 interface RegisterScreenProps {
   navigation: any;
 }
 
+type Gender = 'female' | 'male' | null;
+
+type RegisterForm = {
+  firstName: string;
+  lastName: string;
+  school: string;
+  countryCode: string;
+  phoneNumber: string;
+  gender: Gender;
+  email: string;
+  password: string;
+  acceptedTerms: boolean;
+};
+
+type RegisterErrors = Partial<Record<keyof RegisterForm, string>>;
+
+const SCHOOLS = [
+  'University of Lagos (UNILAG)',
+  'University of Ibadan (UI)',
+  'Obafemi Awolowo University (OAU)',
+  'Covenant University',
+  'Ahmadu Bello University (ABU)',
+  'Other',
+];
+
+const normalizeCountryCode = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '+234';
+  if (trimmed.startsWith('+')) return `+${trimmed.replace(/[^\d]/g, '')}`;
+  return `+${trimmed.replace(/[^\d]/g, '')}`;
+};
+
+const normalizePhone = (countryCode: string, phoneNumber: string) => {
+  const cc = normalizeCountryCode(countryCode);
+  const pn = phoneNumber.replace(/[^\d]/g, '');
+  return `${cc}${pn}`;
+};
+
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { register } = useAuth();
-  const { colors, toggle, isDark } = useTheme();
-  const [credentials, setCredentials] = useState<RegisterCredentials>({
-    name: '',
+  const { colors } = useTheme();
+
+  const [form, setForm] = useState<RegisterForm>({
+    firstName: '',
+    lastName: '',
+    school: '',
+    countryCode: '+234',
+    phoneNumber: '',
+    gender: null,
     email: '',
     password: '',
-    confirmPassword: '',
+    acceptedTerms: true,
   });
-  const [errors, setErrors] = useState<Partial<RegisterCredentials>>({});
+  const [errors, setErrors] = useState<RegisterErrors>({});
   const [loading, setLoading] = useState(false);
+  const [schoolOpen, setSchoolOpen] = useState(false);
 
   const validate = (): boolean => {
-    const newErrors: Partial<RegisterCredentials> = {};
+    const newErrors: RegisterErrors = {};
 
-    if (!credentials.name) {
-      newErrors.name = 'Name is required';
-    }
+    if (!form.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!form.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!form.school) newErrors.school = 'School is required';
 
-    if (!credentials.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(credentials.email)) {
-      newErrors.email = 'Email is invalid';
-    }
+    const phoneDigits = form.phoneNumber.replace(/[^\d]/g, '');
+    if (!phoneDigits) newErrors.phoneNumber = 'Phone number is required';
+    else if (phoneDigits.length < 7) newErrors.phoneNumber = 'Phone number is too short';
 
-    if (!credentials.password) {
-      newErrors.password = 'Password is required';
-    } else if (credentials.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+    if (!form.gender) newErrors.gender = 'Select your gender';
 
-    if (!credentials.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (credentials.password !== credentials.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+    if (!form.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Email is invalid';
+
+    if (!form.password) newErrors.password = 'Password is required';
+    else if (form.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+
+    if (!form.acceptedTerms) newErrors.acceptedTerms = 'Please accept the terms';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -67,12 +108,22 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await register(credentials);
-      // Navigation will be handled by AuthContext
+      const payload: RegisterCredentials = {
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        school: form.school,
+        phone: normalizePhone(form.countryCode, form.phoneNumber),
+        gender: form.gender ?? undefined,
+        email: form.email.trim(),
+        password: form.password,
+        confirmPassword: form.password,
+      };
+      await register(payload);
     } catch (error: any) {
       Alert.alert(
         'Registration Failed',
-        error.response?.data?.message || 'Failed to create account'
+        error?.response?.data?.message || 'Failed to create account'
       );
     } finally {
       setLoading(false);
@@ -80,174 +131,296 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <AuthScaffold
+      navigation={navigation}
+      title="Get Started"
+      scrollable
+      cardStyle={styles.card}
+    >
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Input
+            label="First name"
+            value={form.firstName}
+            onChangeText={(text) => setForm((s) => ({ ...s, firstName: text }))}
+            errorText={errors.firstName}
+            autoCapitalize="words"
+            autoComplete="given-name"
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Input
+            label="Last name"
+            value={form.lastName}
+            onChangeText={(text) => setForm((s) => ({ ...s, lastName: text }))}
+            errorText={errors.lastName}
+            autoCapitalize="words"
+            autoComplete="family-name"
+          />
+        </View>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => setSchoolOpen(true)}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Select school"
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>
-            <View style={styles.topRow}>
-              <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                style={[styles.iconButton, { backgroundColor: colors.surface }]}
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-              >
-                <AppIcon name="arrow-back" size={18} color={colors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={toggle}
-                style={[styles.iconButton, { backgroundColor: colors.surface }]}
-                accessibilityRole="button"
-                accessibilityLabel="Toggle theme"
-              >
-                <AppIcon
-                  name={isDark ? 'sunny-outline' : 'moon-outline'}
-                  size={18}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-            </View>
+        <View pointerEvents="none">
+          <Input
+            label="School"
+            value={form.school}
+            placeholder="Select your school"
+            errorText={errors.school}
+            editable={false}
+            right={<PaperTextInput.Icon icon="chevron-down" />}
+          />
+        </View>
+      </TouchableOpacity>
 
-            <Text style={[styles.title, { color: colors.text }]}>Create account</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              Join Nivasity today
-            </Text>
+      <View style={styles.row}>
+        <View style={{ flex: 0.38 }}>
+          <Input
+            label="Code"
+            value={form.countryCode}
+            onChangeText={(text) => setForm((s) => ({ ...s, countryCode: text }))}
+            keyboardType="phone-pad"
+          />
+        </View>
+        <View style={{ flex: 0.62 }}>
+          <Input
+            label="Phone"
+            value={form.phoneNumber}
+            onChangeText={(text) => setForm((s) => ({ ...s, phoneNumber: text }))}
+            keyboardType="phone-pad"
+            errorText={errors.phoneNumber}
+          />
+        </View>
+      </View>
 
-            <View style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Input
-                label="Full Name"
-                placeholder="Enter your full name"
-                value={credentials.name}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, name: text })
+      <View style={styles.genderWrap}>
+        <View style={styles.genderHeader}>
+          {errors.gender ? (
+            <AppText style={[styles.genderError, { color: colors.danger }]}>{errors.gender}</AppText>
+          ) : null}
+        </View>
+        <View style={styles.genderRow}>
+          <PaperButton
+            mode={form.gender === 'female' ? 'contained' : 'outlined'}
+            onPress={() => setForm((s) => ({ ...s, gender: 'female' }))}
+            buttonColor={form.gender === 'female' ? colors.secondary : undefined}
+            textColor={form.gender === 'female' ? '#FFFFFF' : colors.text}
+            style={[styles.genderButton, { borderColor: colors.border }]}
+            contentStyle={styles.genderContent}
+          >
+            Female
+          </PaperButton>
+          <PaperButton
+            mode={form.gender === 'male' ? 'contained' : 'outlined'}
+            onPress={() => setForm((s) => ({ ...s, gender: 'male' }))}
+            buttonColor={form.gender === 'male' ? colors.secondary : undefined}
+            textColor={form.gender === 'male' ? '#FFFFFF' : colors.text}
+            style={[styles.genderButton, { borderColor: colors.border }]}
+            contentStyle={styles.genderContent}
+          >
+            Male
+          </PaperButton>
+        </View>
+      </View>
+
+      <Input
+        label="Email"
+        placeholder="Enter your email"
+        value={form.email}
+        onChangeText={(text) => setForm((s) => ({ ...s, email: text }))}
+        errorText={errors.email}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        inputMode="email"
+      />
+
+      <Input
+        label="Password"
+        placeholder="Create your password"
+        value={form.password}
+        onChangeText={(text) => setForm((s) => ({ ...s, password: text }))}
+        errorText={errors.password}
+        isPassword
+        autoComplete="password-new"
+      />
+
+      <TouchableOpacity
+        onPress={() => setForm((s) => ({ ...s, acceptedTerms: !s.acceptedTerms }))}
+        style={styles.termsRow}
+        accessibilityRole="checkbox"
+        accessibilityLabel="I agree to the Terms and Conditions"
+        accessibilityState={{ checked: form.acceptedTerms }}
+        activeOpacity={0.85}
+      >
+        <View pointerEvents="none">
+          <Checkbox
+            status={form.acceptedTerms ? 'checked' : 'unchecked'}
+            color={colors.secondary}
+            uncheckedColor={colors.border}
+          />
+        </View>
+        <AppText style={[styles.termsText, { color: colors.textMuted }]}>
+          I agree to the <AppText style={[styles.link, { color: colors.accent }]}>Terms and Conditions</AppText>
+        </AppText>
+      </TouchableOpacity>
+      {errors.acceptedTerms ? (
+        <HelperText type="error" visible>
+          {errors.acceptedTerms}
+        </HelperText>
+      ) : null}
+
+      <Button title="Sign up" onPress={handleRegister} loading={loading} style={styles.primaryButton} />
+
+      <View style={styles.bottomRow}>
+        <AppText style={[styles.bottomText, { color: colors.textMuted }]}>
+          Already have an account?{' '}
+        </AppText>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.85}>
+          <AppText style={[styles.link, { color: colors.accent }]}>Log in</AppText>
+        </TouchableOpacity>
+      </View>
+
+      <ModalSchoolPicker
+        visible={schoolOpen}
+        selected={form.school}
+        onClose={() => setSchoolOpen(false)}
+        onSelect={(school) => setForm((s) => ({ ...s, school }))}
+      />
+    </AuthScaffold>
+  );
+};
+
+const ModalSchoolPicker = ({
+  visible,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  selected: string;
+  onClose: () => void;
+  onSelect: (school: string) => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <Portal>
+      <Dialog
+        visible={visible}
+        onDismiss={onClose}
+        style={[styles.dialog, { backgroundColor: colors.surface }]}
+      >
+        <Dialog.Title style={[styles.dialogTitle, { color: colors.text }]}>
+          Select school
+        </Dialog.Title>
+        <Dialog.ScrollArea>
+          <ScrollView>
+            {SCHOOLS.map((name) => (
+              <List.Item
+                key={name}
+                title={name}
+                titleStyle={{ color: colors.text, fontWeight: '700' }}
+                onPress={() => {
+                  onSelect(name);
+                  onClose();
+                }}
+                right={() =>
+                  selected === name ? (
+                    <List.Icon icon="check" color={colors.secondary} />
+                  ) : null
                 }
-                error={errors.name}
-                autoCapitalize="words"
-                autoComplete="name"
               />
-
-              <Input
-                label="Email"
-                placeholder="Enter your email"
-                value={credentials.email}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, email: text })
-                }
-                error={errors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-
-              <Input
-                label="Password"
-                placeholder="Create a password"
-                value={credentials.password}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, password: text })
-                }
-                error={errors.password}
-                isPassword
-                autoComplete="password-new"
-              />
-
-              <Input
-                label="Confirm Password"
-                placeholder="Confirm your password"
-                value={credentials.confirmPassword}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, confirmPassword: text })
-                }
-                error={errors.confirmPassword}
-                isPassword
-                autoComplete="password-new"
-              />
-
-              <Button
-                title="Register"
-                onPress={handleRegister}
-                loading={loading}
-                style={styles.registerButton}
-              />
-
-              <View style={styles.loginContainer}>
-                <Text style={[styles.loginText, { color: colors.textMuted }]}>
-                  Already have an account?{' '}
-                </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={[styles.loginLink, { color: colors.secondary }]}>
-                    Login
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            ))}
+          </ScrollView>
+        </Dialog.ScrollArea>
+        <Dialog.Actions>
+          <PaperButton onPress={onClose} textColor={colors.accent}>
+            Close
+          </PaperButton>
+        </Dialog.Actions>
+      </Dialog>
+    </Portal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  card: {
+    maxHeight: '82%',
   },
-  keyboardView: {
-    flex: 1,
+  row: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  scrollContent: {
-    flexGrow: 1,
+  genderWrap: {
+    marginBottom: 12,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  topRow: {
+  genderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    alignItems: 'baseline',
+    marginBottom: 6,
   },
-  iconButton: {
-    width: 40,
-    height: 40,
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  genderError: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderButton: {
+    flex: 1,
     borderRadius: 14,
+  },
+  genderContent: {
+    height: 44,
+  },
+  termsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 2,
+    marginTop: 2,
+    marginBottom: 4,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    marginBottom: 8,
+  termsText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 16,
   },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 18,
+  link: {
+    fontSize: 14,
+    fontWeight: '900',
   },
-  form: {
-    width: '100%',
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-  },
-  registerButton: {
+  primaryButton: {
     marginTop: 8,
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  loginContainer: {
+  bottomRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    paddingBottom: 6,
   },
-  loginText: {
+  bottomText: {
     fontSize: 14,
+    fontWeight: '600',
   },
-  loginLink: {
-    fontSize: 14,
-    fontWeight: '700',
+  dialog: {
+    borderRadius: 18,
+  },
+  dialogTitle: {
+    fontWeight: '900',
   },
 });
 

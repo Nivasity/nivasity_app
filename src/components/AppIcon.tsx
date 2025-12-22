@@ -1,12 +1,16 @@
 import React from 'react';
-import { StyleSheet, Text, TextStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { TextStyle } from 'react-native';
 
 export type AppIconName =
   | 'home-outline'
-  | 'grid-outline'
   | 'person-outline'
   | 'search-outline'
+  | 'grid-outline'
   | 'arrow-forward'
+  | 'chevron-forward'
+  | 'logo-google'
+  | 'checkmark'
   | 'receipt-outline'
   | 'time-outline'
   | 'wallet-outline'
@@ -24,33 +28,12 @@ export type AppIconName =
   | 'arrow-back'
   | 'eye-outline'
   | 'eye-off-outline'
-  | 'sparkles-outline';
-
-const glyphs: Record<AppIconName, string> = {
-  'home-outline': '⌂',
-  'grid-outline': '▦',
-  'person-outline': '👤',
-  'search-outline': '⌕',
-  'arrow-forward': '→',
-  'receipt-outline': '🧾',
-  'time-outline': '⏱',
-  'wallet-outline': '👛',
-  'school-outline': '🎓',
-  'people-outline': '👥',
-  'cash-outline': '💵',
-  'shield-checkmark-outline': '🛡',
-  play: '▶',
-  'heart-outline': '♡',
-  'cube-outline': '⬚',
-  'cart-outline': '🛒',
-  add: '＋',
-  'sunny-outline': '☀',
-  'moon-outline': '☾',
-  'arrow-back': '←',
-  'eye-outline': '👁',
-  'eye-off-outline': '🙈',
-  'sparkles-outline': '✦',
-};
+  | 'sparkles-outline'
+  | 'settings-outline'
+  | 'location-outline'
+  | 'link-outline'
+  | 'help-circle-outline'
+  | 'log-out-outline';
 
 export default function AppIcon({
   name,
@@ -64,24 +47,13 @@ export default function AppIcon({
   style?: TextStyle;
 }) {
   return (
-    <Text
-      style={[
-        styles.base,
-        { fontSize: size, color },
-        style,
-      ]}
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+      style={style}
       accessibilityElementsHidden
       importantForAccessibility="no"
-    >
-      {glyphs[name]}
-    </Text>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    includeFontPadding: false,
-    textAlign: 'center',
-  },
-});
-

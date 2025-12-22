@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   TouchableOpacity,
-  Text,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import AppText from './AppText';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface ButtonProps {
@@ -66,7 +66,7 @@ const Button: React.FC<ButtonProps> = ({
           color={variant === 'outline' ? colors.text : colors.onAccent}
         />
       ) : (
-        <Text style={getTextStyle()}>{title}</Text>
+        <AppText style={getTextStyle()}>{title}</AppText>
       )}
     </TouchableOpacity>
   );

@@ -156,11 +156,6 @@ export const dashboardAPI = {
     const response = await api.get('/dashboard/student');
     return response.data;
   },
-
-  getAdminStats: async (): Promise<DashboardStats> => {
-    const response = await api.get('/dashboard/admin');
-    return response.data;
-  },
 };
 
 // Payment APIs (Interswitch)

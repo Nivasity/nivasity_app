@@ -1,88 +1,78 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
-import AppIcon from './AppIcon';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import {
+  HelperText,
+  TextInput as PaperTextInput,
+  TextInputProps as PaperTextInputProps,
+} from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
 
-interface InputProps extends TextInputProps {
-  label?: string;
-  error?: string;
-  containerStyle?: any;
+type InputProps = Omit<PaperTextInputProps, 'mode' | 'error'> & {
+  errorText?: string;
+  containerStyle?: ViewStyle;
   isPassword?: boolean;
-}
+};
 
 const Input: React.FC<InputProps> = ({
-  label,
-  error,
+  errorText,
   containerStyle,
   isPassword = false,
   ...props
 }) => {
   const { colors } = useTheme();
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const showPassword = isPassword && isPasswordVisible;
+  const secureTextEntry = isPassword && !showPassword;
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={[styles.label, { color: colors.text }]}>{label}</Text>}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
-            error && { borderColor: colors.danger },
-          ]}
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry={isPassword && !isPasswordVisible}
-          {...props}
-        />
-        {isPassword && (
-          <TouchableOpacity
-            style={styles.eyeIcon}
-            onPress={() => setIsPasswordVisible((value) => !value)}
-            accessibilityRole="button"
-            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
-          >
-            <AppIcon
-              name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
+      <PaperTextInput
+        mode="outlined"
+        {...props}
+        secureTextEntry={secureTextEntry}
+        outlineStyle={styles.outline}
+        style={[styles.input, { backgroundColor: colors.surface }, props.style]}
+        textColor={colors.text}
+        placeholderTextColor={colors.textMuted}
+        outlineColor={colors.border}
+        activeOutlineColor={colors.secondary}
+        selectionColor={colors.secondary}
+        cursorColor={colors.secondary}
+        error={Boolean(errorText)}
+        right={
+          isPassword ? (
+            <PaperTextInput.Icon
+              icon={showPassword ? 'eye-off' : 'eye'}
+              onPress={() => setIsPasswordVisible((v) => !v)}
               color={colors.textMuted}
+              forceTextInputFocus={false}
             />
-          </TouchableOpacity>
-        )}
-      </View>
-      {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+          ) : (
+            props.right
+          )
+        }
+      />
+      {errorText ? (
+        <HelperText type="error" visible style={styles.helper}>
+          {errorText}
+        </HelperText>
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  inputContainer: {
-    position: 'relative',
+    marginBottom: 14,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 52,
   },
-  errorText: {
-    fontSize: 12,
-    marginTop: 6,
-    fontWeight: '500',
+  outline: {
+    borderRadius: 14,
   },
-  eyeIcon: {
-    position: 'absolute',
-    right: 14,
-    top: 12,
-    padding: 4,
+  helper: {
+    marginTop: -2,
   },
 });
 

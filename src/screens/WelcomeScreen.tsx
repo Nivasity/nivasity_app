@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Button from '../components/Button';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppText from '../components/AppText';
 import AppIcon from '../components/AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -10,49 +11,69 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { colors, toggle, isDark } = useTheme();
+  const backgroundColor = isDark ? colors.background : colors.accent;
+  const foregroundColor = '#FFFFFF';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={toggle}
-          accessibilityRole="button"
-          accessibilityLabel="Toggle theme"
-          style={[styles.themeButton, { backgroundColor: colors.surface }]}
-        >
-          <AppIcon
-            name={isDark ? 'sunny-outline' : 'moon-outline'}
-            size={18}
-            color={colors.text}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.hero}>
-        <View style={[styles.illustrationCard, { backgroundColor: colors.surface }]}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor }]}>
+      <View style={styles.content}>
+        <View style={styles.brand}>
           <Image
-            source={require('../../assets/splash-icon.png')}
-            style={styles.illustration}
+            source={require('../../assets/icon.png')}
+            style={[
+              styles.logo,
+              !isDark && { tintColor: foregroundColor }
+            ]}
             resizeMode="contain"
           />
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>
-          Empowering{'\n'}You with{'\n'}
-          <Text style={{ color: colors.accent }}>Knowledge</Text>
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          Unlock knowledge anytime, anywhere with engaging content built for students.
-        </Text>
-      </View>
+        <View style={styles.copy}>
+          <AppText style={[styles.headline, { color: foregroundColor }]}>
+            Stress-Free{'\n'}Student Shopping
+          </AppText>
+          <AppText style={[styles.subhead, { color: 'rgba(255,255,255,0.82)' }]}>
+            Browse course materials and checkout securely—anytime, anywhere.
+          </AppText>
+        </View>
 
-      <View style={styles.actions}>
-        <Button title="Get Started" onPress={() => navigation.navigate('Login')} />
-        <View style={styles.linkRow}>
-          <Text style={[styles.linkText, { color: colors.textMuted }]}>New here? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={[styles.linkAction, { color: colors.secondary }]}>Create an account</Text>
-          </TouchableOpacity>
+        <View style={styles.bottom}>
+          <View style={styles.bottomRow}>
+            <TouchableOpacity
+              onPress={toggle}
+              accessibilityRole="button"
+              accessibilityLabel="Toggle theme"
+              style={styles.roundButton}
+              activeOpacity={0.85}
+            >
+              <AppIcon
+                name={isDark ? 'sunny-outline' : 'moon-outline'}
+                size={20}
+                color={foregroundColor}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login')}
+              accessibilityRole="button"
+              accessibilityLabel="Explore now"
+              style={styles.cta}
+              activeOpacity={0.9}
+            >
+              <View style={styles.ctaLeft}>
+                <View style={styles.ctaBadge}>
+                  <Image
+                    source={require('../../assets/icon.png')}
+                    style={[styles.ctaBadgeIcon]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <AppText style={styles.ctaText}>Explore Now</AppText>
+              </View>
+              <AppIcon name="chevron-forward" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
         </View>
       </View>
     </SafeAreaView>
@@ -62,66 +83,104 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  topBar: {
-    paddingTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  themeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
+  content: {
     flex: 1,
-    justifyContent: 'center',
-    paddingBottom: 10,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 28,
+    justifyContent: 'flex-end',
+    gap: 84,
   },
-  illustrationCard: {
-    height: 240,
-    borderRadius: 24,
+  brand: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 26,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 8,
+    marginBottom: 130,
   },
-  illustration: {
-    width: '72%',
-    height: '72%',
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
   },
-  title: {
-    fontSize: 40,
+  copy: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  headline: {
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: -0.6,
-    lineHeight: 44,
-    marginBottom: 12,
+    letterSpacing: -0.5,
+    lineHeight: 40,
+    textAlign: 'center',
+    marginBottom: 14,
   },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+  subhead: {
+    fontSize: 16,
+    lineHeight: 20,
+    textAlign: 'center',
     maxWidth: 320,
   },
-  actions: {
-    paddingBottom: 22,
+  bottom: {
+    width: '100%',
   },
-  linkRow: {
+  bottomRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  roundButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 14,
+  },
+  cta: {
+    flex: 1,
+    height: 54,
+    borderRadius: 28,
+    outlineColor: '#FFFFFF',
+    outlineWidth: 0.25,
+    paddingHorizontal: 18,
+    backgroundColor: 'rgba(0,0,0,0.70)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ctaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ctaBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  ctaBadgeIcon: {
+    width: 18,
+    height: 18,
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  linkWrap: {
     marginTop: 14,
+    alignItems: 'center',
   },
   linkText: {
-    fontSize: 14,
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 13,
+    textAlign: 'center',
   },
-  linkAction: {
-    fontSize: 14,
+  linkStrong: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AppIcon from '../components/AppIcon';
@@ -16,6 +17,7 @@ interface ProfileEditScreenProps {
 const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
   const { user, updateUser, logout } = useAuth();
   const { colors, isDark, toggle, mode, setMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const [profileData, setProfileData] = useState<Partial<User>>({
     name: user?.name || '',
     email: user?.email || '',
@@ -62,9 +64,16 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={['top', 'bottom']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: 110 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.headerRow}>
             <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
             <TouchableOpacity
@@ -94,11 +103,6 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
                   {(user?.email || '').toLowerCase()}
                 </Text>
               </View>
-              <View style={[styles.rolePill, { backgroundColor: `${colors.secondary}22` }]}>
-                <Text style={[styles.roleText, { color: colors.secondary }]}>
-                  {user?.role === 'admin' ? 'Admin' : 'Student'}
-                </Text>
-              </View>
             </View>
 
             <View style={styles.themeRow}>
@@ -114,7 +118,7 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
               placeholder="Enter your full name"
               value={profileData.name}
               onChangeText={(text) => setProfileData({ ...profileData, name: text })}
-              error={errors.name as string | undefined}
+              errorText={errors.name as string | undefined}
               autoCapitalize="words"
               autoComplete="name"
             />
@@ -124,7 +128,7 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
               placeholder="Enter your email"
               value={profileData.email}
               onChangeText={(text) => setProfileData({ ...profileData, email: text })}
-              error={errors.email as string | undefined}
+              errorText={errors.email as string | undefined}
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
@@ -237,15 +241,6 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 12,
     fontWeight: '700',
-  },
-  rolePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '900',
   },
   themeRow: {
     flexDirection: 'row',

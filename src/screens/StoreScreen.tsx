@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,6 +14,7 @@ interface StoreScreenProps {
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +100,10 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={['top', 'bottom']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Store</Text>
         <TouchableOpacity
@@ -122,7 +127,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columns}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 130 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
@@ -135,7 +140,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
       />
 
       {cartCount > 0 && (
-        <View style={[styles.footer, { backgroundColor: colors.background }]}>
+        <View style={[styles.footer, { backgroundColor: colors.background, bottom: 96 + insets.bottom }]}>
           <Button title={`Checkout (${cartCount} items)`} onPress={goToCheckout} />
         </View>
       )}

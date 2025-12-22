@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Checkbox } from 'react-native-paper';
+import AuthScaffold from '../components/auth/AuthScaffold';
+import AppIcon from '../components/AppIcon';
+import AppText from '../components/AppText';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import AppIcon from '../components/AppIcon';
 import { LoginCredentials } from '../types';
 
 interface LoginScreenProps {
@@ -23,38 +16,24 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, demoLogin } = useAuth();
-  const { colors, toggle, isDark } = useTheme();
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    try {
-      await demoLogin();
-    } catch (error) {
-      Alert.alert('Demo Login Failed', 'Could not log in as demo user.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { colors } = useTheme();
+
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
   });
   const [errors, setErrors] = useState<Partial<LoginCredentials>>({});
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const validate = (): boolean => {
     const newErrors: Partial<LoginCredentials> = {};
 
-    if (!credentials.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(credentials.email)) {
-      newErrors.email = 'Email is invalid';
-    }
+    if (!credentials.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(credentials.email)) newErrors.email = 'Email is invalid';
 
-    if (!credentials.password) {
-      newErrors.password = 'Password is required';
-    } else if (credentials.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+    if (!credentials.password) newErrors.password = 'Password is required';
+    else if (credentials.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -66,185 +45,171 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setLoading(true);
     try {
       await login(credentials);
-      // Navigation will be handled by AuthContext
     } catch (error: any) {
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid email or password'
-      );
+      Alert.alert('Login Failed', error?.response?.data?.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await demoLogin();
+    } catch {
+      Alert.alert('Google Login Failed', 'Could not log in with Google.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>
-            <View style={styles.topRow}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Welcome')}
-                style={[styles.iconButton, { backgroundColor: colors.surface }]}
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-              >
-                <AppIcon name="arrow-back" size={18} color={colors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={toggle}
-                style={[styles.iconButton, { backgroundColor: colors.surface }]}
-                accessibilityRole="button"
-                accessibilityLabel="Toggle theme"
-              >
-                <AppIcon
-                  name={isDark ? 'sunny-outline' : 'moon-outline'}
-                  size={18}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-            </View>
+    <AuthScaffold navigation={navigation} title="Welcome back!">
+      <Input
+        label="Email"
+        placeholder="julia.roberts@mail.com"
+        value={credentials.email}
+        onChangeText={(text) => setCredentials((s) => ({ ...s, email: text }))}
+        errorText={errors.email}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        inputMode="email"
+      />
 
-            <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              Login to your account
-            </Text>
+      <Input
+        label="Password"
+        placeholder="Enter your password"
+        value={credentials.password}
+        onChangeText={(text) => setCredentials((s) => ({ ...s, password: text }))}
+        errorText={errors.password}
+        isPassword
+        autoComplete="password"
+      />
 
-            <View style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Input
-                label="Email"
-                placeholder="Enter your email"
-                value={credentials.email}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, email: text })
-                }
-                error={errors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-
-              <Input
-                label="Password"
-                placeholder="Enter your password"
-                value={credentials.password}
-                onChangeText={(text) =>
-                  setCredentials({ ...credentials, password: text })
-                }
-                error={errors.password}
-                isPassword
-                autoComplete="password"
-              />
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('ForgotPassword')}
-                style={styles.forgotPassword}
-              >
-                <Text style={[styles.forgotPasswordText, { color: colors.secondary }]}>
-                  Forgot Password?
-                </Text>
-              </TouchableOpacity>
-
-              <Button
-                title="Login"
-                onPress={handleLogin}
-                loading={loading}
-                style={styles.primaryButton}
-              />
-
-              <Button
-                title="Demo Login"
-                onPress={handleDemoLogin}
-                loading={loading}
-                variant="outline"
-              />
-
-              <View style={styles.registerContainer}>
-                <Text style={[styles.registerText, { color: colors.textMuted }]}>
-                  Don't have an account?{' '}
-                </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={[styles.registerLink, { color: colors.secondary }]}>Register</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      <View style={styles.rowBetween}>
+        <TouchableOpacity
+          onPress={() => setRememberMe((v) => !v)}
+          style={styles.checkRow}
+          accessibilityRole="checkbox"
+          accessibilityLabel="Remember me"
+          accessibilityState={{ checked: rememberMe }}
+          activeOpacity={0.85}
+        >
+          <View pointerEvents="none">
+            <Checkbox
+              status={rememberMe ? 'checked' : 'unchecked'}
+              color={colors.secondary}
+              uncheckedColor={colors.border}
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <AppText style={[styles.checkText, { color: colors.textMuted }]}>Remember me</AppText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ForgotPassword')}
+          accessibilityRole="button"
+          accessibilityLabel="Forgot password"
+          activeOpacity={0.85}
+        >
+          <AppText style={[styles.link, { color: colors.accent }]}>Forgot password?</AppText>
+        </TouchableOpacity>
+      </View>
+
+      <Button title="Log in" onPress={handleLogin} loading={loading} style={styles.primaryButton} />
+
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleGoogleLogin}
+        disabled={loading}
+        style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+        activeOpacity={0.9}
+      >
+        <AppIcon name="logo-google" size={18} color={colors.text} />
+        <AppText style={[styles.googleText, { color: colors.text }]}>Continue with Google</AppText>
+      </TouchableOpacity>
+
+      <View style={styles.bottomRow}>
+        <AppText style={[styles.bottomText, { color: colors.textMuted }]}>
+          Don’t have an account?{' '}
+        </AppText>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.85}>
+          <AppText style={[styles.link, { color: colors.accent }]}>Sign up</AppText>
+        </TouchableOpacity>
+      </View>
+    </AuthScaffold>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  topRow: {
+  rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    marginBottom: 8,
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 18,
+  checkText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  form: {
-    width: '100%',
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
+  link: {
+    fontSize: 14,
+    fontWeight: '900',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
+  primaryButton: {
+    marginTop: 4,
     marginBottom: 14,
   },
-  forgotPasswordText: {
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  divider: {
+    height: 1,
+    flex: 1,
+  },
+  dividerText: {
     fontSize: 14,
     fontWeight: '700',
   },
-  primaryButton: {
-    marginTop: 6,
-    marginBottom: 12,
+  googleButton: {
+    width: '100%',
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 14,
   },
-  registerContainer: {
+  googleText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  bottomRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 14,
+    flexWrap: 'wrap',
   },
-  registerText: {
+  bottomText: {
     fontSize: 14,
-  },
-  registerLink: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 

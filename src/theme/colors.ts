@@ -23,7 +23,7 @@ export type AppColors = {
 export const lightColors: AppColors = {
   accent: brandColors.accent,
   secondary: brandColors.secondary,
-  background: '#F6F7FB',
+  background: '#FFFBF6FF',
   surface: '#FFFFFF',
   surfaceAlt: '#F1F3F8',
   text: '#0F172A',
@@ -38,7 +38,7 @@ export const lightColors: AppColors = {
 export const darkColors: AppColors = {
   accent: brandColors.accent,
   secondary: brandColors.secondary,
-  background: '#0B1020',
+  background: '#0C000BFF',
   surface: '#121A2E',
   surfaceAlt: '#0F172A',
   text: '#F8FAFC',
