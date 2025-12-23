@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   addButton: {
     height: 34,
     paddingHorizontal: 10,
-    borderRadius: 14,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     width: 36,
     height: 36,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

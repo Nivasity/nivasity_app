@@ -25,6 +25,16 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Nivasity to access your photos.",
+          "savePhotosPermission": "Allow Nivasity to save receipt images to your photos.",
+          "granularPermissions": ["photo"]
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

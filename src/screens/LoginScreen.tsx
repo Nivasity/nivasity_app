@@ -65,6 +65,24 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <AuthScaffold navigation={navigation} title="Welcome back!">
+      <TouchableOpacity
+        onPress={handleGoogleLogin}
+        disabled={loading}
+        style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+        activeOpacity={0.9}
+      >
+        <AppIcon name="logo-google" size={18} color={colors.text} />
+        <AppText style={[styles.googleText, { color: colors.text }]}>Continue with Google</AppText>
+      </TouchableOpacity>
+
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      </View>
+
       <Input
         label="Email"
         placeholder="julia.roberts@mail.com"
@@ -118,24 +136,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       <Button title="Log in" onPress={handleLogin} loading={loading} style={styles.primaryButton} />
 
-      <View style={styles.dividerRow}>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      </View>
-
-      <TouchableOpacity
-        onPress={handleGoogleLogin}
-        disabled={loading}
-        style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with Google"
-        activeOpacity={0.9}
-      >
-        <AppIcon name="logo-google" size={18} color={colors.text} />
-        <AppText style={[styles.googleText, { color: colors.text }]}>Continue with Google</AppText>
-      </TouchableOpacity>
-
       <View style={styles.bottomRow}>
         <AppText style={[styles.bottomText, { color: colors.textMuted }]}>
           Don’t have an account?{' '}
@@ -176,7 +176,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 14,
+    marginTop: 14,
+    marginBottom: 24,
   },
   divider: {
     height: 1,
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
   googleButton: {
     width: '100%',
     height: 52,
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',

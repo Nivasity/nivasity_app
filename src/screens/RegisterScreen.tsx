@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   genderButton: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 20,
   },
   genderContent: {
     height: 44,

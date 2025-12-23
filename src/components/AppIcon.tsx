@@ -7,6 +7,7 @@ export type AppIconName =
   | 'person-outline'
   | 'search-outline'
   | 'grid-outline'
+  | 'options-outline'
   | 'arrow-forward'
   | 'chevron-forward'
   | 'logo-google'
@@ -32,8 +33,15 @@ export type AppIconName =
   | 'settings-outline'
   | 'location-outline'
   | 'link-outline'
+  | 'share-social-outline'
+  | 'download-outline'
+  | 'close-outline'
   | 'help-circle-outline'
-  | 'log-out-outline';
+  | 'log-out-outline'
+  // Order status icons
+  | 'checkmark-circle-outline'
+  | 'close-circle-outline'
+  | 'refresh-circle-outline';
 
 export default function AppIcon({
   name,

@@ -63,21 +63,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           </TouchableOpacity>
           <Text style={[styles.topTitle, { color: colors.text }]}>Checkout</Text>
           <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: colors.surface }]}
-            accessibilityRole="button"
-            accessibilityLabel="Favorite"
+            style={[styles.iconButton, { backgroundColor: 'transparent' }]}
           >
-            <AppIcon name="heart-outline" size={18} color={colors.text} />
           </TouchableOpacity>
-        </View>
-
-        <View style={[styles.mediaCard, { backgroundColor: colors.surface }]}>
-          <View style={[styles.media, { backgroundColor: colors.surfaceAlt }]}>
-            <AppIcon name="shield-checkmark-outline" size={40} color={colors.secondary} />
-            <View style={[styles.playButton, { backgroundColor: colors.surface }]}>
-              <AppIcon name="play" size={18} color={colors.accent} />
-            </View>
-          </View>
         </View>
 
         <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -198,7 +186,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -273,7 +261,7 @@ const styles = StyleSheet.create({
   },
   metaPill: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 20,
     padding: 10,
   },
   metaTitle: {

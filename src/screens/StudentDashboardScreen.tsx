@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
+import { DEMO_DATA_ENABLED } from '../config/demo';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Loading from '../components/Loading';
-import { dashboardAPI, orderAPI } from '../services/api';
-import { DashboardStats, Order } from '../types';
+import { computeDashboardStats, demoOrders, demoProducts } from '../data/demo';
+import { dashboardAPI, orderAPI, storeAPI } from '../services/api';
+import { DashboardStats, Order, Product } from '../types';
+import StoreCard from '../components/StoreCard';
+import OrderListItem from '../components/OrderListItem';
 
 interface StudentDashboardScreenProps {
   navigation: any;
@@ -18,9 +22,11 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [topMaterials, setTopMaterials] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [dataSource, setDataSource] = useState<'api' | 'demo'>('api');
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -28,12 +34,38 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         dashboardAPI.getStudentStats(),
         orderAPI.getOrders(),
       ]);
-      setStats(statsData);
-      setRecentOrders((ordersData || []).slice(0, 5));
+      const safeOrders = ordersData || [];
+      let materials: Product[] = [];
+      try {
+        materials = (await storeAPI.getProducts()) || [];
+      } catch {
+        materials = [];
+      }
+      if (materials.length === 0 && DEMO_DATA_ENABLED) {
+        materials = demoProducts;
+      }
+      setTopMaterials(materials.slice(0, 3));
+      if (safeOrders.length === 0 && DEMO_DATA_ENABLED) {
+        setStats(computeDashboardStats(demoOrders));
+        setRecentOrders(demoOrders.slice(0, 5));
+        setDataSource('demo');
+      } else {
+        setStats(statsData);
+        setRecentOrders(safeOrders.slice(0, 5));
+        setDataSource('api');
+      }
       setIsOffline(false);
     } catch (error) {
-      setStats({ totalOrders: 0, pendingOrders: 0, totalSpent: 0 });
-      setRecentOrders([]);
+      if (DEMO_DATA_ENABLED) {
+        setStats(computeDashboardStats(demoOrders));
+        setRecentOrders(demoOrders.slice(0, 5));
+        setTopMaterials(demoProducts.slice(0, 3));
+        setDataSource('demo');
+      } else {
+        setStats({ totalOrders: 0, pendingOrders: 0, totalSpent: 0 });
+        setRecentOrders([]);
+        setTopMaterials([]);
+      }
       setIsOffline(true);
       console.warn('Dashboard offline: could not reach API');
     } finally {
@@ -55,97 +87,80 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     return <Loading message="Loading dashboard..." />;
   }
 
+  function getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
   return (
     <SafeAreaView
       edges={['top', 'bottom']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        stickyHeaderIndices={[0]}
       >
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.avatarText, { color: colors.secondary }]}>
-                {(user?.name || 'U').charAt(0).toUpperCase()}
-              </Text>
+        <View
+          style={[
+            styles.stickyHeader,
+            { backgroundColor: colors.background, borderBottomColor: colors.border },
+          ]}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.avatarText, { color: colors.secondary }]}>
+                  {(user?.name || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View>
+                <Text style={[styles.welcome, { color: colors.textMuted }]}>{getGreeting()},</Text>
+                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+                  {user?.name || 'Student'}
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text style={[styles.welcome, { color: colors.textMuted }]}>Welcome back,</Text>
-              <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-                {user?.name || 'Student'}
-              </Text>
-            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Store')}
+              style={[styles.searchButton, { backgroundColor: 'transparent' }]}
+              accessibilityRole="button"
+              accessibilityLabel="Browse store"
+            >
+              {/* <AppIcon name="search-outline" size={20} color={colors.text} /> */}
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.searchButton, { backgroundColor: colors.surface }]}
-            accessibilityRole="button"
-            accessibilityLabel="Search"
-          >
-            <AppIcon name="search-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
         </View>
+        <View style={styles.headerSpacer} />
 
-        <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.heroCard, { backgroundColor: colors.secondary }]}>
           <View style={styles.heroText}>
-            <Text style={[styles.heroTitle, { color: colors.text }]}>
+            <Text style={[styles.heroTitle, { color: colors.surface }]}>
               Campus essentials{'\n'}delivered fast
             </Text>
-            <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
+            <Text style={[styles.heroSubtitle, { color: colors.surface }]}>
               Browse the store and checkout in minutes.
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('Store')}
-              style={[styles.heroButton, { backgroundColor: colors.accent }]}
+              style={[styles.heroButton, { backgroundColor: colors.surface }]}
               accessibilityRole="button"
               accessibilityLabel="Browse store"
               activeOpacity={0.85}
             >
-              <Text style={[styles.heroButtonText, { color: colors.onAccent }]}>Check now</Text>
-              <AppIcon name="arrow-forward" size={16} color={colors.onAccent} />
+              <Text style={[styles.heroButtonText, { color: colors.secondary }]}>Check now</Text>
+              <AppIcon name="arrow-forward" size={16} color={colors.secondary} />
             </TouchableOpacity>
           </View>
-          <View style={[styles.heroArt, { backgroundColor: colors.surfaceAlt }]}>
-            <AppIcon name="school-outline" size={34} color={colors.secondary} />
+          <View style={[styles.heroArt]}>
+            <AppIcon name="school-outline" size={34} color={colors.surface} />
           </View>
-        </View>
-
-        {isOffline && (
-          <View style={[styles.offlineCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.offlineIcon, { backgroundColor: colors.surfaceAlt }]}>
-              <AppIcon name="sparkles-outline" size={16} color={colors.secondary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.offlineTitle, { color: colors.text }]}>Offline mode</Text>
-              <Text style={[styles.offlineText, { color: colors.textMuted }]}>
-                Pull to refresh when you're back online.
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.statRow}>
-          <StatPill label="Orders" value={`${stats?.totalOrders || 0}`} icon="receipt-outline" />
-          <StatPill label="Pending" value={`${stats?.pendingOrders || 0}`} icon="time-outline" />
-          <StatPill label="Spent" value={`₦${(stats?.totalSpent || 0).toLocaleString()}`} icon="wallet-outline" />
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Courses</Text>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="View all">
-              <Text style={[styles.viewAll, { color: colors.textMuted }]}>View all</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.chipsRow}>
-            <Chip label="All Course" active />
-            <Chip label="Popular" />
-            <Chip label="Newest" />
-          </View>
-
           <View style={styles.cardsGrid}>
             <CourseCard
               title="Nivasity Store"
@@ -154,38 +169,82 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
               onPress={() => navigation.navigate('Store')}
             />
             <CourseCard
-              title="Edit Profile"
-              subtitle="Update details"
-              icon="person-outline"
-              onPress={() => navigation.navigate('Profile')}
+              title="Order History"
+              subtitle="Track purchases"
+              icon="receipt-outline"
+              onPress={() => navigation.navigate('Orders')}
             />
           </View>
         </View>
+
+        {topMaterials.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Materials</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Store')}
+                accessibilityRole="button"
+                accessibilityLabel="See all materials"
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.viewAll, { color: colors.secondary }]}>See all</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={topMaterials.slice(0, 6)}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingRight: 8 }}
+              renderItem={({ item }) => (
+                <View style={{ width: 350, flexShrink: 0 }}>
+                  <StoreCard
+                    code={item.category || ''}
+                    name={item.name}
+                    status={item.available === false ? 'Unavailable' : 'Available'}
+                    date={
+                      item.createdAt
+                        ? new Date(item.createdAt).toLocaleDateString(undefined, {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                        : ''
+                    }
+                    price={`₦${item.price?.toLocaleString?.() ?? ''}`}
+                    marked={false}
+                    onAdd={() => navigation.navigate('Store')}
+                    onShare={() => { }}
+                  />
+                </View>
+              )}
+              style={{ marginLeft: -4 }}
+            />
+          </View>
+        )}
 
         {recentOrders.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Orders</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Orders')}
+                accessibilityRole="button"
+                accessibilityLabel="View all orders"
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.viewAll, { color: colors.secondary }]}>View all</Text>
+              </TouchableOpacity>
             </View>
 
             {recentOrders.map((order) => (
-              <View
+              <OrderListItem
                 key={order.id}
-                style={[styles.orderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              >
-                <View style={styles.orderInfo}>
-                  <Text style={[styles.orderNumber, { color: colors.text }]}>
-                    Order #{order.id.substring(0, 8)}
-                  </Text>
-                  <Text style={[styles.orderDate, { color: colors.textMuted }]}>
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={styles.orderDetails}>
-                  <Text style={[styles.orderAmount, { color: colors.text }]}>₦{order.total.toLocaleString()}</Text>
-                  <StatusBadge status={order.status} />
-                </View>
-              </View>
+                order={order}
+                onPress={() => navigation.navigate('OrderReceipt', { order })}
+              />
             ))}
           </View>
         )}
@@ -231,7 +290,7 @@ const CourseCard = ({
       accessibilityRole="button"
       accessibilityLabel={title}
     >
-      <View style={[styles.courseIcon, { backgroundColor: colors.surfaceAlt }]}>
+      <View style={[styles.courseIcon]}>
         <AppIcon name={icon} size={22} color={colors.secondary} />
       </View>
       <Text style={[styles.courseTitle, { color: colors.text }]} numberOfLines={1}>
@@ -241,31 +300,6 @@ const CourseCard = ({
         {subtitle}
       </Text>
     </TouchableOpacity>
-  );
-};
-
-const StatPill = ({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentProps<typeof AppIcon>['name'];
-}) => {
-  const { colors } = useTheme();
-  return (
-    <View style={[styles.statPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <View style={[styles.statIcon, { backgroundColor: colors.surfaceAlt }]}>
-        <AppIcon name={icon} size={16} color={colors.secondary} />
-      </View>
-      <View>
-        <Text style={[styles.statPillValue, { color: colors.text }]} numberOfLines={1}>
-          {value}
-        </Text>
-        <Text style={[styles.statPillLabel, { color: colors.textMuted }]}>{label}</Text>
-      </View>
-    </View>
   );
 };
 
@@ -297,14 +331,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 110,
-    paddingTop: 10,
+  },
+  stickyHeader: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    zIndex: 10,
+    position: 'relative',
   },
   headerRow: {
+    paddingTop: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+  },
+  headerSpacer: {
+    height: 14,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -313,9 +354,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -324,7 +365,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   welcome: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   name: {
@@ -346,11 +387,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
-    elevation: 8,
   },
   heroText: {
     flex: 1,
@@ -429,12 +465,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
   },
   viewAll: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   chipsRow: {
     flexDirection: 'row',
@@ -460,18 +496,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 6,
   },
   courseIcon: {
     width: 40,
     height: 40,
     borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     marginBottom: 10,
   },
   courseTitle: {
@@ -522,32 +554,67 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'capitalize',
   },
-  offlineCard: {
-    marginTop: 12,
-    marginHorizontal: 16,
+  materialList: {
+    gap: 12,
+  },
+  materialCard: {
     borderWidth: 1,
     borderRadius: 18,
-    padding: 12,
+    padding: 14,
     flexDirection: 'row',
-    gap: 12,
     alignItems: 'center',
+    gap: 12,
   },
-  offlineIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 14,
+  materialIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  offlineTitle: {
+  materialTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 3,
+  },
+  materialSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  materialMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  materialDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  materialMetaText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  materialRight: {
+    alignItems: 'flex-end',
+  },
+  materialPrice: {
     fontSize: 13,
     fontWeight: '900',
-    marginBottom: 2,
+    marginBottom: 10,
   },
-  offlineText: {
+  materialCta: {
+    height: 34,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  materialCtaText: {
     fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
+    fontWeight: '900',
   },
 });
 

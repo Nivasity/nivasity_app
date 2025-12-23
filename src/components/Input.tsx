@@ -31,7 +31,7 @@ const Input: React.FC<InputProps> = ({
         {...props}
         secureTextEntry={secureTextEntry}
         outlineStyle={styles.outline}
-        style={[styles.input, { backgroundColor: colors.surface }, props.style]}
+        style={[styles.input, { backgroundColor: colors.background }, props.style]}
         textColor={colors.text}
         placeholderTextColor={colors.textMuted}
         outlineColor={colors.border}
@@ -66,10 +66,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   input: {
-    minHeight: 52,
+    minHeight: 60,
   },
   outline: {
-    borderRadius: 14,
+    borderRadius: 20,
   },
   helper: {
     marginTop: -2,

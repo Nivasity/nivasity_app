@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabBarButtonProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -21,14 +21,17 @@ import StudentDashboardScreen from '../screens/StudentDashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import StoreScreen from '../screens/StoreScreen';
-import SavedScreen from '../screens/SavedScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
+import OrderReceiptScreen from '../screens/OrderReceiptScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_BAR_BG = '#0B0B0C';
-const TAB_BAR_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 65;
+const TAB_BAR_WIDTH_RATIO = 0.68;
+const TAB_BAR_MAX_WIDTH = 420;
 
 // Auth Stack Navigator
 const AuthStack = () => {
@@ -49,6 +52,11 @@ const AuthStack = () => {
 // Student Tab Navigator
 const StudentTabs = () => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const tabBarWidth = Math.min(windowWidth * TAB_BAR_WIDTH_RATIO, TAB_BAR_MAX_WIDTH);
+  const sideInset = Math.max((windowWidth - tabBarWidth) / 2, 0);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -57,24 +65,25 @@ const StudentTabs = () => {
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
           position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 16 + insets.bottom,
-          height: TAB_BAR_HEIGHT,
+          start: sideInset,
+          end: sideInset,
+          bottom: 10 + insets.bottom,
           borderRadius: TAB_BAR_HEIGHT / 2,
-          backgroundColor: TAB_BAR_BG,
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.06)',
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.12,
-          shadowRadius: 18,
-          elevation: 10,
+          backgroundColor: isDark ? TAB_BAR_BG : colors.surface,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
           overflow: 'visible',
+          height: TAB_BAR_HEIGHT,
+          elevation: 0,
+          shadowColor: 'transparent',
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          shadowOffset: { width: 0, height: 0 },
         },
         tabBarItemStyle: {
-          height: TAB_BAR_HEIGHT,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 18,
         },
       }}
     >
@@ -97,10 +106,12 @@ const StudentTabs = () => {
         }}
       />
       <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
+        name="Orders"
+        component={OrderHistoryScreen}
         options={{
-          tabBarButton: (props) => <CenterTabButton {...props} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="receipt-outline" />
+          ),
         }}
       />
       <Tab.Screen
@@ -146,6 +157,11 @@ const AppNavigator = () => {
             component={CheckoutScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="OrderReceipt"
+            component={OrderReceiptScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       )}
     </NavigationContainer>
@@ -153,58 +169,22 @@ const AppNavigator = () => {
 };
 
 const TabIcon = ({ focused, icon }: { focused: boolean; icon: AppIconName }) => {
-  const { colors } = useTheme();
-  const color = focused ? '#FFFFFF' : 'rgba(255,255,255,0.65)';
+  const { colors, isDark } = useTheme();
+  const color = focused ? colors.onAccent : 'rgba(255,255,255,0.65)';
   return (
-    <View style={[styles.tabPill, focused && { backgroundColor: colors.secondary }]}>
-      <AppIcon name={icon} size={22} color={color} />
+    <View style={[styles.tabPill, focused && { backgroundColor: colors.accent }]}>
+      <AppIcon name={icon} size={22} color={focused ? colors.onAccent : colors.text} />
     </View>
-  );
-};
-
-const CenterTabButton = ({ onPress, accessibilityState }: BottomTabBarButtonProps) => {
-  const { colors } = useTheme();
-  const focused = accessibilityState?.selected;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={[
-        styles.centerButton,
-        { backgroundColor: colors.secondary, borderColor: TAB_BAR_BG },
-        focused && styles.centerButtonFocused,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel="Saved"
-    >
-      <AppIcon name="heart-outline" size={24} color="#FFFFFF" />
-    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   tabPill: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  centerButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    elevation: 12,
-  },
-  centerButtonFocused: {
-    transform: [{ scale: 1.02 }],
   },
 });
 

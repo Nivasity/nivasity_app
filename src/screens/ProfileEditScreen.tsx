@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   themePill: {
     flex: 1,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

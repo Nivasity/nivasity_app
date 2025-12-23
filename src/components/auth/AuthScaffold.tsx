@@ -57,7 +57,7 @@ export default function AuthScaffold({
           </TouchableOpacity>
 
           <View style={[styles.sheetWrap, { paddingBottom: 14 + insets.bottom }]}>
-            <View style={[styles.sheet, { backgroundColor: colors.surface }, cardStyle]}>
+            <View style={[styles.sheet, { backgroundColor: colors.background }, cardStyle]}>
               <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
               {scrollable ? (
                 <ScrollView
@@ -119,6 +119,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.4,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
 });
