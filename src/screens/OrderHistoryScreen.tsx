@@ -8,6 +8,7 @@ import { demoOrders } from '../data/demo';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
 import { Order } from '../types';
+import OrderListItem from '../components/OrderListItem';
 
 interface OrderHistoryScreenProps {
   navigation: any;
@@ -73,6 +74,13 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   }, [filteredOrders.length, orders.length, query]);
 
   const renderOrder = ({ item }: { item: Order }) => {
+    return (
+      <OrderListItem
+        order={item}
+        onPress={() => navigation.navigate('OrderReceipt', { order: item })}
+      />
+    );
+
     // Choose icon and color based on status
     let icon: import('../components/AppIcon').AppIconName = 'checkmark-circle-outline';
     let iconColor = colors.success;

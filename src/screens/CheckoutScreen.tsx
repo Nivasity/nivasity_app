@@ -3,6 +3,7 @@ import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useCart } from '../contexts/CartContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
 import { orderAPI, paymentAPI } from '../services/api';
@@ -16,7 +17,8 @@ interface CheckoutScreenProps {
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { cartItems = [] } = route.params || {};
+  const { items: cartItemsFromContext } = useCart();
+  const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext;
   const [loading, setLoading] = useState(false);
 
   const total = useMemo(

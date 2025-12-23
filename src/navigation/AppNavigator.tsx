@@ -101,7 +101,7 @@ const StudentTabs = () => {
         component={StoreScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="search-outline" />
+            <TabIcon focused={focused} icon="bag-outline" />
           ),
         }}
       />

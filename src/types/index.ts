@@ -46,6 +46,10 @@ export interface Product {
   category?: string;
   available?: boolean;
   createdAt?: string;
+  department?: string;
+  faculty?: string;
+  level?: string;
+  deadlineAt?: string;
 }
 
 export interface CartItem extends Product {

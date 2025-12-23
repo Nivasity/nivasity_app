@@ -9,6 +9,10 @@ export const demoProducts: Product[] = [
     category: 'Handout',
     available: true,
     createdAt: '2026-01-01T00:00:00.000Z',
+    department: 'Computer Science',
+    faculty: 'Science',
+    level: '100',
+    deadlineAt: '2026-02-01T23:59:00.000Z',
   },
   {
     id: 'mth-101',
@@ -18,6 +22,10 @@ export const demoProducts: Product[] = [
     category: 'Handout',
     available: true,
     createdAt: '2026-01-03T00:00:00.000Z',
+    department: 'Mathematics',
+    faculty: 'Science',
+    level: '100',
+    deadlineAt: '2026-02-05T23:59:00.000Z',
   },
   {
     id: 'gst-103',
@@ -27,6 +35,10 @@ export const demoProducts: Product[] = [
     category: 'Past Questions',
     available: true,
     createdAt: '2026-01-05T00:00:00.000Z',
+    department: 'General Studies',
+    faculty: 'General',
+    level: '100',
+    deadlineAt: '2026-02-10T23:59:00.000Z',
   },
   {
     id: 'chm-102',
@@ -36,6 +48,10 @@ export const demoProducts: Product[] = [
     category: 'Past Questions',
     available: true,
     createdAt: '2026-01-06T00:00:00.000Z',
+    department: 'Chemistry',
+    faculty: 'Science',
+    level: '100',
+    deadlineAt: '2026-02-12T23:59:00.000Z',
   },
   {
     id: 'phy-104',
@@ -45,6 +61,10 @@ export const demoProducts: Product[] = [
     category: 'Lab Material',
     available: true,
     createdAt: '2026-01-08T00:00:00.000Z',
+    department: 'Physics',
+    faculty: 'Science',
+    level: '100',
+    deadlineAt: '2026-02-15T23:59:00.000Z',
   },
   {
     id: 'sta-110',
@@ -54,6 +74,10 @@ export const demoProducts: Product[] = [
     category: 'Handout',
     available: true,
     createdAt: '2026-01-10T00:00:00.000Z',
+    department: 'Statistics',
+    faculty: 'Science',
+    level: '100',
+    deadlineAt: '2026-02-20T23:59:00.000Z',
   },
 ];
 
@@ -105,4 +129,3 @@ export const computeDashboardStats = (orders: Order[]): DashboardStats => {
 
   return { totalOrders, pendingOrders, totalSpent };
 };
-

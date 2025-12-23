@@ -8,9 +8,11 @@ import Loading from '../components/Loading';
 import { DEMO_DATA_ENABLED } from '../config/demo';
 import { demoProducts } from '../data/demo';
 import { useTheme } from '../contexts/ThemeContext';
+import { useCart } from '../contexts/CartContext';
 import { storeAPI } from '../services/api';
-import { CartItem, Product } from '../types';
+import { Product } from '../types';
 import StoreCard from '../components/StoreCard';
+import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 
 interface StoreScreenProps {
   navigation: any;
@@ -21,8 +23,8 @@ type SortOption = 'recommended' | 'price_asc' | 'price_desc';
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { items: cartItems, count: cartCount, has, toggle } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -30,6 +32,8 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -64,22 +68,12 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
     loadProducts();
   };
 
-  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
-
-  const toggleCart = (product: Product) => {
-    setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
-      if (existing) return current.filter((item) => item.id !== product.id);
-      return [...current, { ...product, quantity: 1 }];
-    });
-  };
-
   const goToCheckout = () => {
     if (cartCount === 0) {
       Alert.alert('Cart is empty', 'Add at least one item to checkout.');
       return;
     }
-    navigation.navigate('Checkout', { cartItems: cart });
+    navigation.navigate('Checkout', { cartItems });
   };
 
   const categories = useMemo(() => {
@@ -134,18 +128,22 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   };
 
   const renderProduct = ({ item }: { item: Product }) => {
-    const inCart = cart.some((c) => c.id === item.id);
+    const inCart = has(item.id);
     const isAvailable = item.available !== false;
     return (
       <StoreCard
         code={item.category || 'CSC 112'}
         name={item.name}
         status={isAvailable ? 'Available' : 'Unavailable'}
-        date={formatCardDate(item.createdAt)}
+        date={formatCardDate(item.deadlineAt || item.createdAt)}
         price={`₦${item.price.toLocaleString()}`}
         marked={inCart}
-        onAdd={() => toggleCart(item)}
+        onAdd={isAvailable ? () => toggle(item) : undefined}
         onShare={() => shareProduct(item)}
+        onPress={() => {
+          setActiveProduct(item);
+          setDetailsOpen(true);
+        }}
       />
     );
   };
@@ -302,6 +300,19 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      <MaterialDetailsDrawer
+        visible={detailsOpen}
+        product={activeProduct}
+        inCart={activeProduct ? has(activeProduct.id) : false}
+        onClose={() => setDetailsOpen(false)}
+        onToggleCart={() => {
+          if (activeProduct) toggle(activeProduct);
+        }}
+        onShare={() => {
+          if (activeProduct) shareProduct(activeProduct);
+        }}
+      />
     </SafeAreaView>
   );
 };

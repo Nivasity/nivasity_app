@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import { DEMO_DATA_ENABLED } from '../config/demo';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useCart } from '../contexts/CartContext';
 import Loading from '../components/Loading';
 import { computeDashboardStats, demoOrders, demoProducts } from '../data/demo';
 import { dashboardAPI, orderAPI, storeAPI } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import OrderListItem from '../components/OrderListItem';
+import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 
 interface StudentDashboardScreenProps {
   navigation: any;
@@ -19,6 +21,7 @@ interface StudentDashboardScreenProps {
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { has, toggle } = useCart();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -27,6 +30,8 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [dataSource, setDataSource] = useState<'api' | 'demo'>('api');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -93,6 +98,17 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   }
+
+  const shareMaterial = async (product: Product) => {
+    try {
+      await Share.share({
+        message: `${product.name} - ${product.description}\nPrice: ₦${product.price.toLocaleString()}`,
+      });
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <SafeAreaView
       edges={['top', 'bottom']}
@@ -106,7 +122,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         <View
           style={[
             styles.stickyHeader,
-            { backgroundColor: colors.background, borderBottomColor: colors.border },
+            { backgroundColor: colors.background },
           ]}
         >
           <View style={styles.headerRow}>
@@ -204,8 +220,8 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                     name={item.name}
                     status={item.available === false ? 'Unavailable' : 'Available'}
                     date={
-                      item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString(undefined, {
+                      item.deadlineAt || item.createdAt
+                        ? new Date(item.deadlineAt || item.createdAt || '').toLocaleDateString(undefined, {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
@@ -214,9 +230,13 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                         : ''
                     }
                     price={`₦${item.price?.toLocaleString?.() ?? ''}`}
-                    marked={false}
-                    onAdd={() => navigation.navigate('Store')}
-                    onShare={() => { }}
+                    marked={has(item.id)}
+                    onAdd={item.available === false ? undefined : () => toggle(item)}
+                    onShare={() => shareMaterial(item)}
+                    onPress={() => {
+                      setActiveMaterial(item);
+                      setDetailsOpen(true);
+                    }}
                   />
                 </View>
               )}
@@ -249,6 +269,19 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           </View>
         )}
       </ScrollView>
+
+      <MaterialDetailsDrawer
+        visible={detailsOpen}
+        product={activeMaterial}
+        inCart={activeMaterial ? has(activeMaterial.id) : false}
+        onClose={() => setDetailsOpen(false)}
+        onToggleCart={() => {
+          if (activeMaterial) toggle(activeMaterial);
+        }}
+        onShare={() => {
+          if (activeMaterial) shareMaterial(activeMaterial);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -333,12 +366,12 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   stickyHeader: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
     zIndex: 10,
     position: 'relative',
   },
   headerRow: {
-    paddingTop: 10,
+    paddingTop: 20,
+    paddingBottom: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

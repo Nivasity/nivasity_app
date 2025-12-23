@@ -158,6 +158,8 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
                       return colors.success;
                     case 'processing':
                       return colors.warning;
+                    case 'pending':
+                      return colors.warning;
                     case 'cancelled':
                       return colors.danger;
                     default:
@@ -169,6 +171,8 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
                     case 'completed':
                       return isDark ? 'rgba(34,197,94,0.18)' : 'rgba(34,197,94,0.12)';
                     case 'processing':
+                      return isDark ? 'rgba(245,158,11,0.20)' : 'rgba(245,158,11,0.14)';
+                    case 'pending':
                       return isDark ? 'rgba(245,158,11,0.20)' : 'rgba(245,158,11,0.14)';
                     case 'cancelled':
                       return isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.12)';
@@ -252,8 +256,8 @@ const LineItem = ({ item }: { item: CartItem }) => {
   const lineTotal = item.price * item.quantity;
   return (
     <View style={styles.line}>
-      <View style={[styles.lineIcon, { backgroundColor: colors.surfaceAlt }]}>
-        <AppIcon name="cube-outline" size={16} color={colors.secondary} />
+      <View style={[styles.lineIcon]}>
+        <AppIcon name="book" size={16} color={colors.secondary} />
       </View>
       <View style={{ flex: 1, paddingRight: 10 }}>
         <AppText style={[styles.lineTitle, { color: colors.text }]} numberOfLines={1}>

@@ -9,6 +9,7 @@ interface StoreCardProps {
   status: string;
   date: string;
   price: string;
+  onPress?: () => void;
   onAdd?: () => void;
   onShare?: () => void;
   marked?: boolean;
@@ -24,6 +25,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
   name,
   date,
   price,
+  onPress,
   onAdd,
   onShare,
   marked,
@@ -31,16 +33,26 @@ export const StoreCard: React.FC<StoreCardProps> = ({
   const { colors, isDark } = useTheme();
   const addIsActive = Boolean(onAdd);
   const shareIsActive = Boolean(onShare);
+  const pressIsActive = Boolean(onPress);
+  const CardContainer = pressIsActive ? TouchableOpacity : View;
 
   return (
     <View style={styles.cardWrap}>
-      <View
+      <CardContainer
         style={[
           styles.card,
           {
             backgroundColor: isDark ? colors.surface : colors.accent,
           },
         ]}
+        {...(pressIsActive
+          ? {
+            onPress,
+            activeOpacity: 0.9,
+            accessibilityRole: 'button' as const,
+            accessibilityLabel: `Open details for ${name}`,
+          }
+          : {})}
       >
         {/* Make the cutout itself the button */}
         <View style={styles.cutoutButton}>
@@ -79,7 +91,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
         <View style={styles.metaRow}>
           <View style={[styles.metaItem, styles.metaItemRight]}>
             <Text style={{ color: colors.onCard }}>
-              Deadline ●</Text>
+              Deadline:</Text>
             <Text style={[styles.metaText, { color: colors.onCard }]} numberOfLines={1}>
               {date}
             </Text>
@@ -115,7 +127,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
         >
           <AppIcon name="share-social-outline" size={25} color={colors.secondary} />
         </TouchableOpacity>
-      </View>
+      </CardContainer>
     </View>
   );
 };
@@ -157,6 +169,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     letterSpacing: -0.2,
+    fontWeight: '600',
   },
   code: {
     letterSpacing: 0.2,
@@ -192,7 +205,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '600',
   },
   shareAction: {
     position: 'absolute',

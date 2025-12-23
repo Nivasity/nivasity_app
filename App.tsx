@@ -4,6 +4,7 @@ import { useAppFonts } from './src/theme/useAppFonts';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { CartProvider } from './src/contexts/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
@@ -22,7 +23,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoot />
+          <CartProvider>
+            <AppRoot />
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
