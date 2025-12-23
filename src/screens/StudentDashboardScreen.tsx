@@ -13,6 +13,7 @@ import { DashboardStats, Order, Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import OrderListItem from '../components/OrderListItem';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
+import CheckoutFab from '../components/CheckoutFab';
 
 interface StudentDashboardScreenProps {
   navigation: any;
@@ -21,7 +22,7 @@ interface StudentDashboardScreenProps {
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { has, toggle } = useCart();
+  const { count: cartCount, has, toggle } = useCart();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -269,6 +270,12 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           </View>
         )}
       </ScrollView>
+
+      {cartCount > 0 ? (
+        <View style={[styles.checkoutFabWrap, { bottom: 85 + insets.bottom }]}>
+          <CheckoutFab onPress={() => navigation.navigate('Checkout')} />
+        </View>
+      ) : null}
 
       <MaterialDetailsDrawer
         visible={detailsOpen}
@@ -648,6 +655,13 @@ const styles = StyleSheet.create({
   materialCtaText: {
     fontSize: 12,
     fontWeight: '900',
+  },
+  checkoutFabWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    alignItems: 'center',
   },
 });
 

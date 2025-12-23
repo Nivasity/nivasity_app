@@ -1,8 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { BottomTabBarButtonProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AppIcon, { AppIconName } from '../components/AppIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -70,15 +70,11 @@ const StudentTabs = () => {
           bottom: 10 + insets.bottom,
           borderRadius: TAB_BAR_HEIGHT / 2,
           backgroundColor: isDark ? TAB_BAR_BG : colors.surface,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: 2,
           borderColor: colors.border,
           overflow: 'visible',
           height: TAB_BAR_HEIGHT,
           elevation: 0,
-          shadowColor: 'transparent',
-          shadowOpacity: 0,
-          shadowRadius: 0,
-          shadowOffset: { width: 0, height: 0 },
         },
         tabBarItemStyle: {
           justifyContent: 'center',

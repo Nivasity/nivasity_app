@@ -3,7 +3,6 @@ import { Alert, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, To
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button as PaperButton, Dialog, Portal, RadioButton } from 'react-native-paper';
 import AppIcon from '../components/AppIcon';
-import Button from '../components/Button';
 import Loading from '../components/Loading';
 import { DEMO_DATA_ENABLED } from '../config/demo';
 import { demoProducts } from '../data/demo';
@@ -13,6 +12,7 @@ import { storeAPI } from '../services/api';
 import { Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
+import CheckoutFab from '../components/CheckoutFab';
 
 interface StoreScreenProps {
   navigation: any;
@@ -160,15 +160,15 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Store</Text>
         <TouchableOpacity
-          style={[styles.cartButton, { backgroundColor: colors.surface }]}
+          style={[styles.cartButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]}
           onPress={goToCheckout}
           accessibilityRole="button"
           accessibilityLabel="Go to checkout"
         >
-          <AppIcon name="cart-outline" size={20} color={colors.text} />
+          <AppIcon name="cart-outline" size={25} color={colors.text} />
           {cartCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.badgeText, { color: colors.onAccent }]}>{cartCount}</Text>
+              <Text style={[styles.badgeText, { color: colors.background }]}>{cartCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -194,7 +194,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
           accessibilityRole="button"
           accessibilityLabel="Open filters"
         >
-          <AppIcon name="options-outline" size={18} color={colors.text} />
+          <AppIcon name="options-outline" size={25} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -215,8 +215,8 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
       />
 
       {cartCount > 0 && (
-        <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 96 + insets.bottom }]}>
-          <Button title={`Checkout (${cartCount} items)`} style={{ backgroundColor: colors.secondary }} onPress={goToCheckout} />
+        <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 85 + insets.bottom }]}>
+          <CheckoutFab onPress={goToCheckout} />
         </View>
       )}
 
@@ -335,9 +335,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   cartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -377,13 +377,13 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingVertical: 0,
   },
   filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 18,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -406,6 +406,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 96,
+    alignItems: 'center',
   },
   filterDialog: {
     borderRadius: 20,

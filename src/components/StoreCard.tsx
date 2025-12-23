@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     width: TOP_ACTION_SIZE,
     height: TOP_ACTION_SIZE,
     borderRadius: TOP_ACTION_SIZE / 2,
-    padding: 25,
+    padding: 28,
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
     // No shadow, only subtle outline if needed
