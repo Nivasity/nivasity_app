@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
   Button as PaperButton,
   Checkbox,
-  Dialog,
   HelperText,
-  List,
-  Portal,
   TextInput as PaperTextInput,
 } from 'react-native-paper';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import OptionPickerDialog from '../components/OptionPickerDialog';
+import PhoneField from '../components/PhoneField';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { SCHOOLS } from '../config/options';
 import { RegisterCredentials } from '../types';
+import { normalizePhone } from '../utils/phone';
 
 interface RegisterScreenProps {
   navigation: any;
@@ -27,7 +29,8 @@ type RegisterForm = {
   firstName: string;
   lastName: string;
   school: string;
-  countryCode: string;
+  countryCca2: string;
+  callingCode: string;
   phoneNumber: string;
   gender: Gender;
   email: string;
@@ -37,37 +40,17 @@ type RegisterForm = {
 
 type RegisterErrors = Partial<Record<keyof RegisterForm, string>>;
 
-const SCHOOLS = [
-  'University of Lagos (UNILAG)',
-  'University of Ibadan (UI)',
-  'Obafemi Awolowo University (OAU)',
-  'Covenant University',
-  'Ahmadu Bello University (ABU)',
-  'Other',
-];
-
-const normalizeCountryCode = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) return '+234';
-  if (trimmed.startsWith('+')) return `+${trimmed.replace(/[^\d]/g, '')}`;
-  return `+${trimmed.replace(/[^\d]/g, '')}`;
-};
-
-const normalizePhone = (countryCode: string, phoneNumber: string) => {
-  const cc = normalizeCountryCode(countryCode);
-  const pn = phoneNumber.replace(/[^\d]/g, '');
-  return `${cc}${pn}`;
-};
-
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { register } = useAuth();
   const { colors } = useTheme();
+  const appMessage = useAppMessage();
 
   const [form, setForm] = useState<RegisterForm>({
     firstName: '',
     lastName: '',
     school: '',
-    countryCode: '+234',
+    countryCca2: 'NG',
+    callingCode: '+234',
     phoneNumber: '',
     gender: null,
     email: '',
@@ -113,7 +96,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         school: form.school,
-        phone: normalizePhone(form.countryCode, form.phoneNumber),
+        phone: normalizePhone(form.callingCode, form.phoneNumber),
         gender: form.gender ?? undefined,
         email: form.email.trim(),
         password: form.password,
@@ -121,10 +104,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       };
       await register(payload);
     } catch (error: any) {
-      Alert.alert(
-        'Registration Failed',
-        error?.response?.data?.message || 'Failed to create account'
-      );
+      appMessage.alert({
+        title: 'Registration Failed',
+        message: error?.response?.data?.message || 'Failed to create account',
+      });
     } finally {
       setLoading(false);
     }
@@ -178,25 +161,16 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         </View>
       </TouchableOpacity>
 
-      <View style={styles.row}>
-        <View style={{ flex: 0.38 }}>
-          <Input
-            label="Code"
-            value={form.countryCode}
-            onChangeText={(text) => setForm((s) => ({ ...s, countryCode: text }))}
-            keyboardType="phone-pad"
-          />
-        </View>
-        <View style={{ flex: 0.62 }}>
-          <Input
-            label="Phone"
-            value={form.phoneNumber}
-            onChangeText={(text) => setForm((s) => ({ ...s, phoneNumber: text }))}
-            keyboardType="phone-pad"
-            errorText={errors.phoneNumber}
-          />
-        </View>
-      </View>
+      <PhoneField
+        countryCca2={form.countryCca2}
+        callingCode={form.callingCode}
+        phoneNumber={form.phoneNumber}
+        errorText={errors.phoneNumber}
+        onChangeCountry={(countryCca2, callingCode) =>
+          setForm((s) => ({ ...s, countryCca2, callingCode }))
+        }
+        onChangePhoneNumber={(phoneNumber) => setForm((s) => ({ ...s, phoneNumber }))}
+      />
 
       <View style={styles.genderWrap}>
         <View style={styles.genderHeader}>
@@ -286,65 +260,15 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ModalSchoolPicker
+      <OptionPickerDialog
         visible={schoolOpen}
+        title="Select school"
+        options={SCHOOLS}
         selected={form.school}
         onClose={() => setSchoolOpen(false)}
         onSelect={(school) => setForm((s) => ({ ...s, school }))}
       />
     </AuthScaffold>
-  );
-};
-
-const ModalSchoolPicker = ({
-  visible,
-  selected,
-  onClose,
-  onSelect,
-}: {
-  visible: boolean;
-  selected: string;
-  onClose: () => void;
-  onSelect: (school: string) => void;
-}) => {
-  const { colors } = useTheme();
-  return (
-    <Portal>
-      <Dialog
-        visible={visible}
-        onDismiss={onClose}
-        style={[styles.dialog, { backgroundColor: colors.surface }]}
-      >
-        <Dialog.Title style={[styles.dialogTitle, { color: colors.text }]}>
-          Select school
-        </Dialog.Title>
-        <Dialog.ScrollArea>
-          <ScrollView>
-            {SCHOOLS.map((name) => (
-              <List.Item
-                key={name}
-                title={name}
-                titleStyle={{ color: colors.text, fontWeight: '700' }}
-                onPress={() => {
-                  onSelect(name);
-                  onClose();
-                }}
-                right={() =>
-                  selected === name ? (
-                    <List.Icon icon="check" color={colors.secondary} />
-                  ) : null
-                }
-              />
-            ))}
-          </ScrollView>
-        </Dialog.ScrollArea>
-        <Dialog.Actions>
-          <PaperButton onPress={onClose} textColor={colors.accent}>
-            Close
-          </PaperButton>
-        </Dialog.Actions>
-      </Dialog>
-    </Portal>
   );
 };
 
@@ -415,12 +339,6 @@ const styles = StyleSheet.create({
   bottomText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  dialog: {
-    borderRadius: 18,
-  },
-  dialogTitle: {
-    fontWeight: '900',
   },
 });
 

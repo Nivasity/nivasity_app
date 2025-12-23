@@ -5,6 +5,7 @@ type CartContextValue = {
   items: CartItem[];
   count: number;
   total: number;
+  lastActionAt: number;
   has: (productId: string) => boolean;
   add: (product: Product, quantity?: number) => void;
   remove: (productId: string) => void;
@@ -29,10 +30,12 @@ const toCartItem = (product: Product, quantity: number): CartItem => ({
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [lastActionAt, setLastActionAt] = useState<number>(Date.now());
 
   const has = useCallback((productId: string) => items.some((item) => item.id === productId), [items]);
 
   const add = useCallback((product: Product, quantity: number = 1) => {
+    setLastActionAt(Date.now());
     setItems((current) => {
       const existing = current.find((item) => item.id === product.id);
       if (!existing) return [...current, toCartItem(product, Math.max(1, quantity))];
@@ -43,10 +46,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const remove = useCallback((productId: string) => {
+    setLastActionAt(Date.now());
     setItems((current) => current.filter((item) => item.id !== productId));
   }, []);
 
   const toggle = useCallback((product: Product) => {
+    setLastActionAt(Date.now());
     setItems((current) => {
       const existing = current.find((item) => item.id === product.id);
       if (existing) return current.filter((item) => item.id !== product.id);
@@ -54,14 +59,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  const clear = useCallback(() => setItems([]), []);
+  const clear = useCallback(() => {
+    setLastActionAt(Date.now());
+    setItems([]);
+  }, []);
 
   const value = useMemo<CartContextValue>(() => {
     const count = items.reduce((sum, item) => sum + item.quantity, 0);
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    return { items, count, total, has, add, remove, toggle, clear };
-  }, [has, items, add, remove, toggle, clear]);
+    return { items, count, total, lastActionAt, has, add, remove, toggle, clear };
+  }, [has, items, add, remove, toggle, clear, lastActionAt]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
-

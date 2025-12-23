@@ -3,6 +3,14 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  school?: string;
+  institutionName?: string;
+  admissionYear?: string;
+  department?: string;
+  matricNumber?: string;
 }
 
 export interface AuthResponse {

@@ -22,6 +22,7 @@ export type AppIconName =
   | 'shield-checkmark-outline'
   | 'play'
   | 'book'
+  | 'book-outline'
   | 'heart-outline'
   | 'cube-outline'
   | 'cart-outline'

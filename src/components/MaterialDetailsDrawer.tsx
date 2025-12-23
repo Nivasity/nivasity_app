@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import { Product } from '../types';
 import AppIcon from './AppIcon';
@@ -42,7 +43,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
   onToggleCart,
   onShare,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const title = product?.name ?? '';
@@ -55,7 +56,25 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
+          <BlurView
+            intensity={28}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+            ]}
+          />
+        </Pressable>
         <View
           style={[
             styles.sheet,
@@ -115,10 +134,6 @@ const styles = StyleSheet.create({
   modalRoot: {
     flex: 1,
     justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.40)',
   },
   sheet: {
     borderTopLeftRadius: 26,
@@ -194,4 +209,3 @@ const styles = StyleSheet.create({
 });
 
 export default MaterialDetailsDrawer;
-

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { authAPI } from '../services/api';
 
@@ -15,6 +16,7 @@ type Step = 'request' | 'reset';
 
 const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
+  const appMessage = useAppMessage();
   const [step, setStep] = useState<Step>('request');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -37,9 +39,12 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
     try {
       await authAPI.forgotPassword({ email });
       setStep('reset');
-      Alert.alert('OTP sent', 'Check your email for your OTP code.');
+      appMessage.toast({ message: 'OTP sent. Check your email for your OTP code.' });
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to send OTP');
+      appMessage.alert({
+        title: 'Error',
+        message: error?.response?.data?.message || 'Failed to send OTP',
+      });
     } finally {
       setLoading(false);
     }
@@ -56,11 +61,16 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
     setLoading(true);
     try {
       await authAPI.resetPassword(otp.trim(), newPassword);
-      Alert.alert('Success', 'Password updated. Please log in again.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') },
-      ]);
+      appMessage.alert({
+        title: 'Success',
+        message: 'Password updated. Please log in again.',
+        actions: [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+      });
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to reset password');
+      appMessage.alert({
+        title: 'Error',
+        message: error?.response?.data?.message || 'Failed to reset password',
+      });
     } finally {
       setLoading(false);
     }

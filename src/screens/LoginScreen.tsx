@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoginCredentials } from '../types';
@@ -17,6 +18,7 @@ interface LoginScreenProps {
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, demoLogin } = useAuth();
   const { colors } = useTheme();
+  const appMessage = useAppMessage();
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
@@ -46,7 +48,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       await login(credentials);
     } catch (error: any) {
-      Alert.alert('Login Failed', error?.response?.data?.message || 'Invalid email or password');
+      appMessage.alert({
+        title: 'Login Failed',
+        message: error?.response?.data?.message || 'Invalid email or password',
+      });
     } finally {
       setLoading(false);
     }
@@ -57,7 +62,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       await demoLogin();
     } catch {
-      Alert.alert('Google Login Failed', 'Could not log in with Google.');
+      appMessage.alert({
+        title: 'Google Login Failed',
+        message: 'Could not log in with Google.',
+      });
     } finally {
       setLoading(false);
     }

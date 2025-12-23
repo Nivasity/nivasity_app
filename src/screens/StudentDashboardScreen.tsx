@@ -22,7 +22,7 @@ interface StudentDashboardScreenProps {
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { count: cartCount, has, toggle } = useCart();
+  const { count: cartCount, lastActionAt, has, toggle } = useCart();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -273,7 +273,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
 
       {cartCount > 0 ? (
         <View style={[styles.checkoutFabWrap, { bottom: 85 + insets.bottom }]}>
-          <CheckoutFab onPress={() => navigation.navigate('Checkout')} />
+          <CheckoutFab onPress={() => navigation.navigate('Checkout')} trigger={lastActionAt} />
         </View>
       ) : null}
 

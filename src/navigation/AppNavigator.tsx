@@ -20,6 +20,8 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import StudentDashboardScreen from '../screens/StudentDashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
+import ProfileSectionScreen from '../screens/ProfileSectionScreen';
+import StaticPageScreen from '../screens/StaticPageScreen';
 import StoreScreen from '../screens/StoreScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
@@ -34,9 +36,10 @@ const TAB_BAR_WIDTH_RATIO = 0.68;
 const TAB_BAR_MAX_WIDTH = 420;
 
 // Auth Stack Navigator
-const AuthStack = () => {
+const AuthStack = ({ initialRouteName }: { initialRouteName: 'Welcome' | 'Login' }) => {
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
       }}
@@ -125,7 +128,7 @@ const StudentTabs = () => {
 
 // Main App Navigator
 const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, authEntryRoute } = useAuth();
   const { colors, isDark } = useTheme();
 
   if (isLoading) {
@@ -135,7 +138,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer theme={createNavigationTheme(colors, isDark)}>
       {!isAuthenticated ? (
-        <AuthStack />
+        <AuthStack initialRouteName={authEntryRoute} />
       ) : (
         <Stack.Navigator>
           <Stack.Screen
@@ -146,6 +149,16 @@ const AppNavigator = () => {
           <Stack.Screen
             name="ProfileEdit"
             component={ProfileEditScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ProfileSection"
+            component={ProfileSectionScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="StaticPage"
+            component={StaticPageScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

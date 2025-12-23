@@ -27,7 +27,7 @@ export default function AuthScaffold({
   scrollable?: boolean;
   cardStyle?: ViewStyle;
 }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
@@ -41,7 +41,17 @@ export default function AuthScaffold({
         source={require('../../../assets/auth_background.png')}
         style={styles.background}
         resizeMode="cover"
+        blurRadius={10}
       >
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'transparent',
+            },
+          ]}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboard}
@@ -57,7 +67,7 @@ export default function AuthScaffold({
           </TouchableOpacity>
 
           <View style={[styles.sheetWrap, { paddingBottom: 14 + insets.bottom }]}>
-            <View style={[styles.sheet, { backgroundColor: colors.background }, cardStyle]}>
+            <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }, cardStyle]}>
               <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
               {scrollable ? (
                 <ScrollView
@@ -105,14 +115,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    borderRadius: 24,
+    borderRadius: 30,
+    borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    elevation: 10,
   },
   title: {
     fontSize: 28,

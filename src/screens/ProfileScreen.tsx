@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -9,8 +9,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
+import ThemeModeDrawer from '../components/ThemeModeDrawer';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { AppThemeMode } from '../theme/colors';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -18,8 +20,9 @@ interface ProfileScreenProps {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, logout } = useAuth();
-  const { colors, isDark, toggle } = useTheme();
+  const { colors, isDark, mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const [themeVisible, setThemeVisible] = useState(false);
 
   const initials = useMemo(
     () => (user?.name || 'U').trim().charAt(0).toUpperCase(),
@@ -27,6 +30,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   );
 
   const headerBackground = isDark ? colors.surfaceAlt : colors.secondary;
+  const themeLabel = useMemo(() => {
+    const map: Record<AppThemeMode, string> = {
+      system: 'System',
+      light: 'Light',
+      dark: 'Dark',
+    };
+    return map[mode];
+  }, [mode]);
 
   return (
     <SafeAreaView
@@ -34,36 +45,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 50 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, { backgroundColor: headerBackground }]}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              onPress={toggle}
-              style={styles.headerIcon}
-              accessibilityRole="button"
-              accessibilityLabel="Toggle theme"
-              activeOpacity={0.85}
-            >
-              <AppIcon
-                name={isDark ? 'sunny-outline' : 'moon-outline'}
-                size={18}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-            <AppText style={styles.headerTitle}>Profile</AppText>
-            <TouchableOpacity
-              onPress={logout}
-              style={styles.headerIcon}
-              accessibilityRole="button"
-              accessibilityLabel="Logout"
-              activeOpacity={0.85}
-            >
-              <AppIcon name="log-out-outline" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.fireworks}>
             <View style={[styles.spark, styles.sparkOne]} />
             <View style={[styles.spark, styles.sparkTwo]} />
@@ -71,7 +56,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
           <View
             style={[
               styles.avatarWrap,
@@ -89,57 +74,82 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             {user?.name || 'Student'}
           </AppText>
           <AppText style={[styles.email, { color: colors.textMuted }]} numberOfLines={1}>
-            {(user?.email || '').toLowerCase()}
+            {user?.matricNumber || 'matricNumber'}
           </AppText>
 
           <View style={styles.statsRow}>
-            <Stat value="0" label="Likes" />
+            <Stat value="0" label="Materials bought" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value="0" label="Orders" />
+            <Stat value="0" label="Total spent" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value="0" label="Following" />
-          </View>
-
-          <View style={[styles.promoCard, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
-            <View style={{ flex: 1 }}>
-              <AppText style={[styles.promoTitle, { color: colors.text }]}>
-                Customize your experience
-              </AppText>
-              <AppText style={[styles.promoText, { color: colors.textMuted }]}>
-                Get recommendations based on your interests.
-              </AppText>
-            </View>
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: colors.surface }]}
-              accessibilityRole="button"
-              accessibilityLabel="Add preferences"
-              activeOpacity={0.85}
-            >
-              <AppIcon name="add" size={18} color={colors.text} />
-              <AppText style={[styles.addText, { color: colors.text }]}>Add</AppText>
-            </TouchableOpacity>
+            <Stat value="2020" label="Academic Year" />
           </View>
 
           <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <Row
-              icon="location-outline"
-              label="Primary city"
-              value="Not set"
-              onPress={() => undefined}
+              icon="school-outline"
+              label="Academic info"
+              value={user?.school || user?.institutionName ? (user.school || user.institutionName) : 'Not set'}
+              onPress={() => navigation.navigate('ProfileSection', { section: 'academic' })}
             />
             <Divider />
             <Row
               icon="settings-outline"
               label="Account settings"
-              onPress={() => navigation.navigate('ProfileEdit')}
+              onPress={() => navigation.navigate('ProfileSection', { section: 'account' })}
             />
             <Divider />
-            <Row icon="link-outline" label="Linked accounts" onPress={() => undefined} />
+            <Row
+              icon="shield-checkmark-outline"
+              label="Security"
+              onPress={() => navigation.navigate('ProfileSection', { section: 'security' })}
+            />
             <Divider />
             <Row icon="help-circle-outline" label="Support" onPress={() => undefined} />
           </View>
+
+          <View style={{ height: 14 }} />
+
+          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Row
+              icon="sunny-outline"
+              label="Theme"
+              value={themeLabel}
+              onPress={() => setThemeVisible(true)}
+            />
+            <Divider />
+            <Row
+              icon="shield-checkmark-outline"
+              label="Privacy policy"
+              onPress={() => navigation.navigate('StaticPage', { page: 'privacy' })}
+            />
+            <Divider />
+            <Row
+              icon="book-outline"
+              label="Terms and conditions"
+              onPress={() => navigation.navigate('StaticPage', { page: 'terms' })}
+            />
+            <Divider />
+            <Row
+              icon="help-circle-outline"
+              label="About"
+              onPress={() => navigation.navigate('StaticPage', { page: 'about' })}
+            />
+            <Divider />
+            <Row icon="log-out-outline" label="Logout" tone="danger" onPress={logout} />
+          </View>
         </View>
       </ScrollView>
+
+      <ThemeModeDrawer
+        visible={themeVisible}
+        mode={mode}
+        onClose={() => setThemeVisible(false)}
+        onSelect={(next) => {
+          setMode(next);
+          setThemeVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -158,14 +168,18 @@ const Row = ({
   icon,
   label,
   value,
+  tone = 'default',
   onPress,
 }: {
   icon: React.ComponentProps<typeof AppIcon>['name'];
   label: string;
   value?: string;
+  tone?: 'default' | 'danger';
   onPress: () => void;
 }) => {
   const { colors } = useTheme();
+  const accentColor = tone === 'danger' ? colors.danger : colors.secondary;
+  const labelColor = tone === 'danger' ? colors.danger : colors.text;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -174,18 +188,18 @@ const Row = ({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <View style={[styles.rowIcon, { backgroundColor: colors.surfaceAlt }]}>
-        <AppIcon name={icon} size={18} color={colors.secondary} />
+      <View style={[styles.rowIcon]}>
+        <AppIcon name={icon} size={18} color={accentColor} />
       </View>
       <View style={styles.rowBody}>
-        <AppText style={[styles.rowLabel, { color: colors.text }]}>{label}</AppText>
+        <AppText style={[styles.rowLabel, { color: labelColor }]}>{label}</AppText>
         {value ? (
           <AppText style={[styles.rowValue, { color: colors.textMuted }]} numberOfLines={1}>
             {value}
           </AppText>
         ) : null}
       </View>
-      <AppIcon name="chevron-forward" size={18} color={colors.textMuted} />
+      <AppIcon name="chevron-forward" size={18} color={tone === 'danger' ? colors.danger : colors.textMuted} />
     </TouchableOpacity>
   );
 };
@@ -206,25 +220,6 @@ const styles = StyleSheet.create({
     height: 250,
     paddingHorizontal: 16,
     paddingTop: 10,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: -0.2,
   },
   fireworks: {
     flex: 1,

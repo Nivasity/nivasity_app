@@ -8,6 +8,7 @@ import { CartProvider } from './src/contexts/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { AppMessageProvider } from './src/contexts/AppMessageContext';
 
 
 export default function App() {
@@ -53,7 +54,9 @@ const AppRoot = () => {
   }, [isDark, colors]);
   return (
     <PaperProvider theme={paperTheme}>
-      <AppNavigator />
+      <AppMessageProvider>
+        <AppNavigator />
+      </AppMessageProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </PaperProvider>
   );

@@ -84,6 +84,19 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+
+  changePassword: async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ message: string }> => {
+    const response = await api.post('/auth/change-password', { currentPassword, newPassword });
+    return response.data;
+  },
+
+  deleteAccount: async (password: string): Promise<{ message: string }> => {
+    const response = await api.post('/auth/delete-account', { password });
+    return response.data;
+  },
 };
 
 // User Profile APIs

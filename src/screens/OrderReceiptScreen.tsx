@@ -1,11 +1,12 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { CartItem, Order } from '../types';
 
@@ -18,6 +19,7 @@ const sanitizeFilePart = (value: string) => value.replace(/[^a-z0-9-_]+/gi, '_')
 
 const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
+  const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const receiptRef = useRef<View>(null);
 
@@ -64,12 +66,12 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
       const uri = await ensureReceiptImage();
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        Alert.alert('Sharing not available', `Saved at: ${uri}`);
+        appMessage.alert({ title: 'Sharing not available', message: `Saved at: ${uri}` });
         return;
       }
       await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Order Receipt' });
     } catch (e: any) {
-      Alert.alert('Failed', e?.message || 'Could not share receipt');
+      appMessage.alert({ title: 'Failed', message: e?.message || 'Could not share receipt' });
     } finally {
       setWorking(false);
     }
@@ -105,7 +107,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.iconButton, { backgroundColor: colors.surface }]}
+          style={[styles.iconButton, { backgroundColor: colors.background }]}
           accessibilityRole="button"
           accessibilityLabel="Back"
         >

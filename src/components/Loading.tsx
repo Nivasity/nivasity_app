@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import AppText from './AppText';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { ShimmerScreen } from './Shimmer';
 
 interface LoadingProps {
   message?: string;
@@ -10,9 +10,11 @@ interface LoadingProps {
 const Loading: React.FC<LoadingProps> = ({ message = 'Loading...' }) => {
   const { colors } = useTheme();
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ActivityIndicator size="large" color={colors.accent} />
-      {message && <AppText style={[styles.message, { color: colors.textMuted }]}>{message}</AppText>}
+    <View
+      accessibilityLabel={message}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ShimmerScreen />
     </View>
   );
 };
@@ -21,11 +23,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  message: {
-    marginTop: 16,
-    fontSize: 16,
+    paddingHorizontal: 16,
   },
 });
 

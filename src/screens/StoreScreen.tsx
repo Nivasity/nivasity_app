@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button as PaperButton, Dialog, Portal, RadioButton } from 'react-native-paper';
 import AppIcon from '../components/AppIcon';
@@ -8,6 +8,7 @@ import { DEMO_DATA_ENABLED } from '../config/demo';
 import { demoProducts } from '../data/demo';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { storeAPI } from '../services/api';
 import { Product } from '../types';
 import StoreCard from '../components/StoreCard';
@@ -22,8 +23,9 @@ type SortOption = 'recommended' | 'price_asc' | 'price_desc';
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const { colors, isDark } = useTheme();
+  const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
-  const { items: cartItems, count: cartCount, has, toggle } = useCart();
+  const { items: cartItems, count: cartCount, lastActionAt, has, toggle } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +72,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
 
   const goToCheckout = () => {
     if (cartCount === 0) {
-      Alert.alert('Cart is empty', 'Add at least one item to checkout.');
+      appMessage.alert({ title: 'Cart is empty', message: 'Add at least one item to checkout.' });
       return;
     }
     navigation.navigate('Checkout', { cartItems });
@@ -216,7 +218,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
 
       {cartCount > 0 && (
         <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 85 + insets.bottom }]}>
-          <CheckoutFab onPress={goToCheckout} />
+          <CheckoutFab onPress={goToCheckout} trigger={lastActionAt} />
         </View>
       )}
 

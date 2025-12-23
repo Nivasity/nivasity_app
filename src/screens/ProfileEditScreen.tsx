@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import AppIcon from '../components/AppIcon';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { profileAPI } from '../services/api';
@@ -17,6 +18,7 @@ interface ProfileEditScreenProps {
 const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
   const { user, updateUser, logout } = useAuth();
   const { colors, isDark, toggle, mode, setMode } = useTheme();
+  const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const [profileData, setProfileData] = useState<Partial<User>>({
     name: user?.name || '',
@@ -51,9 +53,12 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
     try {
       const updatedUser = await profileAPI.updateProfile(profileData);
       updateUser(updatedUser);
-      Alert.alert('Saved', 'Profile updated successfully');
+      appMessage.toast({ message: 'Profile updated successfully.' });
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update profile');
+      appMessage.alert({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to update profile',
+      });
     } finally {
       setLoading(false);
     }

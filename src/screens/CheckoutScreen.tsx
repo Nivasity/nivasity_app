@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
 import { orderAPI, paymentAPI } from '../services/api';
@@ -17,6 +18,7 @@ interface CheckoutScreenProps {
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const appMessage = useAppMessage();
   const { items: cartItemsFromContext } = useCart();
   const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext;
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
 
   const handlePayment = async () => {
     if (!cartItems || cartItems.length === 0) {
-      Alert.alert('Cart is empty', 'Add at least one item to checkout.');
+      appMessage.alert({ title: 'Cart is empty', message: 'Add at least one item to checkout.' });
       return;
     }
 
@@ -42,7 +44,10 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       const payment = await paymentAPI.initiatePayment(order.id, total);
       await Linking.openURL(payment.paymentUrl);
     } catch (error: any) {
-      Alert.alert('Payment Failed', error.response?.data?.message || 'Failed to initiate payment');
+      appMessage.alert({
+        title: 'Payment Failed',
+        message: error.response?.data?.message || 'Failed to initiate payment',
+      });
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  authEntryRoute: 'Welcome' | 'Login';
   login: (credentials: LoginCredentials) => Promise<void>;
   demoLogin: () => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
@@ -31,6 +32,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authEntryRoute, setAuthEntryRoute] = useState<'Welcome' | 'Login'>('Welcome');
 
   useEffect(() => {
     loadUser();
@@ -90,6 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authAPI.logout();
       setUser(null);
+      setAuthEntryRoute('Login');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -106,6 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user,
         isLoading,
         isAuthenticated: !!user,
+        authEntryRoute,
         login,
         demoLogin,
         register,

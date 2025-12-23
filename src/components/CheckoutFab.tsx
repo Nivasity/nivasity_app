@@ -1,29 +1,100 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
 
 type CheckoutFabProps = {
   onPress: () => void;
   style?: ViewStyle;
+  trigger?: number;
+  autoHideMs?: number;
+  hiddenOffset?: number;
 };
 
-const CheckoutFab: React.FC<CheckoutFabProps> = ({ onPress, style }) => {
+const CheckoutFab: React.FC<CheckoutFabProps> = ({
+  onPress,
+  style,
+  trigger,
+  autoHideMs = 5000,
+  hiddenOffset = 90,
+}) => {
   const { colors } = useTheme();
+  const [hidden, setHidden] = useState(true);
+  const translateY = useRef(new Animated.Value(hiddenOffset)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const show = useCallback(() => {
+    setHidden(false);
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [opacity, translateY]);
+
+  const hide = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: hiddenOffset,
+        duration: 260,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) setHidden(true);
+    });
+  }, [hiddenOffset, opacity, translateY]);
+
+  const scheduleHide = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(hide, autoHideMs);
+  }, [autoHideMs, hide]);
+
+  useEffect(() => {
+    show();
+    scheduleHide();
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [scheduleHide, show, trigger]);
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
+    <Animated.View
+      pointerEvents={hidden ? 'none' : 'auto'}
       style={[
-        styles.button,
-        { backgroundColor: colors.secondary },
+        {
+          transform: [{ translateY }],
+          opacity,
+        },
         style,
       ]}
-      activeOpacity={0.9}
-      accessibilityRole="button"
-      accessibilityLabel="Go to checkout"
     >
-      <AppIcon name="wallet-outline" size={25} color={colors.onAccent} />
-    </TouchableOpacity>
+      <TouchableOpacity
+        onPress={onPress}
+        style={[styles.button, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Go to checkout"
+      >
+        <AppIcon name="wallet-outline" size={25} color={colors.onAccent} />
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -34,13 +105,8 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0,
-    shadowRadius: 300,
-    shadowOffset: { width: 0, height: 0 },
+    borderWidth: 1,
   },
 });
 
 export default CheckoutFab;
-
