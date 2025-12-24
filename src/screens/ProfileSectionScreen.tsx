@@ -474,6 +474,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               <OptionPickerDialog
                 visible={admissionOpen}
                 title="Select admission session"
+                searchPlaceholder="Search admission session..."
                 options={admissionSessions}
                 selected={academicData.admissionYear || ''}
                 onClose={() => setAdmissionOpen(false)}
@@ -483,6 +484,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               <OptionPickerDialog
                 visible={departmentOpen}
                 title="Select department"
+                searchPlaceholder="Search department..."
                 options={departments.map((d) => d.name)}
                 selected={academicData.department || ''}
                 onClose={() => setDepartmentOpen(false)}

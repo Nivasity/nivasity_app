@@ -72,11 +72,6 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
             },
           ]}
         >
-          <View style={styles.sheetHeader}>
-            <View style={[styles.handle, { backgroundColor: colors.border }]} />
-            <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
-          </View>
-
           {shouldShowSearch ? (
             <PaperTextInput
               mode="outlined"

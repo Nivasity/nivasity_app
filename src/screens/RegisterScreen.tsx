@@ -304,6 +304,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <OptionPickerDialog
         visible={schoolOpen}
         title="Select school"
+        searchPlaceholder="Search schools..."
         options={schoolNames}
         selected={form.school}
         onClose={() => setSchoolOpen(false)}

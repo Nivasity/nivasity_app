@@ -212,6 +212,7 @@ const AcademicDetailsDialog = () => {
       <OptionPickerDialog
         visible={admOpen}
         title="Select admission session"
+        searchPlaceholder="Search admission session..."
         options={admissionSessions}
         selected={form.admissionYear}
         onClose={() => setAdmOpen(false)}
@@ -221,6 +222,7 @@ const AcademicDetailsDialog = () => {
       <OptionPickerDialog
         visible={deptOpen}
         title="Select department"
+        searchPlaceholder="Search department..."
         options={departmentNames}
         selected={form.deptName}
         onClose={() => setDeptOpen(false)}
