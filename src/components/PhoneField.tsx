@@ -74,6 +74,7 @@ const PhoneField: React.FC<PhoneFieldProps> = ({
 
       <CountryPicker
         countryCode={countryCca2 as CountryCode}
+        renderFlagButton={() => null}
         withFilter
         withFlag
         withCallingCode
@@ -104,4 +105,3 @@ const styles = StyleSheet.create({
 });
 
 export default PhoneField;
-

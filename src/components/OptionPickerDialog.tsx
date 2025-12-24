@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { TextInput as PaperTextInput } from 'react-native-paper';
 import AppIcon from './AppIcon';
 import AppText from './AppText';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,6 +14,8 @@ type OptionPickerDialogProps = {
   selected: string;
   onClose: () => void;
   onSelect: (value: string) => void;
+  searchEnabled?: boolean;
+  searchPlaceholder?: string;
 };
 
 const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
@@ -22,9 +25,24 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
   selected,
   onClose,
   onSelect,
+  searchEnabled,
+  searchPlaceholder,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (!visible) setQuery('');
+  }, [visible]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const shouldShowSearch = searchEnabled ?? options.length > 8;
+  const filteredOptions = useMemo(() => {
+    if (!shouldShowSearch || normalizedQuery.length === 0) return options;
+    return options.filter((value) => value.toLowerCase().includes(normalizedQuery));
+  }, [normalizedQuery, options, shouldShowSearch]);
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
@@ -59,8 +77,47 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
             <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {options.map((value) => {
+          {shouldShowSearch ? (
+            <PaperTextInput
+              mode="outlined"
+              value={query}
+              onChangeText={setQuery}
+              placeholder={searchPlaceholder || 'Search...'}
+              autoCapitalize="none"
+              autoCorrect={false}
+              inputMode="search"
+              returnKeyType="search"
+              style={[styles.searchInput, { backgroundColor: colors.surface }]}
+              outlineStyle={styles.searchOutline}
+              contentStyle={styles.searchContent}
+              textColor={colors.text}
+              placeholderTextColor={colors.textMuted}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.secondary}
+              selectionColor={colors.secondary}
+              cursorColor={colors.secondary}
+              left={<PaperTextInput.Icon icon="magnify" color={colors.textMuted} />}
+              right={
+                query ? (
+                  <PaperTextInput.Icon
+                    icon="close"
+                    onPress={() => setQuery('')}
+                    color={colors.textMuted}
+                    forceTextInputFocus={false}
+                  />
+                ) : undefined
+              }
+            />
+          ) : null}
+
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {filteredOptions.length === 0 ? (
+              <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <AppText style={[styles.emptyText, { color: colors.textMuted }]}>No results</AppText>
+              </View>
+            ) : null}
+
+            {filteredOptions.map((value) => {
               const isSelected = selected === value;
               return (
                 <TouchableOpacity
@@ -75,16 +132,16 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
                   style={[
                     styles.optionRow,
                     {
-                      borderColor: colors.border,
-                      backgroundColor: isSelected ? colors.surfaceAlt : colors.surface,
+                      borderColor: isSelected ? colors.secondary : colors.border,
+                      backgroundColor: isSelected ? colors.secondary : colors.surface,
                     },
                   ]}
                 >
-                  <AppText style={[styles.optionLabel, { color: colors.text }]} numberOfLines={1}>
+                  <AppText style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]} numberOfLines={1}>
                     {value}
                   </AppText>
                   {isSelected ? (
-                    <AppIcon name="checkmark" size={20} color={colors.secondary} />
+                    <AppIcon name="checkmark" size={20} color={colors.surface} />
                   ) : null}
                 </TouchableOpacity>
               );
@@ -126,8 +183,18 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.2,
   },
+  searchInput: {
+    marginBottom: 12,
+  },
+  searchOutline: {
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  searchContent: {
+    height: 48,
+  },
   optionRow: {
-    height: 54,
+    height: 45,
     borderRadius: 18,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -141,6 +208,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     marginEnd: 10,
+  },
+  empty: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
 });
 

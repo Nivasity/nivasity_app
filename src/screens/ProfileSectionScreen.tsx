@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,11 +16,11 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import OptionPickerDialog from '../components/OptionPickerDialog';
 import PhoneField from '../components/PhoneField';
-import { DEPARTMENTS, getAdmissionSessions, SCHOOLS } from '../config/options';
+import { getAdmissionSessions } from '../config/options';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { authAPI, profileAPI } from '../services/api';
+import { authAPI, profileAPI, referenceAPI } from '../services/api';
 import { User } from '../types';
 import { normalizePhone } from '../utils/phone';
 
@@ -40,6 +40,25 @@ const getSectionTitle = (section: ProfileSection) => {
     default:
       return 'Account settings';
   }
+};
+
+const toSessionLabel = (value?: string) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (/^\d{4}\/\d{4}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}$/.test(trimmed)) {
+    const y = Number(trimmed);
+    return Number.isFinite(y) ? `${y}/${y + 1}` : trimmed;
+  }
+  return trimmed;
+};
+
+const toAdmissionYearValue = (sessionOrYear: string) => {
+  const trimmed = (sessionOrYear || '').trim();
+  if (!trimmed) return '';
+  const match = trimmed.match(/^(\d{4})\/\d{4}$/);
+  if (match) return match[1];
+  return trimmed;
 };
 
 const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation, route }) => {
@@ -76,15 +95,94 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
   const [academicData, setAcademicData] = useState<Pick<User, 'school' | 'admissionYear' | 'department' | 'matricNumber'>>({
     school: user?.school || user?.institutionName || '',
-    admissionYear: user?.admissionYear || '',
+    admissionYear: toSessionLabel(user?.admissionYear),
     department: user?.department || '',
     matricNumber: user?.matricNumber || '',
   });
-  const [schoolOpen, setSchoolOpen] = useState(false);
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [admissionOpen, setAdmissionOpen] = useState(false);
 
   const admissionSessions = useMemo(() => getAdmissionSessions(2019), []);
+  const [deptId, setDeptId] = useState<number | null>(() => {
+    const raw = user?.deptId;
+    if (raw == null) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  });
+  const [departments, setDepartments] = useState<Array<{ id: number; name: string }>>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+
+  useEffect(() => {
+    if (section !== 'academic') return;
+    const rawSchoolId = user?.schoolId;
+    const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
+    if (!Number.isFinite(schoolId)) return;
+
+    let mounted = true;
+    (async () => {
+      setDepartmentsLoading(true);
+      try {
+        const data = await referenceAPI.getDepartments({ schoolId, page: 1, limit: 100 });
+        if (!mounted) return;
+        setDepartments((data.departments || []).map((d) => ({ id: d.id, name: d.name })));
+      } catch {
+        if (!mounted) return;
+        setDepartments([]);
+      } finally {
+        if (mounted) setDepartmentsLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [section, user?.schoolId]);
+
+  useEffect(() => {
+    if (section !== 'academic') return;
+    const rawSchoolId = user?.schoolId;
+    const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
+    if (!Number.isFinite(schoolId)) return;
+
+    let mounted = true;
+    (async () => {
+      setSchoolsLoading(true);
+      try {
+        const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
+        if (!mounted) return;
+        setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
+      } catch {
+        if (!mounted) return;
+        setSchools([]);
+      } finally {
+        if (mounted) setSchoolsLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [section, user?.schoolId]);
+
+  useEffect(() => {
+    if (section !== 'academic') return;
+    if (!user) return;
+
+    const rawSchoolId = user.schoolId;
+    const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
+    const schoolName = Number.isFinite(schoolId) ? schools.find((s) => s.id === schoolId)?.name : undefined;
+
+    const deptNameFromId = deptId != null ? departments.find((d) => d.id === deptId)?.name : undefined;
+    const admissionSession = toSessionLabel(user.admissionYear);
+
+    setAcademicData((prev) => ({
+      ...prev,
+      school: schoolName || prev.school,
+      admissionYear: prev.admissionYear || admissionSession,
+      department: deptNameFromId || prev.department,
+    }));
+  }, [departments, deptId, schools, section, user]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -144,16 +242,32 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   };
 
   const handleSaveAcademic = async () => {
-    await saveProfilePatch(
-      {
-        school: academicData.school?.trim() || undefined,
-        institutionName: academicData.school?.trim() || undefined,
-        admissionYear: academicData.admissionYear?.trim() || undefined,
-        department: academicData.department?.trim() || undefined,
+    if (!user) return;
+    setSaving(true);
+    try {
+      await profileAPI.updateAcademicInfo({
+        deptId: deptId ?? undefined,
+        matricNo: academicData.matricNumber?.trim() || undefined,
+        admissionYear: toAdmissionYearValue(academicData.admissionYear || '') || undefined,
+      });
+      const refreshed = await authAPI.getCurrentUser();
+      updateUser({ ...user, ...refreshed, school: user.school, institutionName: user.institutionName });
+      appMessage.toast({ message: 'Academic info updated.' });
+    } catch (error: any) {
+      updateUser({
+        ...user,
+        admissionYear: toAdmissionYearValue(academicData.admissionYear || '') || undefined,
         matricNumber: academicData.matricNumber?.trim() || undefined,
-      },
-      'Academic info updated.'
-    );
+        deptId: deptId ?? undefined,
+        department: academicData.department?.trim() || undefined,
+      });
+      appMessage.alert({
+        title: 'Saved on device',
+        message: error.response?.data?.message || error?.message || 'Academic info updated.',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -180,7 +294,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',
-        message: error.response?.data?.message || 'Failed to change password.',
+        message: error.response?.data?.message || error?.message || 'Failed to change password.',
       });
     } finally {
       setPasswordLoading(false);
@@ -219,7 +333,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',
-        message: error.response?.data?.message || 'Failed to delete account.',
+        message: error.response?.data?.message || error?.message || 'Failed to delete account.',
       });
     } finally {
       setDeleteLoading(false);
@@ -278,11 +392,11 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                 label="Email address"
                 placeholder="Enter your email"
                 value={accountData.email || ''}
-                onChangeText={(text) => setAccountData((s) => ({ ...s, email: text }))}
                 errorText={accountErrors.email}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                editable={false}
               />
               <PhoneField
                 countryCca2={phoneData.countryCca2}
@@ -300,22 +414,19 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
           {section === 'academic' ? (
             <View style={[styles.card, { borderColor: colors.border }]}>
-              <TouchableOpacity
-                onPress={() => setSchoolOpen(true)}
-                activeOpacity={0.9}
-                accessibilityRole="button"
-                accessibilityLabel="Select institution"
-              >
-                <View pointerEvents="none">
-                  <Input
-                    label="Institution Name"
-                    value={academicData.school || ''}
-                    placeholder="Select your school"
-                    editable={false}
-                    right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
-                  />
-                </View>
-              </TouchableOpacity>
+              <Input
+                label="School"
+                value={
+                  academicData.school ||
+                  (user?.schoolId != null ? `School ID: ${String(user.schoolId)}` : '')
+                }
+                editable={false}
+                right={
+                  schoolsLoading ? (
+                    <PaperTextInput.Icon icon="loading" color={colors.textMuted} />
+                  ) : undefined
+                }
+              />
               <TouchableOpacity
                 onPress={() => setAdmissionOpen(true)}
                 activeOpacity={0.9}
@@ -333,7 +444,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setDepartmentOpen(true)}
+                onPress={() => {
+                  if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
+                  else appMessage.toast({ message: departmentsLoading ? 'Loading departments...' : 'No departments found' });
+                }}
                 activeOpacity={0.9}
                 accessibilityRole="button"
                 accessibilityLabel="Select department"
@@ -358,15 +472,6 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               <Button title={saving ? 'Saving...' : 'Save changes'} onPress={handleSaveAcademic} disabled={saving} />
 
               <OptionPickerDialog
-                visible={schoolOpen}
-                title="Select school"
-                options={SCHOOLS}
-                selected={academicData.school || ''}
-                onClose={() => setSchoolOpen(false)}
-                onSelect={(school) => setAcademicData((s) => ({ ...s, school }))}
-              />
-
-              <OptionPickerDialog
                 visible={admissionOpen}
                 title="Select admission session"
                 options={admissionSessions}
@@ -378,10 +483,14 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               <OptionPickerDialog
                 visible={departmentOpen}
                 title="Select department"
-                options={DEPARTMENTS}
+                options={departments.map((d) => d.name)}
                 selected={academicData.department || ''}
                 onClose={() => setDepartmentOpen(false)}
-                onSelect={(department) => setAcademicData((s) => ({ ...s, department }))}
+                onSelect={(department) => {
+                  const match = departments.find((d) => d.name === department);
+                  setDeptId(match?.id ?? null);
+                  setAcademicData((s) => ({ ...s, department }));
+                }}
               />
             </View>
           ) : null}

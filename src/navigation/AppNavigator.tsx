@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { createNavigationTheme } from '../theme/navigationTheme';
 import Loading from '../components/Loading';
+import AcademicDetailsDialog from '../components/AcademicDetailsDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Auth Screens
@@ -15,6 +16,7 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import VerifyOtpScreen from '../screens/VerifyOtpScreen';
 
 // Dashboard Screens
 import StudentDashboardScreen from '../screens/StudentDashboardScreen';
@@ -47,6 +49,7 @@ const AuthStack = ({ initialRouteName }: { initialRouteName: 'Welcome' | 'Login'
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
@@ -140,38 +143,41 @@ const AppNavigator = () => {
       {!isAuthenticated ? (
         <AuthStack initialRouteName={authEntryRoute} />
       ) : (
-        <Stack.Navigator>
-          <Stack.Screen
-            name="StudentMain"
-            component={StudentTabs}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ProfileEdit"
-            component={ProfileEditScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ProfileSection"
-            component={ProfileSectionScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="StaticPage"
-            component={StaticPageScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Checkout"
-            component={CheckoutScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="OrderReceipt"
-            component={OrderReceiptScreen}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
+        <>
+          <Stack.Navigator>
+            <Stack.Screen
+              name="StudentMain"
+              component={StudentTabs}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ProfileEdit"
+              component={ProfileEditScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ProfileSection"
+              component={ProfileSectionScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="StaticPage"
+              component={StaticPageScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Checkout"
+              component={CheckoutScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="OrderReceipt"
+              component={OrderReceiptScreen}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+          <AcademicDetailsDialog />
+        </>
       )}
     </NavigationContainer>
   );

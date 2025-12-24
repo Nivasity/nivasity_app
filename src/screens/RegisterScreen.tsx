@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
   Button as PaperButton,
@@ -15,9 +15,9 @@ import PhoneField from '../components/PhoneField';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { SCHOOLS } from '../config/options';
 import { RegisterCredentials } from '../types';
 import { normalizePhone } from '../utils/phone';
+import { referenceAPI } from '../services/api';
 
 interface RegisterScreenProps {
   navigation: any;
@@ -29,6 +29,7 @@ type RegisterForm = {
   firstName: string;
   lastName: string;
   school: string;
+  schoolId: number | null;
   countryCca2: string;
   callingCode: string;
   phoneNumber: string;
@@ -45,10 +46,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
   const appMessage = useAppMessage();
 
+  const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
+
   const [form, setForm] = useState<RegisterForm>({
     firstName: '',
     lastName: '',
     school: '',
+    schoolId: null,
     countryCca2: 'NG',
     callingCode: '+234',
     phoneNumber: '',
@@ -61,12 +66,38 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [schoolOpen, setSchoolOpen] = useState(false);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
+        if (!mounted) return;
+        setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
+      } catch (error: any) {
+        if (!mounted) return;
+        setSchools([]);
+        appMessage.toast({
+          message: error?.response?.data?.message || error?.message || 'Could not load schools',
+        });
+      } finally {
+        if (mounted) setSchoolsLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [appMessage]);
+
+  const schoolNames = useMemo(() => schools.map((s) => s.name), [schools]);
+
+  const canOpenSchools = !schoolsLoading && schoolNames.length > 0;
+
   const validate = (): boolean => {
     const newErrors: RegisterErrors = {};
 
     if (!form.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!form.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!form.school) newErrors.school = 'School is required';
+    if (!form.schoolId) newErrors.school = 'School is required';
 
     const phoneDigits = form.phoneNumber.replace(/[^\d]/g, '');
     if (!phoneDigits) newErrors.phoneNumber = 'Phone number is required';
@@ -92,21 +123,25 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     setLoading(true);
     try {
       const payload: RegisterCredentials = {
-        name: `${form.firstName} ${form.lastName}`.trim(),
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        school: form.school,
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
         phone: normalizePhone(form.callingCode, form.phoneNumber),
         gender: form.gender ?? undefined,
         email: form.email.trim(),
         password: form.password,
-        confirmPassword: form.password,
+        school_id: form.schoolId as number,
       };
-      await register(payload);
+      const res = await register(payload);
+      appMessage.toast({
+        message:
+          res.message ||
+          "Registration successful! We've sent a verification code (OTP) to your email address. Please check your inbox.",
+      });
+      navigation.navigate('VerifyOtp', { email: payload.email, schoolName: form.school });
     } catch (error: any) {
       appMessage.alert({
         title: 'Registration Failed',
-        message: error?.response?.data?.message || 'Failed to create account',
+        message: error?.response?.data?.message || error?.message || 'Failed to create account',
       });
     } finally {
       setLoading(false);
@@ -144,7 +179,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       </View>
 
       <TouchableOpacity
-        onPress={() => setSchoolOpen(true)}
+        onPress={() => {
+          if (!canOpenSchools) {
+            appMessage.toast({ message: schoolsLoading ? 'Loading schools...' : 'No schools available' });
+            return;
+          }
+          setSchoolOpen(true);
+        }}
         activeOpacity={0.9}
         accessibilityRole="button"
         accessibilityLabel="Select school"
@@ -263,10 +304,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <OptionPickerDialog
         visible={schoolOpen}
         title="Select school"
-        options={SCHOOLS}
+        options={schoolNames}
         selected={form.school}
         onClose={() => setSchoolOpen(false)}
-        onSelect={(school) => setForm((s) => ({ ...s, school }))}
+        onSelect={(school) => {
+          const match = schools.find((s) => s.name === school);
+          setForm((s) => ({ ...s, school, schoolId: match?.id ?? null }));
+        }}
       />
     </AuthScaffold>
   );

@@ -6,16 +6,13 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  schoolId?: number | string | null;
   school?: string;
   institutionName?: string;
   admissionYear?: string;
+  deptId?: number | string | null;
   department?: string;
   matricNumber?: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
 }
 
 export interface LoginCredentials {
@@ -24,15 +21,13 @@ export interface LoginCredentials {
 }
 
 export interface RegisterCredentials {
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  school?: string;
-  phone?: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
   gender?: 'female' | 'male';
   email: string;
   password: string;
-  confirmPassword?: string;
+  school_id: number;
 }
 
 export interface ForgotPasswordData {

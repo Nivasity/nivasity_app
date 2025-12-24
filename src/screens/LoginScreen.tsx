@@ -16,7 +16,7 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { login, demoLogin } = useAuth();
+  const { login } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
 
@@ -50,7 +50,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     } catch (error: any) {
       appMessage.alert({
         title: 'Login Failed',
-        message: error?.response?.data?.message || 'Invalid email or password',
+        message: error?.response?.data?.message || error?.message || 'Invalid email or password',
       });
     } finally {
       setLoading(false);
@@ -58,17 +58,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      await demoLogin();
-    } catch {
-      appMessage.alert({
-        title: 'Google Login Failed',
-        message: 'Could not log in with Google.',
-      });
-    } finally {
-      setLoading(false);
-    }
+    appMessage.alert({
+      title: 'Google Sign-In not set up',
+      message:
+        "To enable Google Sign-In we need Google OAuth client IDs (Android + iOS) and a backend endpoint to exchange the Google ID token for a Nivasity session.",
+    });
   };
 
   return (
@@ -135,10 +129,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <TouchableOpacity
           onPress={() => navigation.navigate('ForgotPassword')}
           accessibilityRole="button"
-          accessibilityLabel="Forgot password"
+          accessibilityLabel="Need help"
           activeOpacity={0.85}
         >
-          <AppText style={[styles.link, { color: colors.accent }]}>Forgot password?</AppText>
+          <AppText style={[styles.link, { color: colors.accent }]}>Need help?</AppText>
         </TouchableOpacity>
       </View>
 
@@ -146,7 +140,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       <View style={styles.bottomRow}>
         <AppText style={[styles.bottomText, { color: colors.textMuted }]}>
-          Don’t have an account?{' '}
+          Don't have an account?{' '}
         </AppText>
         <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.85}>
           <AppText style={[styles.link, { color: colors.accent }]}>Sign up</AppText>

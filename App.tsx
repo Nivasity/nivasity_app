@@ -10,7 +10,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { AppMessageProvider } from './src/contexts/AppMessageContext';
 
-
 export default function App() {
   const [fontsLoaded] = useAppFonts();
   if (!fontsLoaded) {
