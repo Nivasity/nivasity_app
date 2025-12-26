@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { TextInput as PaperTextInput } from 'react-native-paper';
-import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 import { useTheme } from '../contexts/ThemeContext';
+import CountryPickerDialog from './CountryPickerDialog';
 import Input from './Input';
 
 const toFlagEmoji = (cca2: string) => {
@@ -34,9 +34,8 @@ const PhoneField: React.FC<PhoneFieldProps> = ({
 
   const flag = useMemo(() => toFlagEmoji(countryCca2), [countryCca2]);
 
-  const handleSelect = (country: Country) => {
-    const cc = country.callingCode?.[0] ? `+${country.callingCode[0]}` : callingCode;
-    onChangeCountry(country.cca2, cc);
+  const handleSelect = (cca2: string, nextCallingCode: string) => {
+    onChangeCountry(cca2, nextCallingCode || callingCode);
     setPickerOpen(false);
   };
 
@@ -72,26 +71,11 @@ const PhoneField: React.FC<PhoneFieldProps> = ({
         </View>
       </View>
 
-      <CountryPicker
-        countryCode={countryCca2 as CountryCode}
-        renderFlagButton={() => null}
-        withFilter
-        withFlag
-        withCallingCode
-        withCallingCodeButton={false}
-        withEmoji
+      <CountryPickerDialog
         visible={pickerOpen}
+        selectedCca2={countryCca2}
         onClose={() => setPickerOpen(false)}
         onSelect={handleSelect}
-        theme={{
-          backgroundColor: colors.surface,
-          onBackgroundTextColor: colors.text,
-          fontFamily: undefined,
-          filterPlaceholderTextColor: colors.textMuted,
-          activeOpacity: 0.85,
-          itemHeight: 52,
-          primaryColor: colors.secondary,
-        }}
       />
     </>
   );

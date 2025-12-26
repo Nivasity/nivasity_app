@@ -125,7 +125,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Share item"
         >
-          <AppIcon name="share-social-outline" size={25} color={colors.secondary} />
+          <AppIcon name="share-social-outline" size={25} color={colors.surface} />
         </TouchableOpacity>
       </CardContainer>
     </View>
