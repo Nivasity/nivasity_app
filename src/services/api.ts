@@ -467,6 +467,51 @@ export const profileAPI = {
     return authAPI.getCurrentUser();
   },
 
+  updateProfilePhoto: async (args: {
+    file: { uri: string; name: string; type: string };
+    fallback?: User;
+  }): Promise<User> => {
+    const formData = new FormData();
+    formData.append(
+      'profile_pic',
+      {
+        uri: args.file.uri,
+        name: args.file.name,
+        type: args.file.type,
+      } as any
+    );
+
+    const response = await api.post<ApiResponse<any>>('/profile/update-profile.php', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to update profile photo');
+    }
+
+    const next = response.data.data as any;
+    const firstName = (next.first_name || '').trim();
+    const lastName = (next.last_name || '').trim();
+    const baseAvatar = toUserProfilePicUrl(next.profile_pic);
+    const avatar = baseAvatar ? `${baseAvatar}${baseAvatar.includes('?') ? '&' : '?'}v=${Date.now()}` : undefined;
+
+    const fallback = args.fallback;
+    return {
+      ...fallback,
+      id: String(next.id ?? fallback?.id ?? ''),
+      email: (next.email || fallback?.email || '').trim(),
+      name: `${firstName || fallback?.firstName || ''} ${lastName || fallback?.lastName || ''}`.trim() || fallback?.name || '',
+      firstName: firstName || fallback?.firstName || '',
+      lastName: lastName || fallback?.lastName || '',
+      phone: next.phone ?? fallback?.phone,
+      avatar,
+      schoolId: next.school_id ?? fallback?.schoolId,
+      deptId: next.dept_id ?? fallback?.deptId,
+      admissionYear: next.adm_year ?? fallback?.admissionYear,
+      matricNumber: next.matric_no ?? fallback?.matricNumber,
+    };
+  },
+
   updateProfile: async (data: Partial<User>): Promise<User> => {
     const formData = new FormData();
 

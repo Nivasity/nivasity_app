@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -7,11 +8,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import ThemeModeDrawer from '../components/ThemeModeDrawer';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { profileAPI } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 
 interface ProfileScreenProps {
@@ -19,10 +23,12 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { colors, isDark, mode, setMode } = useTheme();
+  const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const [themeVisible, setThemeVisible] = useState(false);
+  const [avatarMode, setAvatarMode] = useState<'idle' | 'armed' | 'uploading'>('idle');
 
   const initials = useMemo(
     () => (user?.name || 'U').trim().charAt(0).toUpperCase(),
@@ -38,6 +44,78 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     };
     return map[mode];
   }, [mode]);
+
+  useEffect(() => {
+    if (avatarMode !== 'armed') return;
+    const handle = setTimeout(() => setAvatarMode('idle'), 4500);
+    return () => clearTimeout(handle);
+  }, [avatarMode]);
+
+  const toImageMimeType = (uri: string, mimeType?: string | null) => {
+    const trimmed = (mimeType || '').trim();
+    if (trimmed) return trimmed;
+    const clean = (uri || '').split('?')[0].split('#')[0];
+    const ext = clean.split('.').pop()?.toLowerCase();
+    if (ext === 'png') return 'image/png';
+    if (ext === 'webp') return 'image/webp';
+    if (ext === 'heic') return 'image/heic';
+    if (ext === 'heif') return 'image/heif';
+    return 'image/jpeg';
+  };
+
+  const pickAndUploadAvatar = async () => {
+    if (!user) return;
+
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        appMessage.toast({ status: 'failed', message: 'Allow photo access to upload a profile picture.' });
+        return;
+      }
+
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+
+      if (res.canceled || !res.assets?.[0]?.uri) {
+        setAvatarMode('idle');
+        return;
+      }
+
+      const asset = res.assets[0];
+      const uri = asset.uri;
+      const name = (asset.fileName || `profile-${Date.now()}.jpg`).trim();
+      const type = toImageMimeType(uri, (asset as any).mimeType);
+
+      setAvatarMode('uploading');
+
+      if (user.id === 'demo') {
+        updateUser({ ...user, avatar: uri });
+        appMessage.toast({ status: 'success', message: 'Profile photo updated (demo).' });
+        return;
+      }
+
+      const updatedUser = await profileAPI.updateProfilePhoto({ file: { uri, name, type }, fallback: user });
+      updateUser(updatedUser);
+      appMessage.toast({ status: 'success', message: 'Profile photo updated.' });
+    } catch (error: any) {
+      appMessage.toast({
+        status: 'failed',
+        message: error?.response?.data?.message || error?.message || 'Failed to update profile photo.',
+      });
+    } finally {
+      setAvatarMode('idle');
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (avatarMode === 'uploading') return;
+    if (avatarMode === 'idle') setAvatarMode('armed');
+    else pickAndUploadAvatar();
+  };
 
   return (
     <SafeAreaView
@@ -57,7 +135,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-          <View
+          <TouchableOpacity
+            onPress={handleAvatarPress}
+            activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel={avatarMode === 'armed' ? 'Tap again to upload profile photo' : 'Edit profile photo'}
             style={[
               styles.avatarWrap,
               { borderColor: colors.surface, backgroundColor: colors.surface },
@@ -68,7 +150,25 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             ) : (
               <AppText style={[styles.avatarText, { color: colors.secondary }]}>{initials}</AppText>
             )}
-          </View>
+
+            {avatarMode !== 'idle' ? (
+              <View
+                style={[
+                  styles.avatarOverlay,
+                  { backgroundColor: isDark ? 'rgba(0,0,0,0.34)' : 'rgba(255,255,255,0.45)' },
+                ]}
+                pointerEvents="none"
+              >
+                {avatarMode === 'uploading' ? (
+                  <ActivityIndicator color={colors.accent} />
+                ) : (
+                  <View style={[styles.avatarEditPill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                  </View>
+                )}
+              </View>
+            ) : null}
+          </TouchableOpacity>
 
           <AppText style={[styles.name, { color: colors.text }]} numberOfLines={1}>
             {user?.name || 'Student'}
@@ -277,6 +377,19 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.4,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditPill: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   name: {
     textAlign: 'center',

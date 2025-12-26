@@ -574,7 +574,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
           {section === 'myAccount' ? (
             <>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Profile information</Text>
                   <TouchableOpacity
@@ -582,7 +582,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                     activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel="Edit profile information"
-                    style={[styles.editButton]}
+                    style={[styles.editButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
                   >
                     <AppIcon name="create-outline" size={18} color={colors.secondary} />
                   </TouchableOpacity>
@@ -598,7 +598,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
               <View style={{ height: 12 }} />
 
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Academic Info</Text>
                   <TouchableOpacity
@@ -606,7 +606,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                     activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel="Edit academic info"
-                    style={[styles.editButton]}
+                    style={[styles.editButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
                   >
                     <AppIcon name="create-outline" size={18} color={colors.secondary} />
                   </TouchableOpacity>
@@ -874,6 +874,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

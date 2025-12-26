@@ -34,6 +34,12 @@
           "savePhotosPermission": "Allow Nivasity to save receipt images to your photos.",
           "granularPermissions": ["photo"]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Nivasity to access your photos to update your profile picture."
+        }
       ]
     ],
     "web": {

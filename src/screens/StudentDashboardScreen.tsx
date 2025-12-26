@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
+import AppText from '../components/AppText';
 import { DEMO_DATA_ENABLED } from '../config/demo';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -128,11 +129,21 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         >
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
-                <Text style={[styles.avatarText, { color: colors.secondary }]}>
-                  {(user?.name || 'U').charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Open My Account"
+                style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.surface }]}
+              >
+                {user?.avatar ? (
+                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                ) : (
+                  <AppText style={[styles.avatarText, { color: colors.secondary }]}>
+                    {(user?.name || 'U').trim().charAt(0).toUpperCase()}
+                  </AppText>
+                )}
+              </TouchableOpacity>
               <View>
                 <Text style={[styles.welcome, { color: colors.textMuted }]}>{getGreeting()},</Text>
                 <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
@@ -397,8 +408,14 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
+    borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
   },
   avatarText: {
     fontSize: 18,
