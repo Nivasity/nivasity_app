@@ -18,10 +18,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "versionCode": 1,
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "versionCode": 1,
       "package": "com.nivasity.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -32,7 +32,9 @@
         {
           "photosPermission": "Allow Nivasity to access your photos.",
           "savePhotosPermission": "Allow Nivasity to save receipt images to your photos.",
-          "granularPermissions": ["photo"]
+          "granularPermissions": [
+            "photo"
+          ]
         }
       ],
       [
@@ -40,7 +42,8 @@
         {
           "photosPermission": "Allow Nivasity to access your photos to update your profile picture."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
