@@ -77,6 +77,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         if (!mounted) return;
         setSchools([]);
         appMessage.toast({
+          status: 'failed',
           message: error?.response?.data?.message || error?.message || 'Could not load schools',
         });
       } finally {
@@ -133,6 +134,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       };
       const res = await register(payload);
       appMessage.toast({
+        status: 'success',
         message:
           res.message ||
           "Registration successful! We've sent a verification code (OTP) to your email address. Please check your inbox.",
@@ -181,7 +183,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <TouchableOpacity
         onPress={() => {
           if (!canOpenSchools) {
-            appMessage.toast({ message: schoolsLoading ? 'Loading schools...' : 'No schools available' });
+            appMessage.toast({
+              status: schoolsLoading ? 'info' : 'failed',
+              message: schoolsLoading ? 'Loading schools...' : 'No schools available',
+            });
             return;
           }
           setSchoolOpen(true);

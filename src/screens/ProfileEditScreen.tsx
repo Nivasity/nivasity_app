@@ -53,7 +53,7 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
     try {
       const updatedUser = await profileAPI.updateProfile(profileData);
       updateUser(updatedUser);
-      appMessage.toast({ message: 'Profile updated successfully.' });
+      appMessage.toast({ status: 'success', message: 'Profile updated successfully.' });
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',

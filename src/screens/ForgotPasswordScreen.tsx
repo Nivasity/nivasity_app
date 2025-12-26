@@ -119,7 +119,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
       setNewPassword('');
       setConfirmPassword('');
       setErrors({});
-      appMessage.toast({ message: res.message || 'OTP sent. Check your email.' });
+      appMessage.toast({ status: 'success', message: res.message || 'OTP sent. Check your email.' });
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',

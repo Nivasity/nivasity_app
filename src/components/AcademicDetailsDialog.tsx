@@ -83,6 +83,7 @@ const AcademicDetailsDialog = () => {
         if (!mounted) return;
         setDepartments([]);
         appMessage.toast({
+          status: 'failed',
           message: error?.response?.data?.message || error?.message || 'Could not load departments',
         });
       } finally {
@@ -114,7 +115,7 @@ const AcademicDetailsDialog = () => {
         matricNo: form.matricNo.trim(),
         admissionYear: toAdmissionYearValue(form.admissionYear),
       });
-      appMessage.toast({ message: 'Academic info updated.' });
+      appMessage.toast({ status: 'success', message: 'Academic info updated.' });
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',
@@ -172,7 +173,11 @@ const AcademicDetailsDialog = () => {
             <TouchableOpacity
               onPress={() => {
                 if (!departmentsLoading && departmentNames.length > 0) setDeptOpen(true);
-                else appMessage.toast({ message: departmentsLoading ? 'Loading departments...' : 'No departments found' });
+                else
+                  appMessage.toast({
+                    status: departmentsLoading ? 'info' : 'failed',
+                    message: departmentsLoading ? 'Loading departments...' : 'No departments found',
+                  });
               }}
               activeOpacity={0.9}
               accessibilityRole="button"

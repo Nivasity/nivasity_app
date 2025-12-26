@@ -208,7 +208,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     try {
       const updatedUser = await profileAPI.updateProfile(patch);
       updateUser(updatedUser);
-      appMessage.toast({ message: okMessage });
+      appMessage.toast({ status: 'success', message: okMessage });
     } catch (error: any) {
       updateUser({ ...user, ...patch });
       appMessage.alert({
@@ -260,7 +260,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       });
       const refreshed = await authAPI.getCurrentUser();
       updateUser({ ...user, ...refreshed, school: user.school, institutionName: user.institutionName });
-      appMessage.toast({ message: 'Academic info updated.' });
+      appMessage.toast({ status: 'success', message: 'Academic info updated.' });
     } catch (error: any) {
       updateUser({
         ...user,
@@ -291,13 +291,13 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     setPasswordLoading(true);
     try {
       if (user?.id === 'demo') {
-        appMessage.toast({ message: 'Password changed (demo).' });
+        appMessage.toast({ status: 'success', message: 'Password changed (demo).' });
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         return;
       }
 
       const res = await authAPI.changePassword(passwordData.currentPassword, passwordData.newPassword);
-      appMessage.toast({ message: res.message || 'Password changed.' });
+      appMessage.toast({ status: 'success', message: res.message || 'Password changed.' });
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
       appMessage.alert({
@@ -492,13 +492,17 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => {
-          if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
-          else appMessage.toast({ message: departmentsLoading ? 'Loading departments...' : 'No departments found' });
-        }}
-        activeOpacity={0.9}
-        accessibilityRole="button"
-        accessibilityLabel="Select department"
-      >
+                  if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
+                  else
+                    appMessage.toast({
+                      status: departmentsLoading ? 'info' : 'failed',
+                      message: departmentsLoading ? 'Loading departments...' : 'No departments found',
+                    });
+                }}
+                activeOpacity={0.9}
+                accessibilityRole="button"
+                accessibilityLabel="Select department"
+              >
         <View pointerEvents="none">
           <Input
             label="Department"

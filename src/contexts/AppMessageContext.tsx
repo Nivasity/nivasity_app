@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useContext, useEffect, useMemo, useSta
 import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import { useTheme } from './ThemeContext';
 
@@ -31,6 +32,8 @@ type ConfirmOptions = {
 
 type ToastOptions = {
   message: string;
+  status?: 'success' | 'failed' | 'info';
+  title?: string;
   actionText?: string;
   onAction?: () => void;
 };
@@ -60,8 +63,19 @@ type DialogState = {
 type ToastState = {
   visible: boolean;
   message: string;
+  status: 'success' | 'failed' | 'info';
+  title?: string;
   actionText?: string;
   onAction?: () => void;
+};
+
+const withAlpha = (hex: string, alpha: number) => {
+  const clamped = Math.max(0, Math.min(1, alpha));
+  const normalized = (hex || '').trim();
+  if (!/^#([0-9a-fA-F]{6})$/.test(normalized)) return hex;
+  const a = Math.round(clamped * 255);
+  const suffix = a.toString(16).padStart(2, '0').toUpperCase();
+  return `${normalized}${suffix}`;
 };
 
 export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
@@ -79,6 +93,8 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
   const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: '',
+    status: 'info',
+    title: undefined,
     actionText: undefined,
     onAction: undefined,
   });
@@ -106,8 +122,8 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
           ],
         });
       },
-      toast: ({ message, actionText, onAction }) => {
-        setToast({ visible: true, message, actionText, onAction });
+      toast: ({ message, status = 'info', title, actionText, onAction }) => {
+        setToast({ visible: true, message, status, title, actionText, onAction });
       },
     }),
     []
@@ -131,6 +147,28 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
     const handle = setTimeout(() => setToast((s) => ({ ...s, visible: false })), 2800);
     return () => clearTimeout(handle);
   }, [toast.visible]);
+
+  const toastTitle = toast.title
+    ? toast.title
+    : toast.status === 'success'
+      ? 'Successful'
+      : toast.status === 'failed'
+        ? 'Failed'
+        : 'Notice';
+
+  const toastTone =
+    toast.status === 'success'
+      ? colors.success
+      : toast.status === 'failed'
+        ? colors.warning
+        : colors.border;
+
+  const toastIcon: React.ComponentProps<typeof AppIcon>['name'] =
+    toast.status === 'success'
+      ? 'checkmark-circle-outline'
+      : toast.status === 'failed'
+        ? 'close-circle-outline'
+        : 'sparkles-outline';
 
   return (
     <AppMessageContext.Provider value={value}>
@@ -212,15 +250,25 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
             style={[
               styles.toastWrap,
               {
-                paddingBottom: 90 + insets.bottom,
+                paddingTop: 10 + insets.top,
+                paddingRight: 14,
               },
             ]}
             pointerEvents="box-none"
           >
-            <View style={[styles.toast, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <AppText style={[styles.toastText, { color: colors.text }]} numberOfLines={2}>
-                {toast.message}
-              </AppText>
+            <View style={[styles.toast, { backgroundColor: colors.surface, borderColor: withAlpha(toastTone, 0.6) }]}>
+              <View style={[styles.toastIconWrap, { backgroundColor: withAlpha(toastTone, 0.14) }]}>
+                <AppIcon name={toastIcon} size={18} color={toastTone} />
+              </View>
+
+              <View style={styles.toastBody}>
+                <AppText style={[styles.toastTitle, { color: toastTone }]} numberOfLines={1}>
+                  {toastTitle}
+                </AppText>
+                <AppText style={[styles.toastText, { color: colors.text }]} numberOfLines={3}>
+                  {toast.message}
+                </AppText>
+              </View>
               {toast.actionText ? (
                 <TouchableOpacity
                   onPress={() => {
@@ -230,7 +278,7 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={toast.actionText}
-                  style={styles.toastAction}
+                  style={[styles.toastAction, { borderColor: colors.border }]}
                 >
                   <AppText style={[styles.toastActionText, { color: colors.accent }]}>
                     {toast.actionText}
@@ -286,8 +334,9 @@ const styles = StyleSheet.create({
   },
   toastWrap: {
     flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingLeft: 14,
   },
   toast: {
     borderWidth: 1,
@@ -295,15 +344,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    maxWidth: 360,
+    minWidth: 260,
+  },
+  toastIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    justifyContent: 'center',
+  },
+  toastBody: {
+    flex: 1,
+    paddingTop: 1,
+  },
+  toastTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+    marginBottom: 2,
   },
   toastText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
   },
   toastAction: {
     height: 34,
@@ -311,6 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   toastActionText: {
     fontSize: 12,

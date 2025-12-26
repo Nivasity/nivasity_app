@@ -61,7 +61,7 @@ const VerifyOtpScreen: React.FC<VerifyOtpScreenProps> = ({ navigation, route }) 
     setLoading(true);
     try {
       const res = await authAPI.resendRegistrationOtp(email);
-      appMessage.toast({ message: res.message || 'OTP resent. Check your email.' });
+      appMessage.toast({ status: 'success', message: res.message || 'OTP resent. Check your email.' });
     } catch (error: any) {
       appMessage.alert({
         title: 'Error',
