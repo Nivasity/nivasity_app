@@ -225,6 +225,7 @@ const AcademicDetailsDialog = () => {
         searchPlaceholder="Search department..."
         options={departmentNames}
         selected={form.deptName}
+        loading={departmentsLoading}
         onClose={() => setDeptOpen(false)}
         onSelect={(deptName) => {
           const match = departments.find((d) => d.name === deptName);

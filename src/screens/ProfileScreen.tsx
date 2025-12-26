@@ -45,7 +45,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 50 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 30 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, { backgroundColor: headerBackground }]}>
@@ -87,16 +87,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
           <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <Row
-              icon="school-outline"
-              label="Academic info"
+              icon="person-outline"
+              label="My Account"
               value={user?.school || user?.institutionName ? (user.school || user.institutionName) : 'Not set'}
-              onPress={() => navigation.navigate('ProfileSection', { section: 'academic' })}
-            />
-            <Divider />
-            <Row
-              icon="settings-outline"
-              label="Account settings"
-              onPress={() => navigation.navigate('ProfileSection', { section: 'account' })}
+              onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
             />
             <Divider />
             <Row
@@ -270,7 +264,7 @@ const styles = StyleSheet.create({
     width: 104,
     height: 104,
     borderRadius: 52,
-    borderWidth: 10,
+    borderWidth: 5,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

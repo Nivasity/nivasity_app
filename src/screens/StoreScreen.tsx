@@ -204,7 +204,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         data={filteredProducts}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 130 + insets.bottom }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 30 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={

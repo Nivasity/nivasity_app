@@ -307,6 +307,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         searchPlaceholder="Search schools..."
         options={schoolNames}
         selected={form.school}
+        loading={schoolsLoading}
         onClose={() => setSchoolOpen(false)}
         onSelect={(school) => {
           const match = schools.find((s) => s.name === school);

@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextInput as PaperTextInput } from 'react-native-paper';
+import { BlurView } from 'expo-blur';
 import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -24,7 +27,7 @@ import { authAPI, profileAPI, referenceAPI } from '../services/api';
 import { User } from '../types';
 import { normalizePhone } from '../utils/phone';
 
-type ProfileSection = 'account' | 'academic' | 'security';
+type ProfileSection = 'account' | 'academic' | 'security' | 'myAccount';
 
 type ProfileSectionScreenProps = {
   navigation: any;
@@ -37,6 +40,8 @@ const getSectionTitle = (section: ProfileSection) => {
       return 'Academic info';
     case 'security':
       return 'Security';
+    case 'myAccount':
+      return 'My Account';
     default:
       return 'Account settings';
   }
@@ -63,13 +68,14 @@ const toAdmissionYearValue = (sessionOrYear: string) => {
 
 const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { user, updateUser, logout } = useAuth();
   const section = (route?.params?.section as ProfileSection | undefined) ?? 'account';
   const title = useMemo(() => getSectionTitle(section), [section]);
 
   const [saving, setSaving] = useState(false);
+  const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic'>(null);
 
   const [accountData, setAccountData] = useState<Pick<User, 'firstName' | 'lastName' | 'email'>>(() => {
     const derived = (user?.name || '').trim().split(/\s+/).filter(Boolean);
@@ -115,8 +121,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
 
+  const academicFormActive = section === 'academic' || editDialog === 'academic';
+
   useEffect(() => {
-    if (section !== 'academic') return;
+    if (!academicFormActive) return;
     const rawSchoolId = user?.schoolId;
     const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
     if (!Number.isFinite(schoolId)) return;
@@ -138,10 +146,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     return () => {
       mounted = false;
     };
-  }, [section, user?.schoolId]);
+  }, [academicFormActive, user?.schoolId]);
 
   useEffect(() => {
-    if (section !== 'academic') return;
+    if (!academicFormActive) return;
     const rawSchoolId = user?.schoolId;
     const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
     if (!Number.isFinite(schoolId)) return;
@@ -163,10 +171,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     return () => {
       mounted = false;
     };
-  }, [section, user?.schoolId]);
+  }, [academicFormActive, user?.schoolId]);
 
   useEffect(() => {
-    if (section !== 'academic') return;
+    if (!academicFormActive) return;
     if (!user) return;
 
     const rawSchoolId = user.schoolId;
@@ -182,7 +190,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       admissionYear: prev.admissionYear || admissionSession,
       department: deptNameFromId || prev.department,
     }));
-  }, [departments, deptId, schools, section, user]);
+  }, [academicFormActive, departments, deptId, schools, user]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -341,6 +349,202 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     }
   };
 
+  const openProfileEdit = () => {
+    const derived = (user?.name || '').trim().split(/\s+/).filter(Boolean);
+    const fallbackFirstName = derived[0] || '';
+    const fallbackLastName = derived.slice(1).join(' ');
+
+    setAccountData({
+      firstName: user?.firstName || fallbackFirstName,
+      lastName: user?.lastName || fallbackLastName,
+      email: user?.email || '',
+    });
+    setAccountErrors({});
+
+    const raw = (user?.phone || '').trim();
+    if (raw.startsWith('+234')) {
+      setPhoneData({ countryCca2: 'NG', callingCode: '+234', phoneNumber: raw.slice(4) });
+    } else {
+      setPhoneData({ countryCca2: 'NG', callingCode: '+234', phoneNumber: raw.replace(/[^\d]/g, '') });
+    }
+
+    setEditDialog('profile');
+  };
+
+  const openAcademicEdit = () => {
+    setAcademicData({
+      school: user?.school || user?.institutionName || '',
+      admissionYear: toSessionLabel(user?.admissionYear),
+      department: user?.department || '',
+      matricNumber: user?.matricNumber || '',
+    });
+    const rawDeptId = user?.deptId;
+    const parsedDeptId = rawDeptId != null ? Number(rawDeptId) : NaN;
+    setDeptId(Number.isFinite(parsedDeptId) ? parsedDeptId : null);
+    setDepartmentOpen(false);
+    setAdmissionOpen(false);
+    setEditDialog('academic');
+  };
+
+  const closeEditDialog = () => {
+    setDepartmentOpen(false);
+    setAdmissionOpen(false);
+    setEditDialog(null);
+  };
+
+  const saveAccountFromDialog = async () => {
+    if (!validateAccount()) return;
+    await handleSaveAccount();
+    closeEditDialog();
+  };
+
+  const saveAcademicFromDialog = async () => {
+    if (!user) return;
+    await handleSaveAcademic();
+    closeEditDialog();
+  };
+
+  const nameParts = useMemo(() => (user?.name || '').trim().split(/\s+/).filter(Boolean), [user?.name]);
+  const displayFirstName = user?.firstName || nameParts[0] || '';
+  const displayLastName = user?.lastName || nameParts.slice(1).join(' ') || '';
+  const displayEmail = user?.email || '';
+  const displayPhone = (user?.phone || '').trim();
+
+  const displaySchool =
+    user?.school ||
+    user?.institutionName ||
+    (user?.schoolId != null ? `School ID: ${String(user.schoolId)}` : '');
+  const displayAdmission = toSessionLabel(user?.admissionYear);
+  const displayDepartment = user?.department || '';
+  const displayMatric = user?.matricNumber || '';
+
+  const renderAccountForm = ({ onSave, showEmail }: { onSave: () => void; showEmail?: boolean }) => (
+    <>
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Input
+            label="First Name"
+            value={accountData.firstName || ''}
+            onChangeText={(text) => setAccountData((s) => ({ ...s, firstName: text }))}
+            errorText={accountErrors.firstName}
+            autoCapitalize="words"
+            autoComplete="given-name"
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Input
+            label="Last Name"
+            value={accountData.lastName || ''}
+            onChangeText={(text) => setAccountData((s) => ({ ...s, lastName: text }))}
+            errorText={accountErrors.lastName}
+            autoCapitalize="words"
+            autoComplete="family-name"
+          />
+        </View>
+      </View>
+      {showEmail !== false ? (
+        <Input
+          label="Email address"
+          placeholder="Enter your email"
+          value={accountData.email || ''}
+          errorText={accountErrors.email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          editable={false}
+        />
+      ) : null}
+      <PhoneField
+        countryCca2={phoneData.countryCca2}
+        callingCode={phoneData.callingCode}
+        phoneNumber={phoneData.phoneNumber}
+        errorText={accountErrors.phoneNumber}
+        onChangeCountry={(countryCca2, callingCode) => setPhoneData((s) => ({ ...s, countryCca2, callingCode }))}
+        onChangePhoneNumber={(phoneNumber) => setPhoneData((s) => ({ ...s, phoneNumber }))}
+      />
+      <Button title={saving ? 'Saving...' : 'Save changes'} onPress={onSave} disabled={saving} />
+    </>
+  );
+
+  const renderAcademicForm = (onSave: () => void) => (
+    <>
+      <Input
+        label="School"
+        value={academicData.school || (user?.schoolId != null ? `School ID: ${String(user.schoolId)}` : '')}
+        editable={false}
+        right={schoolsLoading ? <PaperTextInput.Icon icon="loading" color={colors.textMuted} /> : undefined}
+      />
+      <TouchableOpacity
+        onPress={() => setAdmissionOpen(true)}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Select admission year"
+      >
+        <View pointerEvents="none">
+          <Input
+            label="Admission Year"
+            value={academicData.admissionYear || ''}
+            placeholder="Select session"
+            editable={false}
+            right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
+          />
+        </View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => {
+          if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
+          else appMessage.toast({ message: departmentsLoading ? 'Loading departments...' : 'No departments found' });
+        }}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Select department"
+      >
+        <View pointerEvents="none">
+          <Input
+            label="Department"
+            value={academicData.department || ''}
+            placeholder="Select your department"
+            editable={false}
+            right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
+          />
+        </View>
+      </TouchableOpacity>
+      <Input
+        label="Matric Number"
+        placeholder="e.g. CSC/22/1234"
+        value={academicData.matricNumber || ''}
+        onChangeText={(text) => setAcademicData((s) => ({ ...s, matricNumber: text }))}
+        autoCapitalize="characters"
+      />
+      <Button title={saving ? 'Saving...' : 'Save changes'} onPress={onSave} disabled={saving} />
+
+      <OptionPickerDialog
+        visible={admissionOpen}
+        title="Select admission session"
+        searchPlaceholder="Search admission session..."
+        options={admissionSessions}
+        selected={academicData.admissionYear || ''}
+        onClose={() => setAdmissionOpen(false)}
+        onSelect={(admissionYear) => setAcademicData((s) => ({ ...s, admissionYear }))}
+      />
+
+      <OptionPickerDialog
+        visible={departmentOpen}
+        title="Select department"
+        searchPlaceholder="Search department..."
+        options={departments.map((d) => d.name)}
+        selected={academicData.department || ''}
+        loading={departmentsLoading}
+        onClose={() => setDepartmentOpen(false)}
+        onSelect={(department) => {
+          const match = departments.find((d) => d.name === department);
+          setDeptId(match?.id ?? null);
+          setAcademicData((s) => ({ ...s, department }));
+        }}
+      />
+    </>
+  );
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
@@ -364,136 +568,65 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
             <View style={styles.iconButton} />
           </View>
 
-          {section === 'account' ? (
-            <View style={[styles.card, { borderColor: colors.border }]}>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="First Name"
-                    value={accountData.firstName || ''}
-                    onChangeText={(text) => setAccountData((s) => ({ ...s, firstName: text }))}
-                    errorText={accountErrors.firstName}
-                    autoCapitalize="words"
-                    autoComplete="given-name"
-                  />
+          {section === 'myAccount' ? (
+            <>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Profile information</Text>
+                  <TouchableOpacity
+                    onPress={openProfileEdit}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit profile information"
+                    style={[styles.editButton]}
+                  >
+                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                  </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="Last Name"
-                    value={accountData.lastName || ''}
-                    onChangeText={(text) => setAccountData((s) => ({ ...s, lastName: text }))}
-                    errorText={accountErrors.lastName}
-                    autoCapitalize="words"
-                    autoComplete="family-name"
-                  />
+
+                <View style={styles.kvList}>
+                  <KeyValueRow label="First name" value={displayFirstName} />
+                  <KeyValueRow label="Last name" value={displayLastName} />
+                  <KeyValueRow label="Email" value={displayEmail} />
+                  <KeyValueRow label="Phone" value={displayPhone} />
                 </View>
               </View>
-              <Input
-                label="Email address"
-                placeholder="Enter your email"
-                value={accountData.email || ''}
-                errorText={accountErrors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={false}
-              />
-              <PhoneField
-                countryCca2={phoneData.countryCca2}
-                callingCode={phoneData.callingCode}
-                phoneNumber={phoneData.phoneNumber}
-                errorText={accountErrors.phoneNumber}
-                onChangeCountry={(countryCca2, callingCode) =>
-                  setPhoneData((s) => ({ ...s, countryCca2, callingCode }))
-                }
-                onChangePhoneNumber={(phoneNumber) => setPhoneData((s) => ({ ...s, phoneNumber }))}
-              />
-              <Button title={saving ? 'Saving...' : 'Save changes'} onPress={handleSaveAccount} disabled={saving} />
+
+              <View style={{ height: 12 }} />
+
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Academic Info</Text>
+                  <TouchableOpacity
+                    onPress={openAcademicEdit}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit academic info"
+                    style={[styles.editButton]}
+                  >
+                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.kvList}>
+                  <KeyValueRow label="School" value={displaySchool} />
+                  <KeyValueRow label="Department" value={displayDepartment} />
+                  <KeyValueRow label="Admission year" value={displayAdmission} />
+                  <KeyValueRow label="Matric number" value={displayMatric} />
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {section === 'account' ? (
+            <View style={[styles.card, { borderColor: colors.border }]}>
+              {renderAccountForm({ onSave: handleSaveAccount })}
             </View>
           ) : null}
 
           {section === 'academic' ? (
             <View style={[styles.card, { borderColor: colors.border }]}>
-              <Input
-                label="School"
-                value={
-                  academicData.school ||
-                  (user?.schoolId != null ? `School ID: ${String(user.schoolId)}` : '')
-                }
-                editable={false}
-                right={
-                  schoolsLoading ? (
-                    <PaperTextInput.Icon icon="loading" color={colors.textMuted} />
-                  ) : undefined
-                }
-              />
-              <TouchableOpacity
-                onPress={() => setAdmissionOpen(true)}
-                activeOpacity={0.9}
-                accessibilityRole="button"
-                accessibilityLabel="Select admission year"
-              >
-                <View pointerEvents="none">
-                  <Input
-                    label="Admission Year"
-                    value={academicData.admissionYear || ''}
-                    placeholder="Select session"
-                    editable={false}
-                    right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
-                  />
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
-                  else appMessage.toast({ message: departmentsLoading ? 'Loading departments...' : 'No departments found' });
-                }}
-                activeOpacity={0.9}
-                accessibilityRole="button"
-                accessibilityLabel="Select department"
-              >
-                <View pointerEvents="none">
-                  <Input
-                    label="Department"
-                    value={academicData.department || ''}
-                    placeholder="Select your department"
-                    editable={false}
-                    right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
-                  />
-                </View>
-              </TouchableOpacity>
-              <Input
-                label="Matric Number"
-                placeholder="e.g. CSC/22/1234"
-                value={academicData.matricNumber || ''}
-                onChangeText={(text) => setAcademicData((s) => ({ ...s, matricNumber: text }))}
-                autoCapitalize="characters"
-              />
-              <Button title={saving ? 'Saving...' : 'Save changes'} onPress={handleSaveAcademic} disabled={saving} />
-
-              <OptionPickerDialog
-                visible={admissionOpen}
-                title="Select admission session"
-                searchPlaceholder="Search admission session..."
-                options={admissionSessions}
-                selected={academicData.admissionYear || ''}
-                onClose={() => setAdmissionOpen(false)}
-                onSelect={(admissionYear) => setAcademicData((s) => ({ ...s, admissionYear }))}
-              />
-
-              <OptionPickerDialog
-                visible={departmentOpen}
-                title="Select department"
-                searchPlaceholder="Search department..."
-                options={departments.map((d) => d.name)}
-                selected={academicData.department || ''}
-                onClose={() => setDepartmentOpen(false)}
-                onSelect={(department) => {
-                  const match = departments.find((d) => d.name === department);
-                  setDeptId(match?.id ?? null);
-                  setAcademicData((s) => ({ ...s, department }));
-                }}
-              />
+              {renderAcademicForm(handleSaveAcademic)}
             </View>
           ) : null}
 
@@ -578,7 +711,112 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={editDialog === 'profile'} transparent animationType="slide" onRequestClose={closeEditDialog}>
+        <View style={styles.modalRoot}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEditDialog}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              ]}
+            />
+          </Pressable>
+
+          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit profile information</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
+              >
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                {renderAccountForm({ onSave: saveAccountFromDialog, showEmail: false })}
+              </KeyboardAvoidingView>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editDialog === 'academic'} transparent animationType="slide" onRequestClose={closeEditDialog}>
+        <View style={styles.modalRoot}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEditDialog}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              ]}
+            />
+          </Pressable>
+
+          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit academic info</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
+              >
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                {renderAcademicForm(saveAcademicFromDialog)}
+              </KeyboardAvoidingView>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
+  );
+};
+
+const KeyValueRow = ({
+  label,
+  value,
+  valueLines = 1,
+}: {
+  label: string;
+  value?: string;
+  valueLines?: number;
+}) => {
+  const { colors } = useTheme();
+  const normalized = (value || '').trim();
+  return (
+    <View style={[styles.kvRow, { borderColor: colors.border }]}>
+      <Text style={[styles.kvLabel, { color: colors.textMuted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={valueLines}>
+        {normalized || 'Not set'}
+      </Text>
+    </View>
   );
 };
 
@@ -613,17 +851,55 @@ const styles = StyleSheet.create({
     maxWidth: '70%',
   },
   card: {
-    borderWidth: 1,
     borderRadius: 22,
     padding: 14,
+    paddingBottom: 30,
   },
   row: {
     flexDirection: 'row',
     gap: 12,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+  },
+  editButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kvList: {
+    gap: 10,
+  },
+  kvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderBottomWidth: 1,
+    padding: 12,
+  },
+  kvLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    paddingTop: 2,
+  },
+  kvValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+    textAlign: 'right',
+  },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '600',
     letterSpacing: -0.2,
     marginBottom: 4,
   },
@@ -631,6 +907,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 16,
+  },
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    maxHeight: '85%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingTop: 8,
+    paddingBottom: 25,
+  },
+  sheetTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dangerButton: {
     height: 52,

@@ -259,7 +259,7 @@ const LineItem = ({ item }: { item: CartItem }) => {
   return (
     <View style={styles.line}>
       <View style={[styles.lineIcon]}>
-        <AppIcon name="book" size={16} color={colors.secondary} />
+        <AppIcon name="book-outline" size={16} color={colors.secondary} />
       </View>
       <View style={{ flex: 1, paddingRight: 10 }}>
         <AppText style={[styles.lineTitle, { color: colors.text }]} numberOfLines={1}>

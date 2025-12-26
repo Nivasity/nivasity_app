@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { TextInput as PaperTextInput } from 'react-native-paper';
@@ -16,6 +16,7 @@ type OptionPickerDialogProps = {
   onSelect: (value: string) => void;
   searchEnabled?: boolean;
   searchPlaceholder?: string;
+  loading?: boolean;
 };
 
 const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
@@ -27,14 +28,33 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
   onSelect,
   searchEnabled,
   searchPlaceholder,
+  loading,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!visible) setQuery('');
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible || !loading) return;
+    shimmer.setValue(0);
+    const anim = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      })
+    );
+    anim.start();
+    return () => {
+      anim.stop();
+    };
+  }, [loading, shimmer, visible]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const shouldShowSearch = searchEnabled ?? options.length > 8;
@@ -42,6 +62,9 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
     if (!shouldShowSearch || normalizedQuery.length === 0) return options;
     return options.filter((value) => value.toLowerCase().includes(normalizedQuery));
   }, [normalizedQuery, options, shouldShowSearch]);
+
+  const shimmerOpacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
+  const skeletonRows = useMemo(() => Array.from({ length: 8 }, (_, i) => i), []);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -72,7 +95,7 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
             },
           ]}
         >
-          {shouldShowSearch ? (
+          {shouldShowSearch && !loading ? (
             <PaperTextInput
               mode="outlined"
               value={query}
@@ -106,41 +129,60 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
           ) : null}
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {filteredOptions.length === 0 ? (
+            {loading ? (
+              <View style={styles.skeletonWrap} accessibilityLabel="Loading options">
+                {skeletonRows.map((idx) => (
+                  <View
+                    key={idx}
+                    style={[styles.skeletonRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.skeletonBar,
+                        { backgroundColor: colors.surfaceAlt, opacity: shimmerOpacity },
+                      ]}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : filteredOptions.length === 0 ? (
               <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <AppText style={[styles.emptyText, { color: colors.textMuted }]}>No results</AppText>
               </View>
             ) : null}
 
-            {filteredOptions.map((value) => {
-              const isSelected = selected === value;
-              return (
-                <TouchableOpacity
-                  key={value}
-                  onPress={() => {
-                    onSelect(value);
-                    onClose();
-                  }}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel={value}
-                  style={[
-                    styles.optionRow,
-                    {
-                      borderColor: isSelected ? colors.secondary : colors.border,
-                      backgroundColor: isSelected ? colors.secondary : colors.surface,
-                    },
-                  ]}
-                >
-                  <AppText style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]} numberOfLines={1}>
-                    {value}
-                  </AppText>
-                  {isSelected ? (
-                    <AppIcon name="checkmark" size={20} color={colors.surface} />
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
+            {!loading
+              ? filteredOptions.map((value) => {
+                  const isSelected = selected === value;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      onPress={() => {
+                        onSelect(value);
+                        onClose();
+                      }}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel={value}
+                      style={[
+                        styles.optionRow,
+                        {
+                          borderColor: isSelected ? colors.secondary : colors.border,
+                          backgroundColor: isSelected ? colors.secondary : colors.surface,
+                        },
+                      ]}
+                    >
+                      <AppText
+                        style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {value}
+                      </AppText>
+                      {isSelected ? <AppIcon name="checkmark" size={20} color={colors.surface} /> : null}
+                    </TouchableOpacity>
+                  );
+                })
+              : null}
           </ScrollView>
         </View>
       </View>
@@ -216,6 +258,25 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     fontWeight: '800',
+  },
+  skeletonWrap: {
+    paddingTop: 2,
+  },
+  skeletonRow: {
+    height: 45,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  skeletonBar: {
+    height: 12,
+    width: '70%',
+    borderRadius: 999,
   },
 });
 

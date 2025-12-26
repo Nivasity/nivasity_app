@@ -79,39 +79,27 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           <View style={styles.detailsHeader}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.detailsTitle, { color: colors.text }]}>Secure payment</Text>
-              <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>
-                Powered by Interswitch
-              </Text>
             </View>
-            <Text style={[styles.price, { color: colors.text }]}>₦{total.toLocaleString()}</Text>
+            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>Powered by Interswitch</Text>
           </View>
 
           <Text style={[styles.paragraph, { color: colors.textMuted }]}>
             Confirm your items and proceed to payment. You can return to the app after completing the payment.
           </Text>
-
-          <View style={styles.metaRow}>
-            <MetaPill title="Email" value={(user?.email || '—').toLowerCase()} />
-            <MetaPill title="Items" value={`${cartItems.length}`} />
-            <MetaPill title="Delivery" value="Free" />
-          </View>
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Order summary</Text>
-          <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-            {cartItems.length} items
-          </Text>
         </View>
 
         <View style={styles.list}>
           {cartItems.map((item: CartItem, index: number) => (
             <View
               key={`${item.id}-${index}`}
-              style={[styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[styles.itemRow, { borderColor: colors.border }]}
             >
-              <View style={[styles.itemIcon, { backgroundColor: colors.surfaceAlt }]}>
-                <AppIcon name="cube-outline" size={18} color={colors.secondary} />
+              <View style={[styles.itemIcon]}>
+                <AppIcon name="book-outline" size={20} color={colors.secondary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
@@ -130,7 +118,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
 
         <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TotalRow label="Subtotal" value={`₦${total.toLocaleString()}`} />
-          <TotalRow label="Delivery" value="₦0" />
+          <TotalRow label="Handling Fee" value="₦0" />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <TotalRow label="Total" value={`₦${total.toLocaleString()}`} bold />
         </View>
@@ -239,32 +227,22 @@ const styles = StyleSheet.create({
   detailsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
     marginBottom: 10,
   },
   detailsTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '600',
   },
   detailsSubtitle: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '500',
   },
   paragraph: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 10,
+    fontWeight: '500',
   },
   metaPill: {
     flex: 1,
@@ -281,26 +259,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sectionHeader: {
-    marginTop: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 10,
+    marginVertical: 16,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '900',
-  },
-  sectionHint: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
+    paddingHorizontal: 15,
   },
   list: {
     gap: 10,
     marginBottom: 12,
   },
   itemRow: {
-    borderWidth: 1,
+    borderBottomWidth: 1,
     borderRadius: 18,
     padding: 12,
     flexDirection: 'row',
@@ -308,24 +282,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   itemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemName: {
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 2,
   },
   itemMeta: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '500',
   },
   itemTotal: {
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '600',
   },
   totalCard: {
     borderWidth: 1,
@@ -340,12 +313,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   totalLabel: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '600',
   },
   totalValue: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '600',
   },
   divider: {
     height: 1,

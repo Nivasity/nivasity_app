@@ -41,7 +41,7 @@ const ThemeRow = ({
     >
       <View style={styles.optionLeft}>
         <View style={[styles.optionIcon, { backgroundColor: colors.surfaceAlt }]}>
-          <AppIcon name={value === 'dark' ? 'moon-outline' : value === 'light' ? 'sunny-outline' : 'options-outline'} size={18} color={colors.secondary} />
+          <AppIcon name={value === 'dark' ? 'moon-outline' : value === 'light' ? 'sunny-outline' : 'phone-portrait-outline'} size={18} color={colors.secondary} />
         </View>
         <Text style={[styles.optionLabel, { color: colors.text }]}>{label}</Text>
       </View>
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '600',
     letterSpacing: -0.2,
   },
   optionRow: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '500',
   },
 });
 

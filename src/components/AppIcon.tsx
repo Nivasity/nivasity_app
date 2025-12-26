@@ -35,10 +35,12 @@ export type AppIconName =
   | 'sparkles-outline'
   | 'settings-outline'
   | 'location-outline'
+  | 'phone-portrait-outline'
   | 'link-outline'
   | 'share-social-outline'
   | 'download-outline'
   | 'close-outline'
+  | 'create-outline'
   | 'help-circle-outline'
   | 'log-out-outline'
   // Order status icons
