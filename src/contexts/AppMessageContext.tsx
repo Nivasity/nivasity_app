@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   dialogMessage: {
     marginTop: 8,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -323,13 +323,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     minHeight: 44,
-    paddingHorizontal: 14,
+    paddingHorizontal: 20,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
   },
   toastWrap: {

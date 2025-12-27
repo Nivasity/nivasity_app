@@ -35,7 +35,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     [user?.name]
   );
 
-  const headerBackground = isDark ? colors.surfaceAlt : colors.secondary;
   const themeLabel = useMemo(() => {
     const map: Record<AppThemeMode, string> = {
       system: 'System',
@@ -117,16 +116,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     else pickAndUploadAvatar();
   };
 
+  const confirmLogout = () => {
+    appMessage.confirm({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      destructive: true,
+      onConfirm: logout,
+    });
+  };
+
   return (
     <SafeAreaView
       edges={['top', 'bottom']}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.secondary }]}
     >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 30 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { backgroundColor: headerBackground }]}>
+        <View style={[styles.header, { backgroundColor: colors.secondary }]}>
           <View style={styles.fireworks}>
             <View style={[styles.spark, styles.sparkOne]} />
             <View style={[styles.spark, styles.sparkTwo]} />
@@ -211,7 +221,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               value={themeLabel}
               onPress={() => setThemeVisible(true)}
             />
-            <Divider />
+          </View>
+
+          <View style={{ height: 14 }} />
+
+          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <Row
               icon="shield-checkmark-outline"
               label="Privacy policy"
@@ -229,8 +243,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               label="About"
               onPress={() => navigation.navigate('StaticPage', { page: 'about' })}
             />
-            <Divider />
-            <Row icon="log-out-outline" label="Logout" tone="danger" onPress={logout} />
+          </View>
+
+          <View style={{ height: 14 }} />
+
+          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Row icon="log-out-outline" label="Logout" tone="danger" onPress={confirmLogout} />
           </View>
         </View>
       </ScrollView>
@@ -326,7 +344,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 90,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.50)',
   },
   sparkOne: {
     left: -60,
@@ -351,11 +369,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     marginTop: -70,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
+    borderRadius: 30,
     paddingHorizontal: 16,
     paddingTop: 70,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   avatarWrap: {
     position: 'absolute',
