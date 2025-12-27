@@ -1,19 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as ExpoLinking from 'expo-linking';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
-import { orderAPI, paymentAPI } from '../services/api';
+import { paymentAPI } from '../services/api';
 import { CartItem } from '../types';
 
 interface CheckoutScreenProps {
   navigation: any;
   route: any;
 }
+
+WebBrowser.maybeCompleteAuthSession();
 
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -40,9 +44,29 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
 
     setLoading(true);
     try {
-      const order = await orderAPI.createOrder(cartItems);
-      const payment = await paymentAPI.initiatePayment(order.id, total);
-      await Linking.openURL(payment.paymentUrl);
+      const returnUrl = ExpoLinking.createURL('payment');
+      const payment = await paymentAPI.initPayment({ redirectUrl: returnUrl });
+
+      const result = await WebBrowser.openAuthSessionAsync(payment.payment_url, returnUrl, {
+        showInRecents: true,
+      });
+
+      if (result.type === 'success') {
+        navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref });
+        return;
+      }
+
+      appMessage.alert({
+        title: 'Verify payment',
+        message: 'After completing payment, tap Verify to confirm your transaction.',
+        actions: [
+          {
+            text: 'Verify',
+            onPress: () => navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref }),
+          },
+          { text: 'Close', style: 'cancel', onPress: () => undefined },
+        ],
+      });
     } catch (error: any) {
       appMessage.alert({
         title: 'Payment Failed',
@@ -80,7 +104,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
             <View style={{ flex: 1 }}>
               <Text style={[styles.detailsTitle, { color: colors.text }]}>Secure payment</Text>
             </View>
-            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>Powered by Interswitch</Text>
+            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>Powered by Flutterwave</Text>
           </View>
 
           <Text style={[styles.paragraph, { color: colors.textMuted }]}>
@@ -103,7 +127,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
-                  {item.name}
+                  {item.courseCode || item.category || item.name}
                 </Text>
                 <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
                   Qty {item.quantity} · ₦{item.price.toLocaleString()}

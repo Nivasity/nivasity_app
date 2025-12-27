@@ -3,8 +3,6 @@ import { FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
-import { DEMO_DATA_ENABLED } from '../config/demo';
-import { demoOrders } from '../data/demo';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
 import { Order } from '../types';
@@ -27,19 +25,10 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   const loadOrders = useCallback(async () => {
     try {
       const data = await orderAPI.getOrders();
-      const safeData = data || [];
-      if (safeData.length === 0 && DEMO_DATA_ENABLED) {
-        setOrders(demoOrders);
-      } else {
-        setOrders(safeData);
-      }
+      setOrders(data || []);
       setIsOffline(false);
     } catch (error) {
-      if (DEMO_DATA_ENABLED) {
-        setOrders(demoOrders);
-      } else {
-        setOrders([]);
-      }
+      setOrders([]);
       setIsOffline(true);
       console.warn('Orders offline: could not reach API');
     } finally {

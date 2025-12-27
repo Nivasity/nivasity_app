@@ -3,13 +3,11 @@ import { FlatList, Image, RefreshControl, ScrollView, Share, StyleSheet, Text, T
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
-import { DEMO_DATA_ENABLED } from '../config/demo';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import Loading from '../components/Loading';
-import { computeDashboardStats, demoOrders, demoProducts } from '../data/demo';
-import { dashboardAPI, orderAPI, storeAPI } from '../services/api';
+import { orderAPI, storeAPI } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import OrderListItem from '../components/OrderListItem';
@@ -31,54 +29,37 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
-  const [dataSource, setDataSource] = useState<'api' | 'demo'>('api');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
 
+  const computeStats = (orders: Order[]): DashboardStats => {
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter((o) => o.status === 'pending' || o.status === 'processing').length;
+    const totalSpent = orders.filter((o) => o.status !== 'cancelled' && o.status !== 'failed').reduce((sum, o) => sum + (o.total || 0), 0);
+    return { totalOrders, pendingOrders, totalSpent };
+  };
+
   const loadDashboard = useCallback(async () => {
-    try {
-      const [statsData, ordersData] = await Promise.all([
-        dashboardAPI.getStudentStats(),
-        orderAPI.getOrders(),
-      ]);
-      const safeOrders = ordersData || [];
-      let materials: Product[] = [];
-      try {
-        materials = (await storeAPI.getProducts()) || [];
-      } catch {
-        materials = [];
-      }
-      if (materials.length === 0 && DEMO_DATA_ENABLED) {
-        materials = demoProducts;
-      }
-      setTopMaterials(materials.slice(0, 3));
-      if (safeOrders.length === 0 && DEMO_DATA_ENABLED) {
-        setStats(computeDashboardStats(demoOrders));
-        setRecentOrders(demoOrders.slice(0, 5));
-        setDataSource('demo');
-      } else {
-        setStats(statsData);
-        setRecentOrders(safeOrders.slice(0, 5));
-        setDataSource('api');
-      }
-      setIsOffline(false);
-    } catch (error) {
-      if (DEMO_DATA_ENABLED) {
-        setStats(computeDashboardStats(demoOrders));
-        setRecentOrders(demoOrders.slice(0, 5));
-        setTopMaterials(demoProducts.slice(0, 3));
-        setDataSource('demo');
-      } else {
-        setStats({ totalOrders: 0, pendingOrders: 0, totalSpent: 0 });
-        setRecentOrders([]);
-        setTopMaterials([]);
-      }
-      setIsOffline(true);
+    const [ordersRes, materialsRes] = await Promise.allSettled([
+      orderAPI.getOrders({ page: 1, limit: 20 }),
+      storeAPI.getMaterials({ page: 1, limit: 3, sort: 'recommended' }),
+    ]);
+
+    const nextOrders = ordersRes.status === 'fulfilled' ? ordersRes.value || [] : [];
+    const nextMaterials =
+      materialsRes.status === 'fulfilled' ? materialsRes.value.materials || [] : [];
+
+    setRecentOrders(nextOrders.slice(0, 5));
+    setStats(computeStats(nextOrders));
+    setTopMaterials(nextMaterials.slice(0, 3));
+
+    setIsOffline(ordersRes.status === 'rejected' || materialsRes.status === 'rejected');
+    if (ordersRes.status === 'rejected' || materialsRes.status === 'rejected') {
       console.warn('Dashboard offline: could not reach API');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
+
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -205,7 +186,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           </View>
         </View>
 
-        {topMaterials.length > 0 && (
+        {topMaterials && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Materials</Text>
@@ -220,15 +201,22 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             </View>
 
             <FlatList
-              data={topMaterials.slice(0, 6)}
+              data={topMaterials.slice(0, 3)}
               keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: 12, paddingRight: 8 }}
+              ListEmptyComponent={
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                    {isOffline ? 'Could not load materials' : 'No materials yet'}
+                  </Text>
+                </View>
+              }
               renderItem={({ item }) => (
                 <View style={{ width: 350, flexShrink: 0 }}>
                   <StoreCard
-                    code={item.category || ''}
+                    code={item.courseCode || item.materialCode || ''}
                     name={item.name}
                     status={item.available === false ? 'Unavailable' : 'Available'}
                     date={
@@ -672,6 +660,18 @@ const styles = StyleSheet.create({
   materialCtaText: {
     fontSize: 12,
     fontWeight: '900',
+  },
+  emptyCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   checkoutFabWrap: {
     position: 'absolute',

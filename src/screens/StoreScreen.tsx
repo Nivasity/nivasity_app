@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button as PaperButton, Dialog, Portal, RadioButton } from 'react-native-paper';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
-import { DEMO_DATA_ENABLED } from '../config/demo';
-import { demoProducts } from '../data/demo';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
@@ -14,52 +12,94 @@ import { Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
+import { ShimmerBlock } from '../components/Shimmer';
 
 interface StoreScreenProps {
   navigation: any;
 }
 
-type SortOption = 'recommended' | 'price_asc' | 'price_desc';
+type SortOption = 'recommended' | 'low-high' | 'high-low';
+
+type StoreListItem = Product | { id: string; __shimmer: true };
+
+const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
+  id: `shimmer-${idx}`,
+  __shimmer: true,
+}));
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const { items: cartItems, count: cartCount, lastActionAt, has, toggle } = useCart();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [materials, setMaterials] = useState<Product[]>([]);
+  const [pagination, setPagination] = useState<{
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  } | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
+  const showCardsShimmer = loading && !refreshing && !loadingMore;
+
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(query.trim()), 350);
+    return () => clearTimeout(handle);
+  }, [query]);
+
+  const loadPage = useCallback(
+    async (args: { nextPage: number; append: boolean }) => {
+      if (args.append) setLoadingMore(true);
+      try {
+        const result = await storeAPI.getMaterials({
+          page: args.nextPage,
+          limit: 20,
+          search: search || undefined,
+          sort: sortOption,
+        });
+
+        setMaterials((current) => {
+          if (!args.append) return result.materials;
+          const seen = new Set(current.map((m) => m.id));
+          return [...current, ...result.materials.filter((m) => !seen.has(m.id))];
+        });
+        setPagination(result.pagination);
+        setPage(result.pagination.page || args.nextPage);
+        setIsOffline(false);
+      } catch {
+        if (!args.append) {
+          setMaterials([]);
+          setPagination(null);
+          setPage(1);
+        }
+        setIsOffline(true);
+        console.warn('Store offline: could not reach API');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    [search, sortOption]
+  );
+
   const loadProducts = useCallback(async () => {
-    try {
-      const data = await storeAPI.getProducts();
-      const safeData = data || [];
-      if (safeData.length === 0 && DEMO_DATA_ENABLED) {
-        setProducts(demoProducts);
-      } else {
-        setProducts(safeData);
-      }
-      setIsOffline(false);
-    } catch (error) {
-      if (DEMO_DATA_ENABLED) {
-        setProducts(demoProducts);
-      } else {
-        setProducts([]);
-      }
-      setIsOffline(true);
-      console.warn('Store offline: could not reach API');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    setLoading(true);
+    setPagination(null);
+    setPage(1);
+    await loadPage({ nextPage: 1, append: false });
+  }, [loadPage]);
 
   useEffect(() => {
     loadProducts();
@@ -67,7 +107,9 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadProducts();
+    setPagination(null);
+    setPage(1);
+    loadPage({ nextPage: 1, append: false });
   };
 
   const goToCheckout = () => {
@@ -78,34 +120,11 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
     navigation.navigate('Checkout', { cartItems });
   };
 
-  const categories = useMemo(() => {
-    const unique = new Set<string>();
-    for (const product of products) {
-      if (product.category) unique.add(product.category);
-    }
-    return ['All', ...Array.from(unique)];
-  }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    let list = products;
-
-    if (normalized.length > 0) {
-      list = list.filter((item) => `${item.name} ${item.description}`.toLowerCase().includes(normalized));
-    }
-
-    if (selectedCategory !== 'All') {
-      list = list.filter((item) => item.category === selectedCategory);
-    }
-
-    if (sortOption === 'price_asc') {
-      list = [...list].sort((a, b) => a.price - b.price);
-    } else if (sortOption === 'price_desc') {
-      list = [...list].sort((a, b) => b.price - a.price);
-    }
-
-    return list;
-  }, [products, query, selectedCategory, sortOption]);
+  const canLoadMore = useMemo(() => {
+    if (!pagination) return false;
+    if (pagination.total_pages && page >= pagination.total_pages) return false;
+    return materials.length < pagination.total;
+  }, [materials.length, page, pagination]);
 
   const shareProduct = async (product: Product) => {
     try {
@@ -129,30 +148,26 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
     });
   };
 
-  const renderProduct = ({ item }: { item: Product }) => {
-    const inCart = has(item.id);
-    const isAvailable = item.available !== false;
+  const renderProduct = (material: Product) => {
+    const inCart = has(material.id);
+    const isAvailable = material.available !== false;
     return (
       <StoreCard
-        code={item.category || 'CSC 112'}
-        name={item.name}
+        code={material.courseCode || material.materialCode || ''}
+        name={material.name}
         status={isAvailable ? 'Available' : 'Unavailable'}
-        date={formatCardDate(item.deadlineAt || item.createdAt)}
-        price={`₦${item.price.toLocaleString()}`}
+        date={formatCardDate(material.deadlineAt || material.createdAt)}
+        price={`₦${material.price.toLocaleString()}`}
         marked={inCart}
-        onAdd={isAvailable ? () => toggle(item) : undefined}
-        onShare={() => shareProduct(item)}
+        onAdd={isAvailable ? () => toggle(material) : undefined}
+        onShare={() => shareProduct(material)}
         onPress={() => {
-          setActiveProduct(item);
+          setActiveProduct(material);
           setDetailsOpen(true);
         }}
       />
     );
   };
-
-  if (loading) {
-    return <Loading message="Loading products..." />;
-  }
 
   return (
     <SafeAreaView
@@ -200,13 +215,26 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
+      <FlatList<StoreListItem>
+        data={(showCardsShimmer ? SHIMMER_ITEMS : materials) as StoreListItem[]}
+        renderItem={({ item }) => ('__shimmer' in item ? <StoreCardShimmer /> : renderProduct(item))}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 30 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onEndReached={() => {
+          if (loading || refreshing || loadingMore) return;
+          if (!canLoadMore) return;
+          loadPage({ nextPage: page + 1, append: true });
+        }}
+        onEndReachedThreshold={0.55}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 16 }}>
+              <ActivityIndicator color={colors.accent} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -230,34 +258,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         >
           <Dialog.Title style={[styles.filterTitle, { color: colors.text }]}>Search & Filter</Dialog.Title>
           <Dialog.Content>
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Category</Text>
-            <View style={styles.filterChips}>
-              {categories.map((category) => {
-                const active = category === selectedCategory;
-                return (
-                  <TouchableOpacity
-                    key={category}
-                    onPress={() => setSelectedCategory(category)}
-                    style={[
-                      styles.filterChip,
-                      {
-                        backgroundColor: active ? colors.accent : colors.surfaceAlt,
-                        borderColor: active ? colors.accent : colors.border,
-                      },
-                    ]}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Filter category ${category}`}
-                  >
-                    <Text style={[styles.filterChipText, { color: active ? colors.onAccent : colors.text }]}>
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted, marginTop: 14 }]}>Sort by</Text>
+            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
             <RadioButton.Group
               onValueChange={(value) => setSortOption(value as SortOption)}
               value={sortOption}
@@ -271,14 +272,14 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
               />
               <RadioButton.Item
                 label="Price: low to high"
-                value="price_asc"
+                value="low-high"
                 color={colors.accent}
                 uncheckedColor={colors.border}
                 labelStyle={{ color: colors.text, fontWeight: '700' }}
               />
               <RadioButton.Item
                 label="Price: high to low"
-                value="price_desc"
+                value="high-low"
                 color={colors.accent}
                 uncheckedColor={colors.border}
                 labelStyle={{ color: colors.text, fontWeight: '700' }}
@@ -289,7 +290,6 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
           <Dialog.Actions>
             <PaperButton
               onPress={() => {
-                setSelectedCategory('All');
                 setSortOption('recommended');
               }}
               textColor={colors.textMuted}
@@ -316,6 +316,25 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         }}
       />
     </SafeAreaView>
+  );
+};
+
+const StoreCardShimmer = () => {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.cardShimmerWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+      <View style={styles.cardShimmerHeader}>
+        <ShimmerBlock height={18} width="68%" radius={10} />
+        <ShimmerBlock height={14} width="38%" radius={10} style={{ marginTop: 10 }} />
+      </View>
+      <View style={styles.cardShimmerMeta}>
+        <ShimmerBlock height={14} width="55%" radius={10} />
+      </View>
+      <View style={styles.cardShimmerBottomRow}>
+        <ShimmerBlock height={36} width={140} radius={999} />
+        <ShimmerBlock height={46} width={46} radius={23} />
+      </View>
+    </View>
   );
 };
 
@@ -394,6 +413,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 130,
+  },
+  cardShimmerWrap: {
+    width: '100%',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderRadius: 25,
+    padding: 18,
+    minHeight: 190,
+  },
+  cardShimmerHeader: {
+    paddingTop: 8,
+    marginBottom: 14,
+  },
+  cardShimmerMeta: {
+    marginTop: 2,
+  },
+  cardShimmerBottomRow: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   emptyContainer: {
     paddingVertical: 60,

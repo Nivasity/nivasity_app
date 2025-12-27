@@ -290,12 +290,6 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
     setPasswordLoading(true);
     try {
-      if (user?.id === 'demo') {
-        appMessage.toast({ status: 'success', message: 'Password changed (demo).' });
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        return;
-      }
-
       const res = await authAPI.changePassword(passwordData.currentPassword, passwordData.newPassword);
       appMessage.toast({ status: 'success', message: res.message || 'Password changed.' });
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -327,11 +321,6 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     try {
-      if (user?.id === 'demo') {
-        await logout();
-        return;
-      }
-
       const res = await authAPI.deleteAccount(deletePassword);
       appMessage.alert({
         title: 'Account deleted',

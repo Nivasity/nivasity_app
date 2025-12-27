@@ -263,7 +263,7 @@ const LineItem = ({ item }: { item: CartItem }) => {
       </View>
       <View style={{ flex: 1, paddingRight: 10 }}>
         <AppText style={[styles.lineTitle, { color: colors.text }]} numberOfLines={1}>
-          {item.name}
+          {item.courseCode || item.category || item.name}
         </AppText>
         <AppText style={[styles.lineSub, { color: colors.textMuted }]} numberOfLines={1}>
           Qty {item.quantity} • ₦{item.price.toLocaleString()}

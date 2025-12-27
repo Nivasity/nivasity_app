@@ -623,34 +623,204 @@ export const referenceAPI = {
   },
 };
 
-// Product/Store APIs
+type MaterialListItem = {
+  id: number;
+  code?: string;
+  title: string;
+  course_code?: string;
+  price: number;
+  quantity?: number;
+  due_date?: string;
+  dept_name?: string;
+  faculty_name?: string;
+  seller_name?: string;
+  is_purchased?: boolean;
+  created_at?: string;
+};
+
+type CartViewItem = {
+  id: number;
+  title: string;
+  course_code?: string;
+  price: number;
+  status?: string;
+  dept_name?: string;
+  seller_name?: string;
+};
+
+const mapMaterialToProduct = (item: MaterialListItem): Product => ({
+  id: String(item.id),
+  name: item.title,
+  description: `${item.course_code || ''}${item.dept_name ? ` • #${item.code}` : ''}`.trim(),
+  price: item.price,
+  courseCode: item.course_code || undefined,
+  materialCode: item.code || undefined,
+  available: item.quantity ? item.quantity > 0 : true,
+  createdAt: item.created_at,
+  department: item.dept_name,
+  faculty: item.faculty_name,
+  deadlineAt: item.due_date,
+});
+
+const mapCartViewItemToCartItem = (item: CartViewItem): CartItem => ({
+  id: String(item.id),
+  name: item.title,
+  description: `${item.course_code || ''}${item.dept_name ? ` • ${item.dept_name}` : ''}`.trim(),
+  price: item.price,
+  courseCode: item.course_code || undefined,
+  available: true,
+  department: item.dept_name,
+  quantity: 1,
+});
+
+type MaterialsPagination = {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+};
+
+// Product/Store APIs (Materials)
 export const storeAPI = {
-  getProducts: async (): Promise<Product[]> => {
-    const response = await api.get('/products');
-    return response.data;
+  getMaterials: async (args?: {
+    search?: string;
+    sort?: 'recommended' | 'low-high' | 'high-low';
+    page?: number;
+    limit?: number;
+  }): Promise<{ materials: Product[]; pagination: MaterialsPagination }> => {
+    const params = new URLSearchParams();
+    if (args?.search) params.set('search', args.search);
+    if (args?.sort) params.set('sort', args.sort);
+    if (args?.page) params.set('page', String(args.page));
+    if (args?.limit) params.set('limit', String(args.limit));
+
+    const suffix = params.toString();
+    const response = await api.get<ApiResponse<{ materials: MaterialListItem[] } & { pagination: MaterialsPagination }>>(
+      `/materials/list.php${suffix ? `?${suffix}` : ''}`
+    );
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load materials');
+    }
+    return {
+      materials: (response.data.data.materials || []).map(mapMaterialToProduct),
+      pagination: response.data.data.pagination,
+    };
+  },
+
+  getProducts: async (args?: {
+    search?: string;
+    sort?: 'recommended' | 'low-high' | 'high-low';
+    page?: number;
+    limit?: number;
+  }): Promise<Product[]> => {
+    const result = await storeAPI.getMaterials(args);
+    return result.materials;
   },
 
   getProduct: async (id: string): Promise<Product> => {
-    const response = await api.get(`/products/${id}`);
-    return response.data;
+    const response = await api.get<ApiResponse<MaterialListItem>>(`/materials/details.php?id=${encodeURIComponent(id)}`);
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load material');
+    }
+    return mapMaterialToProduct(response.data.data);
   },
 };
 
-// Order APIs
+export const cartAPI = {
+  add: async (materialId: string | number) => {
+    const response = await api.post<ApiResponse<{ total_items: number; cart_items: number[] }>>(
+      '/materials/cart-add.php',
+      { material_id: Number(materialId) }
+    );
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to add to cart');
+    }
+    return response.data.data;
+  },
+  remove: async (materialId: string | number) => {
+    const response = await api.post<ApiResponse<{ total_items: number; cart_items: number[] }>>(
+      '/materials/cart-remove.php',
+      { material_id: Number(materialId) }
+    );
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to remove from cart');
+    }
+    return response.data.data;
+  },
+  view: async (): Promise<{ items: CartItem[]; total_amount: number; total_items: number }> => {
+    const response = await api.get<ApiResponse<{ items: CartViewItem[]; total_amount: number; total_items: number }>>(
+      '/materials/cart-view.php'
+    );
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load cart');
+    }
+    return {
+      items: (response.data.data.items || []).map(mapCartViewItemToCartItem),
+      total_amount: response.data.data.total_amount,
+      total_items: response.data.data.total_items,
+    };
+  },
+};
+
+// Order APIs (Transactions)
+type TransactionItem = {
+  type?: string;
+  id: number;
+  title: string;
+  course_code?: string;
+  price: number;
+};
+type Transaction = {
+  id: number;
+  ref_id: string;
+  amount: number;
+  status: string;
+  items: TransactionItem[];
+  created_at: string;
+};
+
+const mapTransactionToOrder = (tx: Transaction): Order => ({
+  id: tx.ref_id || String(tx.id),
+  userId: '',
+  items: (tx.items || []).map((it) => ({
+    id: String(it.id),
+    name: it.title,
+    courseCode: it.course_code || undefined,
+    description: it.course_code || '',
+    price: it.price,
+    category: it.course_code || '',
+    quantity: 1,
+  })),
+  total: tx.amount,
+  status:
+    tx.status === 'successful' || tx.status === 'success'
+      ? 'completed'
+      : tx.status === 'pending'
+        ? 'processing'
+        : tx.status === 'failed'
+          ? 'failed'
+          : 'processing',
+  createdAt: tx.created_at,
+});
+
 export const orderAPI = {
-  createOrder: async (items: CartItem[]): Promise<Order> => {
-    const response = await api.post('/orders', { items });
-    return response.data;
-  },
+  getOrders: async (args?: { page?: number; limit?: number }): Promise<Order[]> => {
+    const page = args?.page ?? 1;
+    const limit = args?.limit ?? 20;
+    const response = await api.get<
+      ApiResponse<{ transactions: Transaction[]; pagination?: ReferencePagination }>
+    >(`/payment/transactions.php?page=${page}&limit=${limit}`);
 
-  getOrders: async (): Promise<Order[]> => {
-    const response = await api.get('/orders');
-    return response.data;
-  },
-
-  getOrder: async (id: string): Promise<Order> => {
-    const response = await api.get(`/orders/${id}`);
-    return response.data;
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load transactions');
+    }
+    const list = (response.data.data.transactions || []).slice().sort((a, b) => {
+      const at = new Date(a.created_at).getTime();
+      const bt = new Date(b.created_at).getTime();
+      if (Number.isNaN(at) || Number.isNaN(bt)) return 0;
+      return bt - at;
+    });
+    return list.map(mapTransactionToOrder);
   },
 };
 
@@ -664,14 +834,43 @@ export const dashboardAPI = {
 
 // Payment APIs (Interswitch)
 export const paymentAPI = {
-  initiatePayment: async (orderId: string, amount: number): Promise<{ paymentUrl: string; reference: string }> => {
-    const response = await api.post('/payments/initiate', { orderId, amount });
-    return response.data;
+  initPayment: async (args?: {
+    redirectUrl?: string;
+  }): Promise<{
+    tx_ref: string;
+    payment_url: string;
+    gateway: string;
+    amount: number;
+  }> => {
+    const payload = args?.redirectUrl ? { redirect_url: args.redirectUrl } : undefined;
+
+    const send = async (body?: any) => {
+      const response = await api.post<
+        ApiResponse<{ tx_ref: string; payment_url: string; gateway: string; amount: number }>
+      >('/payment/init.php', body);
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error(response.data.message || 'Failed to initialize payment');
+      }
+      return response.data.data;
+    };
+
+    try {
+      return await send(payload);
+    } catch (e) {
+      if (payload) return await send(undefined);
+      throw e;
+    }
   },
 
-  verifyPayment: async (reference: string): Promise<{ status: string; order: Order }> => {
-    const response = await api.post('/payments/verify', { reference });
-    return response.data;
+  verifyPayment: async (txRef: string): Promise<{ status: string; tx_ref: string; amount: number }> => {
+    const response = await api.get<ApiResponse<{ status: string; tx_ref: string; amount: number }>>(
+      `/payment/verify.php?tx_ref=${encodeURIComponent(txRef)}`
+    );
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to verify payment');
+    }
+    return response.data.data;
   },
 };
 

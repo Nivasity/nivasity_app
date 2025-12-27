@@ -91,12 +91,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
       setAvatarMode('uploading');
 
-      if (user.id === 'demo') {
-        updateUser({ ...user, avatar: uri });
-        appMessage.toast({ status: 'success', message: 'Profile photo updated (demo).' });
-        return;
-      }
-
       const updatedUser = await profileAPI.updateProfilePhoto({ file: { uri, name, type }, fallback: user });
       updateUser(updatedUser);
       appMessage.toast({ status: 'success', message: 'Profile photo updated.' });

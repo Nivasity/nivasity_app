@@ -3,6 +3,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import * as ExpoLinking from 'expo-linking';
 import AppIcon, { AppIconName } from '../components/AppIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -28,6 +29,7 @@ import StoreScreen from '../screens/StoreScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderReceiptScreen from '../screens/OrderReceiptScreen';
+import PaymentReturnScreen from '../screens/PaymentReturnScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -36,6 +38,21 @@ const TAB_BAR_BG = '#0B0B0C';
 const TAB_BAR_HEIGHT = 65;
 const TAB_BAR_WIDTH_RATIO = 0.68;
 const TAB_BAR_MAX_WIDTH = 420;
+
+const linking = {
+  prefixes: [ExpoLinking.createURL('/'), 'nivasity://'],
+  config: {
+    screens: {
+      PaymentReturn: {
+        path: 'payment',
+        parse: {
+          tx_ref: (value: string) => value,
+          status: (value: string) => value,
+        },
+      },
+    },
+  },
+};
 
 // Auth Stack Navigator
 const AuthStack = ({ initialRouteName }: { initialRouteName: 'Welcome' | 'Login' }) => {
@@ -139,7 +156,7 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer theme={createNavigationTheme(colors, isDark)}>
+    <NavigationContainer theme={createNavigationTheme(colors, isDark)} linking={linking as any}>
       {!isAuthenticated ? (
         <AuthStack initialRouteName={authEntryRoute} />
       ) : (
@@ -168,6 +185,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Checkout"
               component={CheckoutScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="PaymentReturn"
+              component={PaymentReturnScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

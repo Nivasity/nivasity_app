@@ -33,8 +33,6 @@ Confirm these before you build:
 - **Permissions**
   - Keep only what you actually use.
   - If you access photos/receipts, confirm `expo-media-library` plugin copy is correct (already present).
-- **Production toggles**
-  - Ensure demo/dev data is disabled in production (`EXPO_PUBLIC_DEMO_DATA` must not be `true`).
 
 Suggested `versionCode` addition:
 
@@ -54,14 +52,12 @@ This app reads public runtime variables at build time:
 
 - `EXPO_PUBLIC_API_BASE_URL` (default is production API if unset)
 - `EXPO_PUBLIC_ASSETS_BASE_URL` (default is production assets if unset)
-- `EXPO_PUBLIC_DEMO_DATA` (should be unset or `false` for production)
 
 For EAS, set them as secrets (recommended):
 
 ```bash
 eas secret:create --name EXPO_PUBLIC_API_BASE_URL --value "https://api.nivasity.com/v1"
 eas secret:create --name EXPO_PUBLIC_ASSETS_BASE_URL --value "https://assets.nivasity.com"
-eas secret:create --name EXPO_PUBLIC_DEMO_DATA --value "false"
 ```
 
 ## 4) Add EAS Build config (recommended)
@@ -156,7 +152,6 @@ You’ll need to connect a Google Play service account / credentials when prompt
 - Confirm auth flows work on a release build (login, register/verify OTP, forgot/reset password).
 - Confirm profile images load from `https://assets.nivasity.com/users/{profile_pic}` in production.
 - Confirm “academic details required” dialog shows when `dept_id` is missing.
-- Confirm app startup has no “demo” data enabled.
 - Confirm crash reporting/analytics approach (if used) and reflect it in Data Safety + Privacy Policy.
 
 ## 9) If you add Google Sign-In later (extra requirements)
@@ -165,4 +160,3 @@ You’ll need to connect a Google Play service account / credentials when prompt
 - Add correct Android SHA-1/SHA-256 signing fingerprints (debug + release/EAS).
 - Include the Android package name and correct redirect configuration (depends on the library you choose).
 - For Play Store, ensure the **release** signing key fingerprint is registered (EAS-managed or your own).
-

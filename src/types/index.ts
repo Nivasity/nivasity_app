@@ -47,6 +47,8 @@ export interface Product {
   price: number;
   image?: string;
   category?: string;
+  courseCode?: string;
+  materialCode?: string;
   available?: boolean;
   createdAt?: string;
   department?: string;

@@ -81,10 +81,10 @@ export const StoreCard: React.FC<StoreCardProps> = ({
 
         <View style={styles.header}>
           <Text style={[styles.name, { color: colors.onCard }]} numberOfLines={1}>
-            {name}
+            {code}
           </Text>
           <Text style={[styles.code, { color: colors.onCard }]} numberOfLines={1}>
-            {code}
+            {name}
           </Text>
         </View>
 
@@ -125,7 +125,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Share item"
         >
-          <AppIcon name="share-social-outline" size={25} color={colors.surface} />
+          <AppIcon name="share-social-outline" size={25} color={colors.onCard} />
         </TouchableOpacity>
       </CardContainer>
     </View>
