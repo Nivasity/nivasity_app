@@ -162,13 +162,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '600',
     letterSpacing: -0.2,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 16,
   },
   priceText: {
@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   value: {
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '600',
     flexShrink: 1,
     textAlign: 'right',
   },
