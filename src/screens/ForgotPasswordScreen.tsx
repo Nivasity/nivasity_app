@@ -207,10 +207,11 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
         </>
       ) : (
         <>
-          <AppText style={[styles.subtitle, { color: colors.textMuted }]}>
-            Enter the OTP from your email to continue.
-          </AppText>
-
+          {resetStage === 'otp' && (
+            <AppText style={[styles.subtitle, { color: colors.textMuted }]}>
+              Enter the OTP from your email to continue.
+            </AppText>
+          )}
           <View style={styles.slideViewport} onLayout={(e) => setStageWidth(e.nativeEvent.layout.width)}>
             {stageWidth ? (
               <Animated.View style={[styles.slideRow, { width: stageWidth * 2, transform: [{ translateX }] }]}>
@@ -230,9 +231,6 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
                       </AppText>
                     </View>
                   ) : null}
-                  <AppText style={[styles.hint, { color: colors.textMuted }]}>
-                    OTP expires after 10 minutes. You can request a fresh code anytime.
-                  </AppText>
                 </View>
 
                 <View style={[styles.slide, { width: stageWidth }]}>
