@@ -23,7 +23,8 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
   const [step, setStep] = useState<Step>('request');
   const [resetStage, setResetStage] = useState<ResetStage>('otp');
   const [stageWidth, setStageWidth] = useState(0);
-  const stageAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const prevStage = useRef<ResetStage>('otp');
   const verifySeq = useRef(0);
 
   const [email, setEmail] = useState('');
@@ -79,21 +80,17 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
   useEffect(() => {
     if (step !== 'reset') return;
     if (!stageWidth) return;
-    Animated.timing(stageAnim, {
-      toValue: resetStage === 'password' ? 1 : 0,
+
+    const from = prevStage.current === resetStage ? 0 : prevStage.current === 'otp' ? stageWidth : -stageWidth;
+    slideAnim.setValue(from);
+    Animated.timing(slideAnim, {
+      toValue: 0,
       duration: 240,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [resetStage, stageAnim, stageWidth, step]);
-
-  const translateX = useMemo(() => {
-    if (!stageWidth) return 0 as unknown as number;
-    return stageAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, -stageWidth],
-    });
-  }, [stageAnim, stageWidth]);
+    prevStage.current = resetStage;
+  }, [resetStage, slideAnim, stageWidth, step]);
 
   const validateEmail = () => {
     const next: typeof errors = {};
@@ -214,8 +211,8 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
           )}
           <View style={styles.slideViewport} onLayout={(e) => setStageWidth(e.nativeEvent.layout.width)}>
             {stageWidth ? (
-              <Animated.View style={[styles.slideRow, { width: stageWidth * 2, transform: [{ translateX }] }]}>
-                <View style={[styles.slide, { width: stageWidth }]}>
+              <Animated.View style={[styles.slide, { transform: [{ translateX: slideAnim }] }]}>
+                {resetStage === 'otp' ? (
                   <OtpInput
                     value={otp}
                     onChange={setOtp}
@@ -223,21 +220,62 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
                     autoFocus
                     disabled={verifyingOtp || loading}
                   />
-                  {verifyingOtp ? (
-                    <View style={styles.verifyingRow}>
-                      <ActivityIndicator size="small" color={colors.secondary} />
-                      <AppText style={[styles.verifyingText, { color: colors.textMuted }]}>
-                        Verifying OTP...
-                      </AppText>
-                    </View>
-                  ) : null}
-                </View>
-
-                <View style={[styles.slide, { width: stageWidth }]}>
+                ) : (
                   <AppText style={[styles.subtitle, { color: colors.textMuted, marginBottom: 10 }]}>
                     Create a new password.
                   </AppText>
+                )}
 
+                {resetStage === 'otp' && verifyingOtp ? (
+                  <View style={styles.verifyingRow}>
+                    <ActivityIndicator size="small" color={colors.secondary} />
+                    <AppText style={[styles.verifyingText, { color: colors.textMuted }]}>
+                      Verifying OTP...
+                    </AppText>
+                  </View>
+                ) : null}
+
+                {resetStage === 'password' ? (
+                  <Input
+                    label="New password"
+                    placeholder="Create a new password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    errorText={errors.newPassword}
+                    isPassword
+                    autoComplete="password-new"
+                  />
+                ) : null}
+
+                {resetStage === 'password' ? (
+                  <Input
+                    label="Confirm password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    errorText={errors.confirmPassword}
+                    isPassword
+                    autoComplete="password-new"
+                  />
+                ) : null}
+
+                {resetStage === 'password' ? (
+                  <Button
+                    title="Reset password"
+                    onPress={handleResetPassword}
+                    loading={loading}
+                    style={styles.primaryButton}
+                  />
+                ) : null}
+              </Animated.View>
+            ) : (
+              resetStage === 'otp' ? (
+                <OtpInput value={otp} onChange={setOtp} errorText={errors.otp} autoFocus />
+              ) : (
+                <View style={styles.slide}>
+                  <AppText style={[styles.subtitle, { color: colors.textMuted, marginBottom: 10 }]}>
+                    Create a new password.
+                  </AppText>
                   <Input
                     label="New password"
                     placeholder="Create a new password"
@@ -256,7 +294,6 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
                     isPassword
                     autoComplete="password-new"
                   />
-
                   <Button
                     title="Reset password"
                     onPress={handleResetPassword}
@@ -264,9 +301,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
                     style={styles.primaryButton}
                   />
                 </View>
-              </Animated.View>
-            ) : (
-              <OtpInput value={otp} onChange={setOtp} errorText={errors.otp} autoFocus />
+              )
             )}
           </View>
 
@@ -343,9 +378,6 @@ const styles = StyleSheet.create({
   },
   slideViewport: {
     overflow: 'hidden',
-  },
-  slideRow: {
-    flexDirection: 'row',
   },
   slide: {
     paddingRight: 0,
