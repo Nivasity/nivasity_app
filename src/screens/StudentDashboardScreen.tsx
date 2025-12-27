@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    borderWidth: 3,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -565,12 +565,12 @@ const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 4,
   },
   courseSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   orderCard: {
     padding: 14,
