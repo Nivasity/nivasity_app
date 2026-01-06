@@ -38,42 +38,54 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
 
   const handlePayment = async () => {
     if (!cartItems || cartItems.length === 0) {
+      console.log('[Checkout] Cart is empty');
       appMessage.alert({ title: 'Cart is empty', message: 'Add at least one item to checkout.' });
       return;
     }
 
     setLoading(true);
+    console.log('[Checkout] Starting payment process...');
     try {
       const returnUrl = ExpoLinking.createURL('payment');
+      console.log('[Checkout] Created returnUrl:', returnUrl);
       const payment = await paymentAPI.initPayment({ redirectUrl: returnUrl });
+      console.log('[Checkout] Payment initialized:', payment);
 
       const result = await WebBrowser.openAuthSessionAsync(payment.payment_url, returnUrl, {
         showInRecents: true,
       });
+      console.log('[Checkout] WebBrowser.openAuthSessionAsync result:', result);
 
       if (result.type === 'success') {
+        console.log('[Checkout] Payment session success, navigating to PaymentReturn', payment.tx_ref);
         navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref });
         return;
       }
 
+      console.log('[Checkout] Payment not completed in browser, showing verify alert');
       appMessage.alert({
         title: 'Verify payment',
         message: 'After completing payment, tap Verify to confirm your transaction.',
         actions: [
           {
             text: 'Verify',
-            onPress: () => navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref }),
+            onPress: () => {
+              console.log('[Checkout] User tapped Verify, navigating to PaymentReturn', payment.tx_ref);
+              navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref });
+            },
           },
-          { text: 'Close', style: 'cancel', onPress: () => undefined },
+          { text: 'Close', style: 'cancel', onPress: () => { console.log('[Checkout] User closed verify alert'); return undefined; } },
         ],
       });
     } catch (error: any) {
+      console.log('[Checkout] Payment failed:', error);
       appMessage.alert({
         title: 'Payment Failed',
         message: error.response?.data?.message || 'Failed to initiate payment',
       });
     } finally {
       setLoading(false);
+      console.log('[Checkout] Payment process finished. Loading set to false.');
     }
   };
 

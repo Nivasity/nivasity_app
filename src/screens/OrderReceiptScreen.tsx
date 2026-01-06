@@ -193,9 +193,9 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
 
           <View style={styles.metaGrid}>
             <Meta label="Paid by" value={order.userId} />
-            <Meta label="Order ID" value={order.id} />
             <Meta label="Date" value={derived.createdLabel} />
-            <Meta label="Items" value={`${derived.itemCount}`} />
+            <MetaBig label="Order ID" value={order.id} />
+            <MetaSmall label="Items" value={`${derived.itemCount}`} />
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -241,10 +241,21 @@ const Meta = ({ label, value }: { label: string; value: string }) => {
     </View>
   );
 };
-const MetaFull = ({ label, value }: { label: string; value: string }) => {
+const MetaBig = ({ label, value }: { label: string; value: string }) => {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metaPillFull, { backgroundColor: colors.surfaceAlt }]}>
+    <View style={[styles.metaPillBig, { backgroundColor: colors.surfaceAlt }]}>
+      <AppText style={[styles.metaLabel, { color: colors.textMuted }]}>{label}</AppText>
+      <AppText style={[styles.metaValue, { color: colors.text }]} numberOfLines={2}>
+        {value}
+      </AppText>
+    </View>
+  );
+};
+const MetaSmall = ({ label, value }: { label: string; value: string }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.metaPillSmall, { backgroundColor: colors.surfaceAlt }]}>
       <AppText style={[styles.metaLabel, { color: colors.textMuted }]}>{label}</AppText>
       <AppText style={[styles.metaValue, { color: colors.text }]} numberOfLines={2}>
         {value}
@@ -341,13 +352,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
-  metaPillFull: {
-    width: '100%',
+  metaPillBig: {
+    width: '68%',
+    borderRadius: 16,
+    padding: 12,
+  },
+  metaPillSmall: {
+    width: '28%',
     borderRadius: 16,
     padding: 12,
   },
   metaLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     marginBottom: 6,
   },
