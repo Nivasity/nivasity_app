@@ -317,8 +317,8 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
   const isTyping = draft.trim().length > 0;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={[styles.iconButton]}
