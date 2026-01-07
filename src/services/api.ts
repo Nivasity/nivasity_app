@@ -321,20 +321,127 @@ export const authAPI = {
     idToken?: string;
     accessToken?: string;
   }): Promise<{ user: User; accessToken: string; refreshToken?: string }> => {
-    const payload: any = {};
-    if (args.idToken) payload.id_token = args.idToken;
-    if (args.accessToken) payload.access_token = args.accessToken;
+    if (!args.idToken && !args.accessToken) {
+      throw new Error('Google login failed: missing token');
+    }
 
-    const send = async (path: string) => {
+    const redactToken = (value: unknown) => {
+      const token = typeof value === 'string' ? value : '';
+      if (!token) return undefined;
+      const trimmed = token.trim();
+      if (trimmed.length <= 10) return `${trimmed.slice(0, 3)}…(${trimmed.length})`;
+      return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}(${trimmed.length})`;
+    };
+
+    const send = async (path: string, payload: any) => {
+      if (__DEV__) {
+        console.log(
+          '[GoogleLogin] request:',
+          JSON.stringify(
+            {
+              path,
+              payload: {
+                ...payload,
+                id_token: redactToken(payload?.id_token),
+                access_token: redactToken(payload?.access_token),
+              },
+            },
+            null,
+            2
+          )
+        );
+      }
       const response = await api.post<ApiResponse<GoogleLoginSuccessData>>(path, payload, { skipAuth: true } as any);
       if (response.data.status !== 'success' || !response.data.data?.access_token) {
-        throw new Error(response.data.message || 'Google login failed');
+        if (__DEV__) {
+          console.log(
+            '[GoogleLogin] response (error):',
+            JSON.stringify(
+              {
+                path,
+                status: response.data.status,
+                message: response.data.message,
+                data: response.data.data,
+              },
+              null,
+              2
+            )
+          );
+        }
+        const err: any = new Error(response.data.message || 'Google login failed');
+        err.isGoogleLoginBusinessError = true;
+        err.responseData = response.data;
+        throw err;
+      }
+      if (__DEV__) {
+        console.log(
+          '[GoogleLogin] response (success):',
+          JSON.stringify(
+            {
+              path,
+              status: response.data.status,
+              message: response.data.message,
+              data: response.data.data
+                ? {
+                    ...response.data.data,
+                    access_token: redactToken((response.data.data as any).access_token),
+                    refresh_token: redactToken((response.data.data as any).refresh_token),
+                  }
+                : response.data.data,
+            },
+            null,
+            2
+          )
+        );
       }
       return response.data.data;
     };
 
+    const sendToKnownPaths = async (payload: any) => {
+      // Prefer known-existing endpoint first to avoid 404 noise in production logs.
+      const paths = ['/auth/google-auth.php'];
+      let lastError: any;
+      for (const path of paths) {
+        try {
+          return await send(path, payload);
+        } catch (e: any) {
+          if (__DEV__) {
+            console.log(
+              '[GoogleLogin] request failed:',
+              JSON.stringify(
+                {
+                  path,
+                  message: e?.response?.data?.message || e?.message,
+                  status: e?.response?.status,
+                  data: e?.response?.data ?? e?.responseData,
+                },
+                null,
+                2
+              )
+            );
+          }
+          if (e?.isGoogleLoginBusinessError) throw e;
+          lastError = e;
+        }
+      }
+      throw lastError || new Error('Google login failed');
+    };
+
+    const fullPayload: any = {};
+    if (args.idToken) fullPayload.id_token = args.idToken;
+    if (args.accessToken) fullPayload.access_token = args.accessToken;
+
     let data: GoogleLoginSuccessData;
-    data = await send('/auth/google-auth.php');
+    try {
+      data = await sendToKnownPaths(fullPayload);
+    } catch (e: any) {
+      const msg = String(e?.response?.data?.message || e?.message || '');
+      if (args.accessToken && /google id token is not valid/i.test(msg)) {
+        data = await sendToKnownPaths({ access_token: args.accessToken });
+      } else {
+        throw e;
+      }
+    }
 
     const accessToken = data.access_token;
     const refreshToken = data.refresh_token;

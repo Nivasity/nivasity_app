@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "jsEngine": "hermes",
     "scheme": [
       "nivasity",
       "com.googleusercontent.apps.310503296847-4j1g6dsfrhsmc04tm8pcmd5hi7hpugp2"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import AuthScaffold from '../components/auth/AuthScaffold';
@@ -31,10 +31,19 @@ const getGoogleRedirectUri = (clientId: string | undefined) => {
   return `com.googleusercontent.apps.${match[1]}:/oauthredirect`;
 };
 
+const redactToken = (value: unknown) => {
+  const token = typeof value === 'string' ? value : '';
+  if (!token) return undefined;
+  const trimmed = token.trim();
+  if (trimmed.length <= 10) return `${trimmed.slice(0, 3)}…(${trimmed.length})`;
+  return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}(${trimmed.length})`;
+};
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, loginWithGoogle } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
+  const processedGoogleResponseKeyRef = useRef<string | null>(null);
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
@@ -92,6 +101,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         }
 
         const rawParams = (response as any).params as Record<string, any> | undefined;
+        if (__DEV__) {
+          console.log('[GoogleAuth] response.params:', {
+            ...rawParams,
+            id_token: redactToken(rawParams?.id_token),
+            access_token: redactToken(rawParams?.access_token),
+          });
+          console.log('[GoogleAuth] response.authentication:', {
+            ...((response as any).authentication || undefined),
+            idToken: redactToken((response as any).authentication?.idToken),
+            accessToken: redactToken((response as any).authentication?.accessToken),
+          });
+        }
         const idToken =
           String(rawParams?.id_token || '').trim() ||
           String((response as any).authentication?.idToken || '').trim() ||
@@ -102,12 +123,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           undefined;
 
         if (!idToken && !accessToken) {
+          const maybeCode = String(rawParams?.code || '').trim();
+          if (maybeCode) {
+            return;
+          }
+
           appMessage.alert({
             title: 'Google Login Failed',
             message: 'No token returned from Google. Please try again.',
           });
           return;
         }
+
+        const responseKey = String(
+          idToken ||
+            accessToken ||
+            String((response as any).authentication?.accessToken || '').trim() ||
+            String((response as any).url || '').trim()
+        );
+        if (processedGoogleResponseKeyRef.current === responseKey) return;
+        processedGoogleResponseKeyRef.current = responseKey;
 
         await loginWithGoogle({ idToken, accessToken });
       } catch (e: any) {
@@ -194,6 +229,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       setGooglePending(true);
       if (__DEV__) console.log('[GoogleAuth] redirectUri:', (request as any).redirectUri);
       const result = await promptAsync();
+      if (__DEV__) {
+        const rawParams = (result as any)?.params as Record<string, any> | undefined;
+        console.log('[GoogleAuth] promptAsync result:', {
+          ...result,
+          params: rawParams
+            ? {
+                ...rawParams,
+                id_token: redactToken(rawParams?.id_token),
+                access_token: redactToken(rawParams?.access_token),
+              }
+            : rawParams,
+          authentication: (result as any)?.authentication
+            ? {
+                ...(result as any).authentication,
+                idToken: redactToken((result as any).authentication?.idToken),
+                accessToken: redactToken((result as any).authentication?.accessToken),
+              }
+            : (result as any)?.authentication,
+        });
+      }
       if (result.type !== 'success') {
         if (result.type !== 'dismiss') {
           appMessage.alert({ title: 'Google Login', message: 'Login was cancelled.' });

@@ -42,7 +42,7 @@ const TAB_BAR_WIDTH_RATIO = 0.68;
 const TAB_BAR_MAX_WIDTH = 420;
 
 const linking = {
-  prefixes: [ExpoLinking.createURL('/'), 'nivasity://'],
+  prefixes: [ExpoLinking.createURL('/', { scheme: 'nivasity' }), 'nivasity://'],
   config: {
     screens: {
       PaymentReturn: {
