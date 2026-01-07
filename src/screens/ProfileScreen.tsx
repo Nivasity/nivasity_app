@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
+import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import SupportDrawer from '../components/SupportDrawer';
@@ -35,6 +38,156 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [avatarMode, setAvatarMode] = useState<'idle' | 'armed' | 'uploading'>('idle');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [resolvedSchoolName, setResolvedSchoolName] = useState<string>('');
+  const [fireworksSize, setFireworksSize] = useState<{ width: number; height: number } | null>(null);
+
+  const bubblesRef = React.useRef<
+    Array<{
+      size: number;
+      opacity: number;
+      positionX: Animated.Value;
+      positionY: Animated.Value;
+      coord: { x: number; y: number };
+      velocity: { x: number; y: number };
+    }>
+  >([
+    {
+      size: 180,
+      opacity: 0.8,
+      positionX: new Animated.Value(0),
+      positionY: new Animated.Value(0),
+      coord: { x: 0, y: 0 },
+      velocity: { x: 26, y: 18 },
+    },
+    {
+      size: 220,
+      opacity: 0.7,
+      positionX: new Animated.Value(0),
+      positionY: new Animated.Value(0),
+      coord: { x: 0, y: 0 },
+      velocity: { x: -22, y: 20 },
+    },
+    {
+      size: 120,
+      opacity: 0.65,
+      positionX: new Animated.Value(0),
+      positionY: new Animated.Value(0),
+      coord: { x: 0, y: 0 },
+      velocity: { x: 18, y: -24 },
+    },
+  ]);
+
+  useEffect(() => {
+    if (!fireworksSize) return;
+
+    const { width, height } = fireworksSize;
+    const safeWidth = Math.max(width, 1);
+    const safeHeight = Math.max(height, 1);
+
+    bubblesRef.current.forEach((b, idx) => {
+      const maxX = safeWidth - b.size * 0.65;
+      const maxY = safeHeight - b.size * 0.65;
+      const minX = -b.size * 0.35;
+      const minY = -b.size * 0.35;
+
+      const seedX = idx === 0 ? minX : idx === 1 ? maxX : safeWidth * 0.35;
+      const seedY = idx === 0 ? maxY : idx === 1 ? minY + safeHeight * 0.2 : safeHeight * 0.45;
+
+      const next = {
+        x: Math.max(minX, Math.min(maxX, seedX)),
+        y: Math.max(minY, Math.min(maxY, seedY)),
+      };
+      b.coord = next;
+      b.positionX.setValue(next.x);
+      b.positionY.setValue(next.y);
+    });
+  }, [fireworksSize]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!fireworksSize) return;
+
+      let cancelled = false;
+      const timeouts: Array<ReturnType<typeof setTimeout>> = [];
+
+      const animateBubble = (bubble: (typeof bubblesRef.current)[number]) => {
+        if (cancelled) return;
+
+        const { width, height } = fireworksSize;
+        const safeWidth = Math.max(width, 1);
+        const safeHeight = Math.max(height, 1);
+
+        const minX = -bubble.size * 0.35;
+        const minY = -bubble.size * 0.35;
+        const maxX = safeWidth - bubble.size * 0.65;
+        const maxY = safeHeight - bubble.size * 0.65;
+
+        const vx = bubble.velocity.x || 1;
+        const vy = bubble.velocity.y || 1;
+
+        const timeToWallX =
+          vx > 0 ? (maxX - bubble.coord.x) / vx : (minX - bubble.coord.x) / vx;
+        const timeToWallY =
+          vy > 0 ? (maxY - bubble.coord.y) / vy : (minY - bubble.coord.y) / vy;
+
+        const tx = Number.isFinite(timeToWallX) ? Math.max(0, timeToWallX) : 0;
+        const ty = Number.isFinite(timeToWallY) ? Math.max(0, timeToWallY) : 0;
+
+        const t = Math.min(tx, ty);
+        const durationMs = Math.max(650, Math.min(4200, Math.round(t * 1000)));
+
+        const nextX = Math.max(minX, Math.min(maxX, bubble.coord.x + vx * (durationMs / 1000)));
+        const nextY = Math.max(minY, Math.min(maxY, bubble.coord.y + vy * (durationMs / 1000)));
+
+        const hitX = Math.abs(nextX - minX) < 0.001 || Math.abs(nextX - maxX) < 0.001;
+        const hitY = Math.abs(nextY - minY) < 0.001 || Math.abs(nextY - maxY) < 0.001;
+
+        Animated.parallel([
+          Animated.timing(bubble.positionX, {
+            toValue: nextX,
+            duration: durationMs,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bubble.positionY, {
+            toValue: nextY,
+            duration: durationMs,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (!finished || cancelled) return;
+          bubble.coord = { x: nextX, y: nextY };
+          if (hitX) bubble.velocity.x = -bubble.velocity.x;
+          if (hitY) bubble.velocity.y = -bubble.velocity.y;
+
+          // Prevent perfectly repeating paths by tiny jitter on bounces
+          if (hitX || hitY) {
+            bubble.velocity.x += (Math.random() - 0.5) * 2.5;
+            bubble.velocity.y += (Math.random() - 0.5) * 2.5;
+          }
+
+          animateBubble(bubble);
+        });
+      };
+
+      bubblesRef.current.forEach((b) => {
+        // Nudge the loop so multiple bubbles don't sync up.
+        const t = setTimeout(() => {
+          if (!cancelled) animateBubble(b);
+        }, Math.round(Math.random() * 180));
+        timeouts.push(t);
+      });
+
+      return () => {
+        cancelled = true;
+        timeouts.forEach((t) => clearTimeout(t));
+        bubblesRef.current.forEach((b) => {
+          b.positionX.stopAnimation();
+          b.positionY.stopAnimation();
+        });
+      };
+    }, [fireworksSize])
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -192,10 +345,32 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, { backgroundColor: colors.secondary }]}>
-          <View style={styles.fireworks}>
-            <View style={[styles.spark, styles.sparkOne]} />
-            <View style={[styles.spark, styles.sparkTwo]} />
-            <View style={[styles.spark, styles.sparkThree]} />
+          <View
+            style={styles.fireworks}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              if (!width || !height) return;
+              setFireworksSize((prev) => {
+                if (prev && Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1) return prev;
+                return { width, height };
+              });
+            }}
+          >
+            {bubblesRef.current.map((b, idx) => (
+              <Animated.View
+                key={`bubble-${idx}`}
+                style={[
+                  styles.spark,
+                  {
+                    width: b.size,
+                    height: b.size,
+                    borderRadius: b.size / 2,
+                    opacity: b.opacity,
+                    transform: [{ translateX: b.positionX }, { translateY: b.positionY }],
+                  },
+                ]}
+              />
+            ))}
           </View>
         </View>
 
@@ -408,32 +583,10 @@ const styles = StyleSheet.create({
   },
   spark: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    left: 0,
+    top: 0,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.50)',
-  },
-  sparkOne: {
-    left: -60,
-    bottom: -40,
-    opacity: 0.8,
-  },
-  sparkTwo: {
-    right: -80,
-    top: 50,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    opacity: 0.7,
-  },
-  sparkThree: {
-    left: 90,
-    top: 110,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    opacity: 0.65,
   },
   sheet: {
     marginTop: -70,
