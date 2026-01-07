@@ -207,7 +207,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         if (mounted) setStats({ totalOrders: 0, totalSpent: 0, pendingOrders: 0 });
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [updateUser]);
 
   useEffect(() => {
@@ -242,7 +244,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, [updateUser, user, user?.institutionName, user?.school, user?.schoolId]);
+  }, [updateUser, user?.id, user?.institutionName, user?.school, user?.schoolId]);
 
   const initials = useMemo(
     () => (user?.name || 'U').trim().charAt(0).toUpperCase(),

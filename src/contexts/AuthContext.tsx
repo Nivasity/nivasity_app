@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, LoginCredentials, RegisterCredentials } from '../types';
 import { authAPI, onAuthInvalidated, profileAPI, referenceAPI } from '../services/api';
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  const ensureSchoolList = async () => {
+  const ensureSchoolList = useCallback(async () => {
     if (schoolListLoaded.current) return;
     if (schoolListPromise.current) return schoolListPromise.current;
     const promise = (async () => {
@@ -66,9 +66,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
     schoolListPromise.current = promise;
     return promise;
-  };
+  }, []);
 
-  const getSchoolNameById = async (rawId: User['schoolId']) => {
+  const getSchoolNameById = useCallback(async (rawId: User['schoolId']) => {
     if (rawId == null || rawId === '') return undefined;
     const schoolId = Number(rawId);
     if (!Number.isFinite(schoolId)) return undefined;
@@ -80,9 +80,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {
       return undefined;
     }
-  };
+  }, [ensureSchoolList]);
 
-  const hydrateProfile = async (existing?: User | null) => {
+  const hydrateProfile = useCallback(async (existing?: User | null) => {
     try {
       const profile = await authAPI.getCurrentUser();
       let merged: User = { ...(existing || profile), ...profile };
@@ -97,9 +97,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {
       // ignore (offline, token issues handled by interceptor)
     }
-  };
+  }, [getSchoolNameById]);
 
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const savedUser = await AsyncStorage.getItem('user');
@@ -114,9 +114,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [hydrateProfile]);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       const { user: nextUser } = await authAPI.login(credentials);
       setUser(nextUser);
@@ -125,9 +125,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, [hydrateProfile]);
 
-  const loginWithGoogle = async (args: { idToken?: string; accessToken?: string }) => {
+  const loginWithGoogle = useCallback(async (args: { idToken?: string; accessToken?: string }) => {
     try {
       const { user: nextUser } = await authAPI.googleLogin(args);
       setUser(nextUser);
@@ -136,18 +136,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, [hydrateProfile]);
 
-  const register = async (credentials: RegisterCredentials) => {
+  const register = useCallback(async (credentials: RegisterCredentials) => {
     try {
       const res = await authAPI.register(credentials);
       return { message: res.message };
     } catch (error) {
       throw error;
     }
-  };
+  }, []);
 
-  const verifyOtp = async (email: string, otp: string, meta?: { schoolName?: string }) => {
+  const verifyOtp = useCallback(async (email: string, otp: string, meta?: { schoolName?: string }) => {
     try {
       const { user: rawUser } = await authAPI.verifyRegistrationOtp(email, otp);
       const nextUser =
@@ -160,9 +160,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, [hydrateProfile]);
 
-  const updateAcademicInfo = async (data: { deptId: number | string; matricNo: string; admissionYear: string }) => {
+  const updateAcademicInfo = useCallback(async (data: { deptId: number | string; matricNo: string; admissionYear: string }) => {
     try {
       const admissionYearValue = (() => {
         const trimmed = (data.admissionYear || '').trim();
@@ -181,13 +181,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, [hydrateProfile, user]);
 
-  const dismissAcademicPrompt = () => {
+  const dismissAcademicPrompt = useCallback(() => {
     setAcademicPromptDismissed(true);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authAPI.logout();
       setUser(null);
@@ -196,34 +196,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error logging out:', error);
     }
-  };
+  }, []);
 
-  const updateUser = (updatedUser: User) => {
+  const updateUser = useCallback((updatedUser: User) => {
     setUser(updatedUser);
     AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-  };
+  }, []);
 
   const needsAcademicInfo =
     !!user && (user.deptId == null || user.deptId === '') && !academicPromptDismissed;
 
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      authEntryRoute,
+      needsAcademicInfo,
+      login,
+      loginWithGoogle,
+      register,
+      verifyOtp,
+      updateAcademicInfo,
+      dismissAcademicPrompt,
+      logout,
+      updateUser,
+    }),
+    [
+      user,
+      isLoading,
+      authEntryRoute,
+      needsAcademicInfo,
+      login,
+      loginWithGoogle,
+      register,
+      verifyOtp,
+      updateAcademicInfo,
+      dismissAcademicPrompt,
+      logout,
+      updateUser,
+    ]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        authEntryRoute,
-        needsAcademicInfo,
-        login,
-        loginWithGoogle,
-        register,
-        verifyOtp,
-        updateAcademicInfo,
-        dismissAcademicPrompt,
-        logout,
-        updateUser,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
