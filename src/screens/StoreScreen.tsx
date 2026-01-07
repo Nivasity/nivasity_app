@@ -13,6 +13,7 @@ import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
 import { ShimmerBlock } from '../components/Shimmer';
+import EmptyState from '../components/EmptyState';
 
 interface StoreScreenProps {
   navigation: any;
@@ -237,9 +238,23 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              {isOffline ? 'Offline — pull to refresh' : 'No items found'}
-            </Text>
+            <EmptyState
+              icon="bag-outline"
+              title={
+                isOffline
+                  ? 'You are offline'
+                  : search.trim().length > 0
+                    ? 'No matches'
+                    : 'No materials yet'
+              }
+              subtitle={
+                isOffline
+                  ? 'Pull down to refresh.'
+                  : search.trim().length > 0
+                    ? 'Try a different search.'
+                    : 'The store is empty right now.'
+              }
+            />
           </View>
         }
       />

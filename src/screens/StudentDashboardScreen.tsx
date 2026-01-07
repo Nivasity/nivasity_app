@@ -208,10 +208,12 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: 12, paddingRight: 8 }}
               ListEmptyComponent={
-                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                    {isOffline ? 'Could not load materials' : 'No materials yet'}
-                  </Text>
+                <View style={{ width: 350, flexShrink: 0 }}>
+                  <EmptyState
+                    icon="bag-outline"
+                    title={isOffline ? 'Could not load materials' : 'No materials yet'}
+                    subtitle={isOffline ? 'Check your connection and pull to refresh.' : 'Browse the store to start buying.'}
+                  />
                 </View>
               }
               renderItem={({ item }) => (
@@ -271,7 +273,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             <EmptyState
               icon="receipt-outline"
               title="No orders yet"
-              subtitle="Start buying materials in the store to see orders here."
+              subtitle="Start buying materials to see orders here."
             />
           )}
         </View>
