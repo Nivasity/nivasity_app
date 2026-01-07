@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,6 +16,8 @@ import { SupportTicketListItem, supportAPI } from '../services/api';
 type SupportTicketsScreenProps = {
   navigation: any;
 };
+
+const SKELETON_ROWS = Array.from({ length: 10 }, (_, i) => i);
 
 const toMimeType = (uri: string, mimeType?: string | null) => {
   const trimmed = (mimeType || '').trim();
@@ -64,6 +66,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
   const [tickets, setTickets] = useState<SupportTicketListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const shimmer = useRef(new Animated.Value(0)).current;
 
   const [composeVisible, setComposeVisible] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -89,6 +92,23 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
   useEffect(() => {
     loadTickets();
   }, [loadTickets]);
+
+  useEffect(() => {
+    if (!loading) return;
+    shimmer.setValue(0);
+    const anim = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      })
+    );
+    anim.start();
+    return () => {
+      anim.stop();
+    };
+  }, [loading, shimmer]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -196,6 +216,29 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
     );
   };
 
+  const shimmerOpacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
+  const renderSkeleton = () => (
+    <View style={{ paddingTop: 6 }} accessibilityLabel="Loading tickets">
+      {SKELETON_ROWS.map((idx) => (
+        <View key={idx} style={[styles.ticketRow, { borderBottomColor: colors.border }]}>
+          <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+            <Animated.View style={[styles.skeletonDot, { backgroundColor: colors.surface, opacity: shimmerOpacity }]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Animated.View
+              style={[styles.skeletonLine, { backgroundColor: colors.surfaceAlt, opacity: shimmerOpacity, width: '78%' }]}
+            />
+            <View style={{ height: 8 }} />
+            <Animated.View
+              style={[styles.skeletonLine, { backgroundColor: colors.surfaceAlt, opacity: shimmerOpacity, width: '52%' }]}
+            />
+          </View>
+          <View style={{ width: 18, height: 18 }} />
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.surface }]}>
       <View style={styles.header}>
@@ -226,7 +269,9 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          loading ? null : (
+          loading ? (
+            renderSkeleton()
+          ) : (
             <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>No support tickets yet</Text>
               <View style={{ height: 12 }} />
@@ -427,6 +472,15 @@ const styles = StyleSheet.create({
   ticketSub: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  skeletonDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 8,
   },
   fab: {
     position: 'absolute',

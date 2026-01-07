@@ -37,6 +37,9 @@ const toMimeType = (uri: string, mimeType?: string | null) => {
   return 'application/octet-stream';
 };
 
+const BASE_INPUT_HEIGHT = 32;
+const MAX_INPUT_HEIGHT = 100;
+
 const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -63,7 +66,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<{ uri: string; name: string; type: string } | null>(null);
-  const [inputHeight, setInputHeight] = useState(52);
+  const [inputHeight, setInputHeight] = useState(BASE_INPUT_HEIGHT);
   const [expandedTimes, setExpandedTimes] = useState<Record<string, boolean>>({});
 
   const listRef = useRef<FlatList<SupportTicketMessage> | null>(null);
@@ -192,7 +195,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     try {
       await supportAPI.replyToTicket({ ticketId: ticket.id, message: clean, attachment });
       setDraft('');
-      setInputHeight(52);
+      setInputHeight(BASE_INPUT_HEIGHT);
       setAttachment(null);
       await loadDetails();
       scrollToBottom();
@@ -207,7 +210,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     const fromMe = myUserId != null && item.user_id != null && Number(item.user_id) === myUserId;
     const role = (item.user_role || '').toLowerCase();
     const fromSupport = !fromMe && (role === 'admin' || /support/i.test(item.user_name || ''));
-    const bubbleBg = fromMe ? colors.accent : colors.surface;
+    const bubbleBg = fromMe ? colors.accent : colors.surfaceAlt;
     const bubbleBorder = fromMe ? 'transparent' : colors.border;
     const textColor = fromMe ? colors.onAccent : colors.text;
     const subColor = fromMe ? (isDark ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.88)') : colors.textMuted;
@@ -314,7 +317,10 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
   if (loading) return <Loading message="Loading conversation..." />;
 
+  const isClosed = (ticket?.status || '').toLowerCase() === 'closed';
   const isTyping = draft.trim().length > 0;
+  const inlineActionStyle =
+    inputHeight > 40 ? { alignSelf: 'flex-end' as const } : { alignSelf: 'center' as const };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -377,73 +383,92 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
           keyboardShouldPersistTaps="handled"
         />
 
-        <View style={[styles.composer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          {attachment ? (
-            <TouchableOpacity
-              onPress={() => setAttachment(null)}
-              style={[styles.attachmentPill, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Remove attachment"
-            >
-              <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
-              <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
-                {attachment.name}
-              </Text>
-              <AppIcon name="close-outline" size={14} color={colors.textMuted} />
-            </TouchableOpacity>
-          ) : null}
-
-          <View style={[styles.inputWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Message..."
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, { color: colors.text, height: inputHeight }]}
-              multiline
-              editable={!sending}
-              textAlignVertical="top"
-              onContentSizeChange={(e) => {
-                const next = Math.max(52, Math.min(140, Math.ceil(e.nativeEvent.contentSize.height)));
-                setInputHeight(next);
-              }}
-            />
-
-            {isTyping ? (
+        {!isClosed ? (
+          <View style={[styles.composer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            {attachment ? (
               <TouchableOpacity
-                onPress={sendMessage}
-                style={[
-                  styles.sendInline,
-                  {
-                    backgroundColor: sending ? colors.surfaceAlt : colors.accent,
-                    borderColor: colors.border,
-                  },
-                ]}
+                onPress={() => setAttachment(null)}
+                style={[styles.attachmentPill, { borderColor: colors.border }]}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel="Send message"
-                disabled={sending}
+                accessibilityLabel="Remove attachment"
               >
-                <AppIcon name="arrow-up" size={18} color={sending ? colors.textMuted : colors.onAccent} />
+                <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
+                <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
+                  {attachment.name}
+                </Text>
+                <AppIcon name="close-outline" size={14} color={colors.textMuted} />
               </TouchableOpacity>
-            ) : (
-              <View style={styles.actionsInline}>
+            ) : null}
+
+            <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Type your message..."
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { color: colors.text, height: inputHeight}]}
+                multiline
+                editable={!sending}
+                textAlignVertical={inputHeight > 40 ? 'top' : 'center'}
+                scrollEnabled={inputHeight >= MAX_INPUT_HEIGHT}
+                onContentSizeChange={(e) => {
+                  const nextHeight = e?.nativeEvent?.contentSize?.height;
+                  if (typeof nextHeight !== 'number' || !Number.isFinite(nextHeight)) return;
+                  const padded = Math.ceil(nextHeight + 5);
+                  const next = Math.max(BASE_INPUT_HEIGHT, Math.min(MAX_INPUT_HEIGHT, padded));
+                  setInputHeight((prev) => (prev === next ? prev : next));
+                }}
+              />
+
+              {isTyping ? (
                 <TouchableOpacity
-                  onPress={pickFile}
-                  style={[styles.plusButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+                  onPress={sendMessage}
+                  style={[
+                    styles.sendInline,
+                    {
+                      backgroundColor: sending ? colors.surfaceAlt : 'transparent',
+                    },
+                    inlineActionStyle,
+                  ]}
                   activeOpacity={0.85}
                   accessibilityRole="button"
-                  accessibilityLabel="Attach file"
+                  accessibilityLabel="Send message"
+                  disabled={sending}
                 >
-                  <AppIcon name="add" size={20} color={colors.textMuted} />
+                  <AppIcon name="arrow-up" size={20} color={sending ? colors.textMuted : colors.accent} />
                 </TouchableOpacity>
-              </View>
-            )}
+              ) : (
+                <View style={[styles.actionsInline, inlineActionStyle]}>
+                  <TouchableOpacity
+                    onPress={pickPhoto}
+                    style={[styles.gifPill, { borderColor: colors.border }]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Attach GIF"
+                  >
+                    <Text style={[styles.gifText, { color: colors.textMuted }]}>GIF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={pickFile}
+                    style={[styles.plusButton, { borderColor: colors.border }]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Attach file"
+                  >
+                    <AppIcon name="add" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
-
-          <View style={{ height: 10 + insets.bottom }} />
-        </View>
+        ) : (
+          <View style={[styles.closedFooter, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+            <Text style={[styles.closedText, { color: colors.textMuted }]}>
+              This ticket is closed.
+            </Text>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -451,7 +476,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  body: { flex: 1 },
+  body: { flex: 1, paddingBottom: 0 },
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -544,18 +569,19 @@ const styles = StyleSheet.create({
   composer: {
     borderTopWidth: 1,
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingVertical: 10,
+    gap: 10,
+    // marginBottom: -50,
   },
   attachmentPill: {
-    maxWidth: '100%',
+    width: '60%',
     height: 44,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
   },
   attachmentName: {
     maxWidth: 180,
@@ -563,19 +589,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   inputWrap: {
-    flex: 1,
-    borderRadius: 999,
+    width: '100%',
+    borderRadius: 30,
     borderWidth: 1,
+    overflow: 'hidden',
+    minHeight: 32,
     paddingStart: 14,
     paddingEnd: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    minHeight: 52,
-    paddingVertical: 10,
+    minHeight: 32,
+    paddingVertical: 0,
     paddingHorizontal: 0,
     fontSize: 13,
     fontWeight: '600',
@@ -584,24 +612,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingBottom: 6,
+  },
+  gifPill: {
+    height: 34,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gifText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: -0.2,
   },
   plusButton: {
     width: 34,
     height: 34,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendInline: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    borderWidth: 1,
+    width: 34,
+    height: 34,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+  },
+  closedFooter: {
+    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closedText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
