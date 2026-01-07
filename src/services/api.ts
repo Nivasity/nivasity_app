@@ -875,7 +875,13 @@ export type SupportTicketMessage = {
   user_name?: string;
   user_role?: string;
   message: string;
-  attachment?: string | null;
+  attachment?:
+    | string
+    | {
+        path: string;
+        original_name?: string;
+      }
+    | null;
   created_at: string;
 };
 

@@ -37,8 +37,9 @@ const toMimeType = (uri: string, mimeType?: string | null) => {
   return 'application/octet-stream';
 };
 
-const BASE_INPUT_HEIGHT = 32;
-const MAX_INPUT_HEIGHT = 100;
+const BASE_INPUT_HEIGHT = 52;
+const MAX_INPUT_HEIGHT = 140;
+const SUPPORT_ATTACHMENT_BASE_URL = 'https://funaab.nivasity.com/';
 
 const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
@@ -169,13 +170,20 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     setAttachment({ uri, name, type });
   };
 
-  const openAttachment = async (value?: string | null) => {
-    const url = (value || '').trim();
-    if (!url) return;
-    if (!/^https?:\/\//i.test(url)) {
-      appMessage.toast({ status: 'info', message: 'Attachment link is not available.' });
-      return;
-    }
+  const openAttachment = async (value?: SupportTicketMessage['attachment']) => {
+    const raw =
+      typeof value === 'string'
+        ? value
+        : value && typeof value === 'object'
+          ? String((value as any).path || '')
+          : '';
+
+    const cleaned = raw.trim();
+    if (!cleaned) return;
+
+    const url = /^https?:\/\//i.test(cleaned)
+      ? cleaned
+      : `${SUPPORT_ATTACHMENT_BASE_URL}${cleaned.replace(/^\/+/, '')}`;
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
@@ -291,7 +299,9 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
                     style={[styles.attachmentLabel, { color: fromMe ? colors.onAccent : colors.textMuted }]}
                     numberOfLines={1}
                   >
-                    Attachment
+                    {typeof item.attachment === 'object' && item.attachment
+                      ? String((item.attachment as any).original_name || 'Attachment')
+                      : 'Attachment'}
                   </Text>
                   <AppIcon name="open-outline" size={14} color={fromMe ? colors.onAccent : colors.textMuted} />
                 </TouchableOpacity>
