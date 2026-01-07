@@ -85,6 +85,12 @@ type ForgotPasswordSuccessData = {
   expires_in: number;
 };
 
+type GoogleLoginSuccessData = {
+  access_token: string;
+  refresh_token?: string;
+  user?: any;
+} & Record<string, any>;
+
 type ReferenceSchool = {
   id: number;
   name: string;
@@ -307,6 +313,52 @@ export const authAPI = {
     const user = mapLoginUser(response.data.data);
     const accessToken = response.data.data.access_token;
     const refreshToken = response.data.data.refresh_token;
+    await setSession({ user, accessToken, refreshToken });
+    return { user, accessToken, refreshToken };
+  },
+
+  googleLogin: async (args: {
+    idToken?: string;
+    accessToken?: string;
+  }): Promise<{ user: User; accessToken: string; refreshToken?: string }> => {
+    const payload: any = {};
+    if (args.idToken) payload.id_token = args.idToken;
+    if (args.accessToken) payload.access_token = args.accessToken;
+
+    const send = async (path: string) => {
+      const response = await api.post<ApiResponse<GoogleLoginSuccessData>>(path, payload, { skipAuth: true } as any);
+      if (response.data.status !== 'success' || !response.data.data?.access_token) {
+        throw new Error(response.data.message || 'Google login failed');
+      }
+      return response.data.data;
+    };
+
+    let data: GoogleLoginSuccessData;
+    data = await send('/auth/google-auth.php');
+
+    const accessToken = data.access_token;
+    const refreshToken = data.refresh_token;
+
+    const rawUser = (data as any).user ?? data;
+    const firstName = String(rawUser.first_name ?? rawUser.firstName ?? '').trim();
+    const lastName = String(rawUser.last_name ?? rawUser.lastName ?? '').trim();
+    const name = `${firstName} ${lastName}`.trim() || String(rawUser.name ?? rawUser.email ?? '').trim();
+
+    const user: User = {
+      id: String(rawUser.id ?? rawUser.user_id ?? ''),
+      email: String(rawUser.email ?? '').trim(),
+      name,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      phone: rawUser.phone ?? undefined,
+      avatar: toUserProfilePicUrl(rawUser.profile_pic ?? rawUser.profilePic ?? rawUser.avatar ?? null),
+      schoolId: rawUser.school_id ?? rawUser.schoolId ?? rawUser.school ?? undefined,
+      deptId: rawUser.dept_id ?? rawUser.deptId ?? rawUser.dept ?? undefined,
+      department: rawUser.dept_name ?? rawUser.department ?? undefined,
+      admissionYear: rawUser.adm_year ?? rawUser.admissionYear ?? undefined,
+      matricNumber: rawUser.matric_no ?? rawUser.matricNumber ?? undefined,
+    };
+
     await setSession({ user, accessToken, refreshToken });
     return { user, accessToken, refreshToken };
   },

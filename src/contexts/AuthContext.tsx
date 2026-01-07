@@ -10,6 +10,7 @@ interface AuthContextType {
   authEntryRoute: 'Welcome' | 'Login';
   needsAcademicInfo: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithGoogle: (args: { idToken?: string; accessToken?: string }) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<{ message: string }>;
   verifyOtp: (email: string, otp: string, meta?: { schoolName?: string }) => Promise<void>;
   updateAcademicInfo: (data: { deptId: number | string; matricNo: string; admissionYear: string }) => Promise<void>;
@@ -126,6 +127,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (args: { idToken?: string; accessToken?: string }) => {
+    try {
+      const { user: nextUser } = await authAPI.googleLogin(args);
+      setUser(nextUser);
+      setAcademicPromptDismissed(false);
+      hydrateProfile(nextUser);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const register = async (credentials: RegisterCredentials) => {
     try {
       const res = await authAPI.register(credentials);
@@ -203,6 +215,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         authEntryRoute,
         needsAcademicInfo,
         login,
+        loginWithGoogle,
         register,
         verifyOtp,
         updateAcademicInfo,

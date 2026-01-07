@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppIcon from '../components/AppIcon';
@@ -10,13 +10,29 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoginCredentials } from '../types';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface LoginScreenProps {
   navigation: any;
 }
 
+const GOOGLE_WEB_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as string | undefined);
+const GOOGLE_ANDROID_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string | undefined);
+const GOOGLE_IOS_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string | undefined) || '';
+
+const getGoogleRedirectUri = (clientId: string | undefined) => {
+  const trimmed = (clientId || '').trim();
+  if (!trimmed) return undefined;
+  const match = trimmed.match(/^(.+)\.apps\.googleusercontent\.com$/);
+  if (!match) return undefined;
+  return `com.googleusercontent.apps.${match[1]}:/oauthredirect`;
+};
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
 
@@ -26,7 +42,91 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   });
   const [errors, setErrors] = useState<Partial<LoginCredentials>>({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const nativeRedirectUri = Platform.select({
+    android: getGoogleRedirectUri(GOOGLE_ANDROID_CLIENT_ID),
+    ios: getGoogleRedirectUri(GOOGLE_IOS_CLIENT_ID),
+    default: undefined,
+  });
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    {
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+      iosClientId: GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID,
+      scopes: ['openid', 'profile', 'email'],
+      selectAccount: true,
+      ...(nativeRedirectUri ? { redirectUri: nativeRedirectUri } : {}),
+    },
+    undefined
+  );
+
+  useEffect(() => {
+    if (!googlePending) return;
+
+    const timeout = setTimeout(() => {
+      appMessage.alert({
+        title: 'Google Login Failed',
+        message: 'Google login took too long. Please try again.',
+      });
+      setGooglePending(false);
+      setGoogleLoading(false);
+    }, 25000);
+
+    return () => clearTimeout(timeout);
+  }, [appMessage, googlePending]);
+
+  useEffect(() => {
+    if (!googlePending) return;
+    if (!response) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        if (__DEV__) console.log('[GoogleAuth] response:', response);
+        if (response.type !== 'success') {
+          return;
+        }
+
+        const rawParams = (response as any).params as Record<string, any> | undefined;
+        const idToken =
+          String(rawParams?.id_token || '').trim() ||
+          String((response as any).authentication?.idToken || '').trim() ||
+          undefined;
+        const accessToken =
+          String(rawParams?.access_token || '').trim() ||
+          String((response as any).authentication?.accessToken || '').trim() ||
+          undefined;
+
+        if (!idToken && !accessToken) {
+          appMessage.alert({
+            title: 'Google Login Failed',
+            message: 'No token returned from Google. Please try again.',
+          });
+          return;
+        }
+
+        await loginWithGoogle({ idToken, accessToken });
+      } catch (e: any) {
+        appMessage.alert({
+          title: 'Google Login Error',
+          message: e?.message || 'Unknown error',
+        });
+      } finally {
+        if (!cancelled) {
+          setGooglePending(false);
+          setGoogleLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appMessage, googlePending, loginWithGoogle, response]);
 
   const validate = (): boolean => {
     const newErrors: Partial<LoginCredentials> = {};
@@ -58,25 +158,74 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const handleGoogleLogin = async () => {
-    appMessage.alert({
-      title: 'Google Sign-In not set up',
-      message:
-        "To enable Google Sign-In we need Google OAuth client IDs (Android + iOS) and a backend endpoint to exchange the Google ID token for a Nivasity session.",
-    });
+    try {
+      const expectedClientId = Platform.select({
+        android: GOOGLE_ANDROID_CLIENT_ID,
+        ios: GOOGLE_IOS_CLIENT_ID,
+        web: GOOGLE_WEB_CLIENT_ID,
+        default: GOOGLE_WEB_CLIENT_ID,
+      });
+
+      if (!expectedClientId) {
+        appMessage.alert({
+          title: 'Google Login Not Configured',
+          message: 'Missing Google client id. Set EXPO_PUBLIC_GOOGLE_*_CLIENT_ID env vars.',
+        });
+        return;
+      }
+
+      if (Platform.OS === 'ios' && !GOOGLE_IOS_CLIENT_ID) {
+        appMessage.alert({
+          title: 'Google Login Not Configured',
+          message: 'Missing iOS client id. Set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.',
+        });
+        return;
+      }
+
+      if (!request) {
+        appMessage.alert({
+          title: 'Google Login',
+          message: 'Auth request is not ready yet. Please try again.',
+        });
+        return;
+      }
+
+      setGoogleLoading(true);
+      setGooglePending(true);
+      if (__DEV__) console.log('[GoogleAuth] redirectUri:', (request as any).redirectUri);
+      const result = await promptAsync();
+      if (result.type !== 'success') {
+        if (result.type !== 'dismiss') {
+          appMessage.alert({ title: 'Google Login', message: 'Login was cancelled.' });
+        }
+        setGooglePending(false);
+        setGoogleLoading(false);
+        return;
+      }
+    } catch (e: any) {
+      appMessage.alert({
+        title: 'Google Login Error',
+        message: e?.message || 'Unknown error',
+      });
+      setGooglePending(false);
+      setGoogleLoading(false);
+    }
   };
 
   return (
     <AuthScaffold navigation={navigation} title="Welcome back!">
       <TouchableOpacity
         onPress={handleGoogleLogin}
-        disabled={loading}
+        disabled={loading || googleLoading}
         style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
         accessibilityRole="button"
         accessibilityLabel="Continue with Google"
         activeOpacity={0.9}
       >
         <AppIcon name="logo-google" size={18} color={colors.text} />
-        <AppText style={[styles.googleText, { color: colors.text }]}>Continue with Google</AppText>
+        <AppText style={[styles.googleText, { color: colors.text }]}>
+          {googleLoading ? 'Signing in...' : 'Continue with Google'}
+        </AppText>
       </TouchableOpacity>
 
       <View style={styles.dividerRow}>
