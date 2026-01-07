@@ -117,11 +117,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={[styles.iconButton, { backgroundColor: colors.surface }]}
+            style={[styles.iconButton]}
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <AppIcon name="arrow-back" size={18} color={colors.text} />
+            <AppIcon name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.topTitle, { color: colors.text }]}>Checkout</Text>
           <TouchableOpacity

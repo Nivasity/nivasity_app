@@ -30,6 +30,8 @@ import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderReceiptScreen from '../screens/OrderReceiptScreen';
 import PaymentReturnScreen from '../screens/PaymentReturnScreen';
+import SupportTicketsScreen from '../screens/SupportTicketsScreen';
+import SupportChatScreen from '../screens/SupportChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -195,6 +197,16 @@ const AppNavigator = () => {
             <Stack.Screen
               name="OrderReceipt"
               component={OrderReceiptScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SupportTickets"
+              component={SupportTicketsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SupportChat"
+              component={SupportChatScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

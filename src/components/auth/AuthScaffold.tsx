@@ -63,7 +63,7 @@ export default function AuthScaffold({
             accessibilityLabel="Back"
             activeOpacity={0.85}
           >
-            <AppIcon name="arrow-back" size={18} color="#FFFFFF" />
+            <AppIcon name="chevron-back" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={[styles.sheetWrap, { paddingBottom: 14 + insets.bottom }]}>

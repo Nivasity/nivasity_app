@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
+import SupportDrawer from '../components/SupportDrawer';
 import ThemeModeDrawer from '../components/ThemeModeDrawer';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +31,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const [themeVisible, setThemeVisible] = useState(false);
+  const [supportVisible, setSupportVisible] = useState(false);
   const [avatarMode, setAvatarMode] = useState<'idle' | 'armed' | 'uploading'>('idle');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [resolvedSchoolName, setResolvedSchoolName] = useState<string>('');
@@ -261,7 +264,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate('ProfileSection', { section: 'security' })}
             />
             <Divider />
-            <Row icon="help-circle-outline" label="Support" onPress={() => undefined} />
+            <Row icon="help-circle-outline" label="Help & Support" onPress={() => setSupportVisible(true)} />
           </View>
 
           <View style={{ height: 14 }} />
@@ -312,6 +315,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         onSelect={(next) => {
           setMode(next);
           setThemeVisible(false);
+        }}
+      />
+
+      <SupportDrawer
+        visible={supportVisible}
+        onClose={() => setSupportVisible(false)}
+        onSearchHelp={() => {
+          setSupportVisible(false);
+          WebBrowser.openBrowserAsync('https://nivasity.tawk.help');
+        }}
+        onMessages={() => {
+          setSupportVisible(false);
+          navigation.navigate('SupportTickets');
         }}
       />
     </SafeAreaView>

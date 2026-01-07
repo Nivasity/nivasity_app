@@ -97,7 +97,7 @@ const StaticPageScreen: React.FC<StaticPageScreenProps> = ({ navigation, route }
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <AppIcon name="arrow-back" size={18} color={colors.text} />
+          <AppIcon name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <AppText style={[styles.title, { color: colors.text }]} numberOfLines={1}>
           {content.title}

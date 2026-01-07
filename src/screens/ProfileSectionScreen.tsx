@@ -573,7 +573,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               accessibilityRole="button"
               accessibilityLabel="Back"
             >
-              <AppIcon name="arrow-back" size={18} color={colors.text} />
+              <AppIcon name="chevron-back" size={20} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1}>
               {title}

@@ -855,6 +855,150 @@ export const dashboardAPI = {
   },
 };
 
+type SupportTicketStatus = 'open' | 'closed' | 'in_progress' | string;
+
+export type SupportTicketListItem = {
+  id: number;
+  code: string;
+  subject: string;
+  category?: string;
+  status: SupportTicketStatus;
+  message_count?: number;
+  latest_message?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type SupportTicketMessage = {
+  id: number;
+  user_id: number | null;
+  user_name?: string;
+  user_role?: string;
+  message: string;
+  attachment?: string | null;
+  created_at: string;
+};
+
+export type SupportTicketDetails = {
+  id: number;
+  code: string;
+  subject: string;
+  category?: string;
+  status: SupportTicketStatus;
+  messages: SupportTicketMessage[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+type SupportPagination = {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+};
+
+type SupportListResponse<T> = {
+  pagination: SupportPagination;
+} & T;
+
+export const supportAPI = {
+  createTicket: async (args: {
+    subject: string;
+    message: string;
+    category?: string;
+    attachment?: { uri: string; name: string; type: string } | null;
+  }): Promise<SupportTicketListItem> => {
+    const formData = new FormData();
+    formData.append('subject', args.subject);
+    formData.append('message', args.message);
+    if (args.category) formData.append('category', args.category);
+    if (args.attachment) {
+      formData.append(
+        'attachment',
+        { uri: args.attachment.uri, name: args.attachment.name, type: args.attachment.type } as any
+      );
+    }
+
+    const response = await api.post<ApiResponse<any>>('/support/create-ticket.php', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to create support ticket');
+    }
+
+    const data = response.data.data as any;
+    return {
+      id: Number(data.ticket_id ?? data.id),
+      code: String(data.ticket_code ?? data.code ?? ''),
+      subject: String(data.subject ?? '').trim(),
+      category: data.category ? String(data.category).trim() : undefined,
+      status: String(data.status ?? 'open'),
+      created_at: data.created_at ? String(data.created_at) : undefined,
+    };
+  },
+
+  listTickets: async (args?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<SupportListResponse<{ tickets: SupportTicketListItem[] }>> => {
+    const params = new URLSearchParams();
+    if (args?.status) params.set('status', args.status);
+    params.set('page', String(args?.page ?? 1));
+    params.set('limit', String(args?.limit ?? 20));
+
+    const suffix = params.toString();
+    const response = await api.get<ApiResponse<SupportListResponse<{ tickets: SupportTicketListItem[] }>>>(
+      `/support/list-tickets.php${suffix ? `?${suffix}` : ''}`
+    );
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load tickets');
+    }
+    return response.data.data;
+  },
+
+  getTicketDetails: async (args: { id?: number; code?: string }): Promise<SupportTicketDetails> => {
+    const params = new URLSearchParams();
+    if (args.id != null) params.set('id', String(args.id));
+    if (args.code) params.set('code', args.code);
+
+    const suffix = params.toString();
+    const response = await api.get<ApiResponse<SupportTicketDetails>>(
+      `/support/ticket-details.php${suffix ? `?${suffix}` : ''}`
+    );
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load ticket details');
+    }
+    return response.data.data;
+  },
+
+  replyToTicket: async (args: {
+    ticketId: number;
+    message: string;
+    attachment?: { uri: string; name: string; type: string } | null;
+  }): Promise<{ ticket_id: number; message: string; created_at?: string }> => {
+    const formData = new FormData();
+    formData.append('ticket_id', String(args.ticketId));
+    formData.append('message', args.message);
+    if (args.attachment) {
+      formData.append(
+        'attachment',
+        { uri: args.attachment.uri, name: args.attachment.name, type: args.attachment.type } as any
+      );
+    }
+
+    const response = await api.post<ApiResponse<any>>('/support/reply.php', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to send message');
+    }
+    return response.data.data as any;
+  },
+};
+
 // Payment APIs (Interswitch)
 export const paymentAPI = {
   getGateway: async (): Promise<{ active: string; available: string[] }> => {

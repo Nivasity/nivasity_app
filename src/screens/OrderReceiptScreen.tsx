@@ -113,7 +113,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <AppIcon name="arrow-back" size={18} color={colors.text} />
+          <AppIcon name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <AppText style={[styles.topTitle, { color: colors.text }]}>Receipt</AppText>
         <View style={styles.topActions}>
