@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -26,6 +26,25 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const { items: cartItemsFromContext } = useCart();
   const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext;
   const [loading, setLoading] = useState(false);
+  const [gateway, setGateway] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    paymentAPI
+      .getGateway()
+      .then((res) => {
+        if (!mounted) return;
+        setGateway((res.active || '').trim().toLowerCase() || null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setGateway(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const total = useMemo(
     () =>
@@ -116,7 +135,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
             <View style={{ flex: 1 }}>
               <Text style={[styles.detailsTitle, { color: colors.text }]}>Secure payment</Text>
             </View>
-            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>Powered by Flutterwave</Text>
+            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>
+              Powered by {gateway ? gateway.charAt(0).toUpperCase() + gateway.slice(1) : 'Payment'}
+            </Text>
           </View>
 
           <Text style={[styles.paragraph, { color: colors.textMuted }]}>

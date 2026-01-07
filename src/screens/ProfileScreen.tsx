@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { profileAPI } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
+import { DashboardStats } from '../types';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -29,6 +30,28 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [themeVisible, setThemeVisible] = useState(false);
   const [avatarMode, setAvatarMode] = useState<'idle' | 'armed' | 'uploading'>('idle');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await profileAPI.getProfile(); // Ensure user is up-to-date
+        updateUser(res);
+        const dash = await (await import('../services/api')).dashboardAPI.getStudentStats();
+        if (mounted && dash) {
+          setStats({
+            totalOrders: dash.totalOrders ?? 0,
+            totalSpent: dash.totalSpent ?? 0,
+            pendingOrders: dash.pendingOrders ?? 0,
+          });
+        }
+      } catch {
+        if (mounted) setStats({ totalOrders: 0, totalSpent: 0, pendingOrders: 0 });
+      }
+    })();
+    return () => { mounted = false; };
+  }, [updateUser]);
 
   const initials = useMemo(
     () => (user?.name || 'U').trim().charAt(0).toUpperCase(),
@@ -182,11 +205,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </AppText>
 
           <View style={styles.statsRow}>
-            <Stat value="0" label="Materials bought" />
+            <Stat value={String(stats?.totalOrders ?? 0)} label="Materials bought" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value="0" label="Total spent" />
+            <Stat value={stats ? `₦${(stats.totalSpent ?? 0).toLocaleString()}` : '₦0'} label="Total spent" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value="2020" label="Academic Year" />
+            <Stat value={user?.admissionYear ? (/^\d{4}$/.test(user.admissionYear) ? `${user.admissionYear}/${Number(user.admissionYear) + 1}` : user.admissionYear) : 'Not set'} label="Academic Year" />
           </View>
 
           <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>

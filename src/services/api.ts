@@ -827,13 +827,32 @@ export const orderAPI = {
 // Dashboard APIs
 export const dashboardAPI = {
   getStudentStats: async (): Promise<DashboardStats> => {
-    const response = await api.get('/dashboard/student');
-    return response.data;
+    const response = await api.get<
+      ApiResponse<{ total_materials: number; total_spent: number; pending_orders: number }>
+    >('/profile/stats.php');
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load profile stats');
+    }
+
+    return {
+      totalOrders: response.data.data.total_materials ?? 0,
+      totalSpent: response.data.data.total_spent ?? 0,
+      pendingOrders: response.data.data.pending_orders ?? 0,
+    };
   },
 };
 
 // Payment APIs (Interswitch)
 export const paymentAPI = {
+  getGateway: async (): Promise<{ active: string; available: string[] }> => {
+    const response = await api.get<ApiResponse<{ active: string; available: string[] }>>('/payment/gateway.php');
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load payment gateway');
+    }
+    return response.data.data;
+  },
+
   initPayment: async (args?: {
     redirectUrl?: string;
   }): Promise<{
