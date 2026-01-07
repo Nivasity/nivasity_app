@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../components/AppText';
 import AppIcon from '../components/AppIcon';
@@ -13,15 +13,38 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { colors, toggle, isDark } = useTheme();
   const backgroundColor = isDark ? colors.background : colors.accent;
   const foregroundColor = '#FFFFFF';
+  const logoSpin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(logoSpin, {
+        toValue: 1,
+        duration: 2200,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      })
+    );
+    anim.start();
+    return () => {
+      anim.stop();
+      logoSpin.setValue(0);
+    };
+  }, [logoSpin]);
+
+  const rotateY = logoSpin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor }]}>
       <View style={styles.content}>
         <View style={styles.brand}>
-          <Image
+          <Animated.Image
             source={require('../../assets/icon.png')}
             style={[
               styles.logo,
+              { transform: [{ perspective: 800 }, { rotateY }] },
               !isDark && { tintColor: foregroundColor }
             ]}
             resizeMode="contain"

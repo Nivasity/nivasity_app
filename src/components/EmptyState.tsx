@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import AppIcon, { AppIconName } from './AppIcon';
 import AppText from './AppText';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,11 +12,39 @@ type EmptyStateProps = {
 
 const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, subtitle }) => {
   const { colors } = useTheme();
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(spin, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(1400),
+        Animated.timing(spin, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    anim.start();
+    return () => {
+      anim.stop();
+      spin.setValue(0);
+    };
+  }, [spin]);
+
+  const rotateY = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   return (
     <View style={[styles.card]}>
-      <View style={[styles.iconWrap]}>
+      <Animated.View style={[styles.iconWrap, { transform: [{ perspective: 800 }, { rotateY }] }]}>
         <AppIcon name={icon} size={32} color={colors.secondary} />
-      </View>
+      </Animated.View>
       <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
       <AppText style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</AppText>
     </View>
@@ -55,4 +83,3 @@ const styles = StyleSheet.create({
 });
 
 export default EmptyState;
-

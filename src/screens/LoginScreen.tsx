@@ -87,7 +87,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       <Input
         label="Email"
-        placeholder="julia.roberts@mail.com"
+        placeholder="student@nivasity.com"
         value={credentials.email}
         onChangeText={(text) => setCredentials((s) => ({ ...s, email: text }))}
         errorText={errors.email}
