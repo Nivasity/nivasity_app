@@ -43,6 +43,12 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
   const { user } = useAuth();
   const appMessage = useAppMessage();
 
+  const formatMessageTimestamp = useCallback((date: Date) => {
+    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const day = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return `${time}, ${day}`;
+  }, []);
+
   const ticketIdParam = route?.params?.ticketId;
   const ticketCodeParam = route?.params?.ticketCode;
   const initialSubject = route?.params?.subject;
@@ -57,6 +63,8 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [inputHeight, setInputHeight] = useState(52);
+  const [expandedTimes, setExpandedTimes] = useState<Record<string, boolean>>({});
 
   const listRef = useRef<FlatList<SupportTicketMessage> | null>(null);
 
@@ -184,6 +192,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     try {
       await supportAPI.replyToTicket({ ticketId: ticket.id, message: clean, attachment });
       setDraft('');
+      setInputHeight(52);
       setAttachment(null);
       await loadDetails();
       scrollToBottom();
@@ -202,50 +211,102 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     const bubbleBorder = fromMe ? 'transparent' : colors.border;
     const textColor = fromMe ? colors.onAccent : colors.text;
     const subColor = fromMe ? (isDark ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.88)') : colors.textMuted;
-    const label = fromMe ? 'You' : (item.user_name || (fromSupport ? 'Support' : 'Support'));
+    const label = (item.user_name || (fromSupport ? 'Support' : 'Support')).trim() || 'Support';
+    const rawCreated = (item.created_at || '').trim();
+    const createdAt = rawCreated ? new Date(rawCreated.replace(' ', 'T')) : null;
+    const createdLabel =
+      createdAt && !Number.isNaN(createdAt.getTime()) ? formatMessageTimestamp(createdAt) : '';
+    const relative = createdAt && !Number.isNaN(createdAt.getTime())
+      ? (() => {
+          const diffMs = Date.now() - createdAt.getTime();
+          const mins = Math.floor(diffMs / 60000);
+          if (mins < 1) return 'now';
+          if (mins < 60) return `${mins}m ago`;
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return `${hrs}h ago`;
+          const days = Math.floor(hrs / 24);
+          if (days < 7) return `${days}d ago`;
+          const weeks = Math.floor(days / 7);
+          if (weeks < 52) return `${weeks}w ago`;
+          const years = Math.floor(weeks / 52);
+          return `${years}y ago`;
+        })()
+      : '';
+    const messageId = String(item.id);
+    const showTime = !!expandedTimes[messageId];
 
     return (
       <View style={[styles.msgRow, { justifyContent: fromMe ? 'flex-end' : 'flex-start' }]}>
-        <View style={[styles.bubble, { backgroundColor: bubbleBg, borderColor: bubbleBorder }]}>
-          <Text style={[styles.msgAuthor, { color: subColor }]} numberOfLines={1}>
-            {label}
-          </Text>
-          <Text style={[styles.msgText, { color: textColor }]}>{item.message}</Text>
-          {item.attachment ? (
-            <TouchableOpacity
-              onPress={() => openAttachment(item.attachment)}
+        <View style={{ maxWidth: '86%' }}>
+          <TouchableOpacity
+            onPress={() =>
+              setExpandedTimes((prev) => ({
+                ...prev,
+                [messageId]: !prev[messageId],
+              }))
+            }
+            activeOpacity={0.86}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle message timestamp"
+          >
+            <View style={[styles.bubble, { backgroundColor: bubbleBg, borderColor: bubbleBorder, maxWidth: '100%' }]}>
+              {!fromMe ? (
+                <View style={styles.supportHeader}>
+                  <Text style={[styles.supportName, { color: colors.text }]} numberOfLines={1}>
+                    {label}
+                  </Text>
+                  {relative ? (
+                    <Text style={[styles.supportMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                      {' • '}{relative}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <Text style={[styles.msgText, { color: textColor }]}>{item.message}</Text>
+
+              {item.attachment ? (
+                <TouchableOpacity
+                  onPress={() => openAttachment(item.attachment)}
+                  style={[
+                    styles.attachmentRow,
+                    {
+                      borderColor: fromMe ? 'rgba(255,255,255,0.45)' : colors.border,
+                      backgroundColor: fromMe
+                        ? isDark
+                          ? 'rgba(0,0,0,0.12)'
+                          : 'rgba(255,255,255,0.12)'
+                        : colors.surfaceAlt,
+                    },
+                  ]}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open attachment"
+                >
+                  <AppIcon name="attach-outline" size={14} color={fromMe ? colors.onAccent : colors.textMuted} />
+                  <Text
+                    style={[styles.attachmentLabel, { color: fromMe ? colors.onAccent : colors.textMuted }]}
+                    numberOfLines={1}
+                  >
+                    Attachment
+                  </Text>
+                  <AppIcon name="open-outline" size={14} color={fromMe ? colors.onAccent : colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </TouchableOpacity>
+
+          {showTime && createdLabel ? (
+            <Text
               style={[
-                styles.attachmentRow,
-                {
-                  borderColor: fromMe ? 'rgba(255,255,255,0.45)' : colors.border,
-                  backgroundColor: fromMe
-                    ? isDark
-                      ? 'rgba(0,0,0,0.12)'
-                      : 'rgba(255,255,255,0.12)'
-                    : colors.surfaceAlt,
-                },
+                styles.timeBelow,
+                { color: colors.textMuted, textAlign: fromMe ? 'right' : 'left' },
               ]}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Open attachment"
+              numberOfLines={1}
             >
-              <AppIcon name="attach-outline" size={14} color={fromMe ? colors.onAccent : colors.textMuted} />
-              <Text
-                style={[styles.attachmentLabel, { color: fromMe ? colors.onAccent : colors.textMuted }]}
-                numberOfLines={1}
-              >
-                Attachment
-              </Text>
-              <AppIcon
-                name="open-outline"
-                size={14}
-                color={fromMe ? colors.onAccent : colors.textMuted}
-              />
-            </TouchableOpacity>
+              {createdLabel}
+            </Text>
           ) : null}
-          <Text style={[styles.msgTime, { color: subColor }]} numberOfLines={1}>
-            {item.created_at ? new Date(item.created_at).toLocaleString() : ''}
-          </Text>
         </View>
       </View>
     );
@@ -253,12 +314,14 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
   if (loading) return <Loading message="Loading conversation..." />;
 
+  const isTyping = draft.trim().length > 0;
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.iconButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          style={[styles.iconButton]}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -296,91 +359,89 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        ref={(r) => {
-          listRef.current = r;
-        }}
-        data={messages}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderMessage}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 12 }]}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={scrollToBottom}
-      />
+      <KeyboardAvoidingView
+        style={styles.body}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <FlatList
+          ref={(r) => {
+            listRef.current = r;
+          }}
+          data={messages}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderMessage}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 12 }]}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToBottom}
+          keyboardShouldPersistTaps="handled"
+        />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={[styles.composer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <View style={styles.composerTopRow}>
+          {attachment ? (
             <TouchableOpacity
-              onPress={pickPhoto}
-              style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+              onPress={() => setAttachment(null)}
+              style={[styles.attachmentPill, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Attach photo"
+              accessibilityLabel="Remove attachment"
             >
-              <AppIcon name="image-outline" size={18} color={colors.text} />
+              <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
+                {attachment.name}
+              </Text>
+              <AppIcon name="close-outline" size={14} color={colors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={pickFile}
-              style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Attach file"
-            >
-              <AppIcon name="document-attach-outline" size={18} color={colors.text} />
-            </TouchableOpacity>
+          ) : null}
 
-            {attachment ? (
-              <TouchableOpacity
-                onPress={() => setAttachment(null)}
-                style={[styles.attachmentPill, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Remove attachment"
-              >
-                <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
-                  {attachment.name}
-                </Text>
-                <AppIcon name="close-outline" size={14} color={colors.textMuted} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          <View style={styles.composerRow}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Type a message..."
+              placeholder="Message..."
               placeholderTextColor={colors.textMuted}
-              style={[
-                styles.input,
-                {
-                  color: colors.text,
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                },
-              ]}
+              style={[styles.input, { color: colors.text, height: inputHeight }]}
               multiline
               editable={!sending}
+              textAlignVertical="top"
+              onContentSizeChange={(e) => {
+                const next = Math.max(52, Math.min(140, Math.ceil(e.nativeEvent.contentSize.height)));
+                setInputHeight(next);
+              }}
             />
-            <TouchableOpacity
-              onPress={sendMessage}
-              style={[
-                styles.sendButton,
-                {
-                  backgroundColor: sending ? colors.surfaceAlt : colors.accent,
-                  borderColor: colors.border,
-                },
-              ]}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Send message"
-              disabled={sending}
-            >
-              <AppIcon name="send-outline" size={18} color={sending ? colors.textMuted : colors.onAccent} />
-            </TouchableOpacity>
+
+            {isTyping ? (
+              <TouchableOpacity
+                onPress={sendMessage}
+                style={[
+                  styles.sendInline,
+                  {
+                    backgroundColor: sending ? colors.surfaceAlt : colors.accent,
+                    borderColor: colors.border,
+                  },
+                ]}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
+                disabled={sending}
+              >
+                <AppIcon name="arrow-up" size={18} color={sending ? colors.textMuted : colors.onAccent} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.actionsInline}>
+                <TouchableOpacity
+                  onPress={pickFile}
+                  style={[styles.plusButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Attach file"
+                >
+                  <AppIcon name="add" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
+
           <View style={{ height: 10 + insets.bottom }} />
         </View>
       </KeyboardAvoidingView>
@@ -390,6 +451,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  body: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -403,7 +465,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 16,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -435,26 +496,35 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   bubble: {
-    maxWidth: '86%',
     borderRadius: 18,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  msgAuthor: {
-    fontSize: 11,
-    fontWeight: '800',
-    marginBottom: 6,
+  supportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  supportName: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    maxWidth: '70%',
+  },
+  supportMeta: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   msgText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     lineHeight: 18,
   },
-  msgTime: {
-    marginTop: 8,
-    fontSize: 10,
-    fontWeight: '700',
+  timeBelow: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: '500',
   },
   attachmentRow: {
     marginTop: 10,
@@ -476,21 +546,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
   },
-  composerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-    marginBottom: 10,
-  },
-  actionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   attachmentPill: {
     maxWidth: '100%',
     height: 44,
@@ -500,37 +555,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 10,
   },
   attachmentName: {
     maxWidth: 180,
     fontSize: 12,
     fontWeight: '700',
   },
-  composerRow: {
+  inputWrap: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingStart: 14,
+    paddingEnd: 10,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
   },
   input: {
     flex: 1,
     minHeight: 52,
-    maxHeight: 130,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
     fontSize: 13,
     fontWeight: '600',
   },
-  sendButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
+  actionsInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingBottom: 6,
+  },
+  plusButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendInline: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
 });
 
 export default SupportChatScreen;
-
