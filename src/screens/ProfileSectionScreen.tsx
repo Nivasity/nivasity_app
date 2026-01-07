@@ -121,10 +121,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
 
-  const academicFormActive = section === 'academic' || editDialog === 'academic';
+  const schoolLookupActive = section === 'academic' || section === 'myAccount' || editDialog === 'academic';
 
   useEffect(() => {
-    if (!academicFormActive) return;
+    if (!schoolLookupActive) return;
     const rawSchoolId = user?.schoolId;
     const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
     if (!Number.isFinite(schoolId)) return;
@@ -135,7 +135,11 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       try {
         const data = await referenceAPI.getDepartments({ schoolId, page: 1, limit: 100 });
         if (!mounted) return;
-        setDepartments((data.departments || []).map((d) => ({ id: d.id, name: d.name })));
+        setDepartments(
+          (data.departments || [])
+            .map((d) => ({ id: Number((d as any).id), name: String((d as any).name || '').trim() }))
+            .filter((d) => Number.isFinite(d.id) && !!d.name)
+        );
       } catch {
         if (!mounted) return;
         setDepartments([]);
@@ -146,10 +150,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     return () => {
       mounted = false;
     };
-  }, [academicFormActive, user?.schoolId]);
+  }, [schoolLookupActive, user?.schoolId]);
 
   useEffect(() => {
-    if (!academicFormActive) return;
+    if (!schoolLookupActive) return;
     const rawSchoolId = user?.schoolId;
     const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
     if (!Number.isFinite(schoolId)) return;
@@ -160,7 +164,11 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       try {
         const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
         if (!mounted) return;
-        setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
+        setSchools(
+          (data.schools || [])
+            .map((s) => ({ id: Number((s as any).id), name: String((s as any).name || '').trim() }))
+            .filter((s) => Number.isFinite(s.id) && !!s.name)
+        );
       } catch {
         if (!mounted) return;
         setSchools([]);
@@ -171,10 +179,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     return () => {
       mounted = false;
     };
-  }, [academicFormActive, user?.schoolId]);
+  }, [schoolLookupActive, user?.schoolId]);
 
   useEffect(() => {
-    if (!academicFormActive) return;
+    if (!schoolLookupActive) return;
     if (!user) return;
 
     const rawSchoolId = user.schoolId;
@@ -190,7 +198,11 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       admissionYear: prev.admissionYear || admissionSession,
       department: deptNameFromId || prev.department,
     }));
-  }, [academicFormActive, departments, deptId, schools, user]);
+
+    if (schoolName && !user.school) {
+      updateUser({ ...user, school: schoolName });
+    }
+  }, [departments, deptId, schoolLookupActive, schools, updateUser, user]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -399,9 +411,17 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const displayEmail = user?.email || '';
   const displayPhone = (user?.phone || '').trim();
 
+  const displaySchoolFromReference = useMemo(() => {
+    const raw = user?.schoolId;
+    const schoolId = raw != null ? Number(raw) : NaN;
+    if (!Number.isFinite(schoolId)) return '';
+    return schools.find((s) => s.id === schoolId)?.name || '';
+  }, [schools, user?.schoolId]);
+
   const displaySchool =
     user?.school ||
     user?.institutionName ||
+    displaySchoolFromReference ||
     (user?.schoolId != null ? `School ID: ${String(user.schoolId)}` : '');
   const displayAdmission = toSessionLabel(user?.admissionYear);
   const displayDepartment = user?.department || '';

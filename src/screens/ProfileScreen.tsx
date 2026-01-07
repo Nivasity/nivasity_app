@@ -15,7 +15,7 @@ import ThemeModeDrawer from '../components/ThemeModeDrawer';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { profileAPI } from '../services/api';
+import { profileAPI, referenceAPI } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { DashboardStats } from '../types';
 
@@ -31,6 +31,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [themeVisible, setThemeVisible] = useState(false);
   const [avatarMode, setAvatarMode] = useState<'idle' | 'armed' | 'uploading'>('idle');
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [resolvedSchoolName, setResolvedSchoolName] = useState<string>('');
 
   useEffect(() => {
     let mounted = true;
@@ -52,6 +53,40 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     })();
     return () => { mounted = false; };
   }, [updateUser]);
+
+  useEffect(() => {
+    const direct = (user?.school || user?.institutionName || '').trim();
+    if (direct) {
+      setResolvedSchoolName(direct);
+      return;
+    }
+
+    const rawSchoolId = user?.schoolId;
+    const schoolId = rawSchoolId != null ? Number(rawSchoolId) : NaN;
+    if (!Number.isFinite(schoolId)) {
+      setResolvedSchoolName('');
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
+        const match = (data.schools || []).find((s: any) => Number(s?.id) === schoolId);
+        const name = String(match?.name || '').trim();
+        if (!mounted) return;
+        setResolvedSchoolName(name);
+        if (name && user && !user.school) updateUser({ ...user, school: name });
+      } catch {
+        if (!mounted) return;
+        setResolvedSchoolName('');
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [updateUser, user, user?.institutionName, user?.school, user?.schoolId]);
 
   const initials = useMemo(
     () => (user?.name || 'U').trim().charAt(0).toUpperCase(),
@@ -96,7 +131,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       }
 
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.9,
@@ -216,7 +251,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Row
               icon="person-outline"
               label="My Account"
-              value={user?.school || user?.institutionName ? (user.school || user.institutionName) : 'Not set'}
+              value={resolvedSchoolName || 'Not set'}
               onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
             />
             <Divider />

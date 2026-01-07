@@ -422,20 +422,32 @@ export const authAPI = {
     const data = response.data.data as any;
     const firstName = (data.first_name || '').trim();
     const lastName = (data.last_name || '').trim();
+
+    const rawSchoolName = data.school_name ?? data.schoolName ?? data.school;
+    const schoolName =
+      typeof rawSchoolName === 'string' && Number.isNaN(Number(rawSchoolName.trim())) ? rawSchoolName.trim() : undefined;
+
+    const rawSchoolId = data.school_id ?? data.schoolId ?? data.school;
+    const schoolIdCandidate = rawSchoolId != null ? Number(rawSchoolId) : NaN;
+
+    const rawDeptId = data.dept_id ?? data.deptId ?? data.dept;
+    const deptIdCandidate = rawDeptId != null ? Number(rawDeptId) : NaN;
+
     return {
       id: String(data.id),
       email: (data.email || '').trim(),
       name: `${firstName} ${lastName}`.trim(),
       firstName,
       lastName,
-    phone: data.phone,
-    avatar: toUserProfilePicUrl(data.profile_pic),
-    schoolId: data.school ?? undefined,
-    admissionYear: data.adm_year ?? undefined,
-    deptId: data.dept ?? undefined,
-    department: data.dept_name ?? undefined,
-    matricNumber: data.matric_no ?? undefined,
-  };
+      phone: data.phone,
+      avatar: toUserProfilePicUrl(data.profile_pic),
+      schoolId: Number.isFinite(schoolIdCandidate) ? schoolIdCandidate : undefined,
+      school: schoolName,
+      admissionYear: data.adm_year ?? undefined,
+      deptId: Number.isFinite(deptIdCandidate) ? deptIdCandidate : undefined,
+      department: data.dept_name ?? undefined,
+      matricNumber: data.matric_no ?? undefined,
+    };
   },
 
   changePassword: async (
