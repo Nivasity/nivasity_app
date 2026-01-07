@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import { useAppMessage } from '../contexts/AppMessageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { CartItem, Order } from '../types';
 
@@ -22,6 +23,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const receiptRef = useRef<View>(null);
+  const { user } = useAuth();
 
   const order = route.params?.order;
   const [working, setWorking] = useState(false);
@@ -192,7 +194,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           </View>
 
           <View style={styles.metaGrid}>
-            <Meta label="Paid by" value={order.userId} />
+            <Meta label="Paid by" value={user?.name || ''} />
             <Meta label="Date" value={derived.createdLabel} />
             <MetaBig label="Order ID" value={order.id} />
             <MetaSmall label="Items" value={`${derived.itemCount}`} />
