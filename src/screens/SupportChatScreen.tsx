@@ -38,7 +38,7 @@ const toMimeType = (uri: string, mimeType?: string | null) => {
   return 'application/octet-stream';
 };
 
-const BASE_INPUT_HEIGHT = 52;
+const BASE_INPUT_HEIGHT = 32;
 const MAX_INPUT_HEIGHT = 140;
 const SUPPORT_ATTACHMENT_BASE_URL = 'https://funaab.nivasity.com/';
 
