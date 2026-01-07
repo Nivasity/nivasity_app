@@ -42,16 +42,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const schoolListLoaded = React.useRef(false);
   const schoolListPromise = React.useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
-    loadUser();
-    const unsubscribe = onAuthInvalidated(() => {
-      setUser(null);
-      setAuthEntryRoute('Login');
-      setAcademicPromptDismissed(false);
-    });
-    return unsubscribe;
-  }, []);
-
   const ensureSchoolList = useCallback(async () => {
     if (schoolListLoaded.current) return;
     if (schoolListPromise.current) return schoolListPromise.current;
@@ -115,6 +105,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, [hydrateProfile]);
+
+  useEffect(() => {
+    loadUser();
+    const unsubscribe = onAuthInvalidated(() => {
+      setUser(null);
+      setAuthEntryRoute('Login');
+      setAcademicPromptDismissed(false);
+    });
+    return unsubscribe;
+  }, [loadUser]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
