@@ -13,6 +13,7 @@ import StoreCard from '../components/StoreCard';
 import OrderListItem from '../components/OrderListItem';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
+import EmptyState from '../components/EmptyState';
 
 interface StudentDashboardScreenProps {
   navigation: any;
@@ -245,29 +246,35 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           </View>
         )}
 
-        {recentOrders.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Orders</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Orders')}
-                accessibilityRole="button"
-                accessibilityLabel="View all orders"
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.viewAll, { color: colors.secondary }]}>View all</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Orders</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Orders')}
+              accessibilityRole="button"
+              accessibilityLabel="View all orders"
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.viewAll, { color: colors.secondary }]}>View all</Text>
+            </TouchableOpacity>
+          </View>
 
-            {recentOrders.map((order) => (
+          {recentOrders.length > 0 ? (
+            recentOrders.map((order) => (
               <OrderListItem
                 key={order.id}
                 order={order}
                 onPress={() => navigation.navigate('OrderReceipt', { order })}
               />
-            ))}
-          </View>
-        )}
+            ))
+          ) : (
+            <EmptyState
+              icon="receipt-outline"
+              title="No orders yet"
+              subtitle="Start buying materials in the store to see orders here."
+            />
+          )}
+        </View>
       </ScrollView>
 
       {cartCount > 0 ? (
@@ -515,7 +522,7 @@ const styles = StyleSheet.create({
   },
   viewAll: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   chipsRow: {
     flexDirection: 'row',

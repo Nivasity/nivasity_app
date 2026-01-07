@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
+import EmptyState from '../components/EmptyState';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
 import { Order } from '../types';
@@ -166,7 +167,11 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No orders yet</Text>
+            <EmptyState
+              icon="receipt-outline"
+              title={query.trim().length > 0 ? 'No matches' : 'No orders yet'}
+              subtitle={query.trim().length > 0 ? 'Try a different search.' : 'Start buying materials in the store to see orders here.'}
+            />
           </View>
         }
       />

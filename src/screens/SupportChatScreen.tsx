@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -91,6 +92,19 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
   useEffect(() => {
     loadDetails();
   }, [loadDetails]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const handle = setInterval(() => {
+        if (sending) return;
+        loadDetails();
+      }, 60_000);
+
+      return () => {
+        clearInterval(handle);
+      };
+    }, [loadDetails, sending])
+  );
 
   const myUserId = useMemo(() => {
     const v = user?.id != null ? Number(user.id) : NaN;
@@ -350,29 +364,18 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
             {title}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <View style={[styles.statusPill, { backgroundColor: statusStyle.bg, borderColor: colors.border }]}>
-              <Text style={[styles.statusText, { color: statusStyle.fg }]} numberOfLines={1}>
-                {statusStyle.label}
-              </Text>
-            </View>
             <Text style={[styles.codeText, { color: colors.textMuted }]} numberOfLines={1}>
               #{ticket?.code || ticketCode}
             </Text>
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => {
-            setRefreshing(true);
-            loadDetails();
-          }}
-          style={[styles.iconButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Refresh"
-        >
-          <AppIcon name="refresh-outline" size={20} color={colors.secondary} />
-        </TouchableOpacity>
+
+        <View style={[styles.statusPill, { backgroundColor: statusStyle.bg, borderColor: colors.border }]}>
+          <Text style={[styles.statusText, { color: statusStyle.fg }]} numberOfLines={1}>
+            {statusStyle.label}
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView
