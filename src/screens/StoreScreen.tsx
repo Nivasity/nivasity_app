@@ -124,6 +124,8 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const canLoadMore = useMemo(() => {
     if (!pagination) return false;
     if (pagination.total_pages && page >= pagination.total_pages) return false;
+    // Prefer server page counts; totals can be misleading when the UI filters items (e.g. purchased materials).
+    if (pagination.total_pages) return page < pagination.total_pages;
     return materials.length < pagination.total;
   }, [materials.length, page, pagination]);
 

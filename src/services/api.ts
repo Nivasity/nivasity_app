@@ -872,8 +872,11 @@ export const storeAPI = {
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Failed to load materials');
     }
+
+    // Hide materials already purchased by the current user.
+    const availableMaterials = (response.data.data.materials || []).filter((item) => !item.is_purchased);
     return {
-      materials: (response.data.data.materials || []).map(mapMaterialToProduct),
+      materials: availableMaterials.map(mapMaterialToProduct),
       pagination: response.data.data.pagination,
     };
   },
