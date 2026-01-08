@@ -38,7 +38,7 @@ export default function AuthScaffold({
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <ImageBackground
-        source={require('../../../assets/auth_background.png')}
+        source={require('../../../assets/auth_background.jpg')}
         style={styles.background}
         resizeMode="cover"
         blurRadius={10}
