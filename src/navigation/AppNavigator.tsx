@@ -29,7 +29,6 @@ import StoreScreen from '../screens/StoreScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderReceiptScreen from '../screens/OrderReceiptScreen';
-import PaymentReturnScreen from '../screens/PaymentReturnScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 
@@ -43,17 +42,7 @@ const TAB_BAR_MAX_WIDTH = 420;
 
 const linking = {
   prefixes: [ExpoLinking.createURL('/', { scheme: 'nivasity' }), 'nivasity://'],
-  config: {
-    screens: {
-      PaymentReturn: {
-        path: 'payment',
-        parse: {
-          tx_ref: (value: string) => value,
-          status: (value: string) => value,
-        },
-      },
-    },
-  },
+  config: { screens: {} },
 };
 
 // Auth Stack Navigator
@@ -187,11 +176,6 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Checkout"
               component={CheckoutScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="PaymentReturn"
-              component={PaymentReturnScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

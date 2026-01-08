@@ -18,6 +18,28 @@ interface OrderReceiptScreenProps {
 
 const sanitizeFilePart = (value: string) => value.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80);
 
+const formatReceiptDate = (value: string | number | Date) => {
+  const raw = typeof value === 'string' ? value.trim() : value;
+  const date =
+    typeof raw === 'string'
+      ? new Date(raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw)
+      : new Date(raw);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  const dayPart = date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${dayPart}, ${timePart}`;
+};
+
 const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
@@ -34,7 +56,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
     const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
     return {
       itemCount,
-      createdLabel: new Date(order.createdAt).toLocaleString(),
+      createdLabel: formatReceiptDate(order.createdAt),
     };
   }, [order]);
 
@@ -227,6 +249,20 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
             </AppText>
           </View>
         </View>
+
+        <TouchableOpacity
+          onPress={shareReceipt}
+          disabled={working}
+          activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Share receipt"
+          style={[styles.sharePill, { backgroundColor: colors.accent }]}
+        >
+          <AppIcon name="share-social-outline" size={18} color={colors.onAccent} />
+          <AppText style={[styles.sharePillText, { color: colors.onAccent }]}>
+            {working ? 'Preparing…' : 'Share receipt'}
+          </AppText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -455,6 +491,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.4,
+  },
+  sharePill: {
+    marginTop: 12,
+    width: '100%',
+    height: 52,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  sharePillText: {
+    fontSize: 14,
+    fontWeight: '900',
   },
   missing: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -9,8 +9,8 @@ import { useCart } from '../contexts/CartContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
-import { paymentAPI } from '../services/api';
-import { CartItem } from '../types';
+import { orderAPI, paymentAPI } from '../services/api';
+import { CartItem, Order } from '../types';
 
 interface CheckoutScreenProps {
   navigation: any;
@@ -23,9 +23,10 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const { user } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
-  const { items: cartItemsFromContext } = useCart();
+  const { items: cartItemsFromContext, clear: clearCart } = useCart();
   const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext;
   const [loading, setLoading] = useState(false);
+  const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,9 +64,10 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
     }
 
     setLoading(true);
+    setPaymentOverlay(true);
     console.log('[Checkout] Starting payment process...');
     try {
-      const returnUrl = ExpoLinking.createURL('payment');
+      const returnUrl = ExpoLinking.createURL('payment', { scheme: 'nivasity' });
       console.log('[Checkout] Created returnUrl:', returnUrl);
       const payment = await paymentAPI.initPayment({ redirectUrl: returnUrl });
       console.log('[Checkout] Payment initialized:', payment);
@@ -75,27 +77,61 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       });
       console.log('[Checkout] WebBrowser.openAuthSessionAsync result:', result);
 
-      if (result.type === 'success') {
-        console.log('[Checkout] Payment session success, navigating to PaymentReturn', payment.tx_ref);
-        navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref });
+      if (result.type !== 'success') {
+        console.log('[Checkout] Payment flow canceled/dismissed, staying on checkout');
+        setPaymentOverlay(false);
         return;
       }
 
-      console.log('[Checkout] Payment not completed in browser, showing verify alert');
-      appMessage.alert({
-        title: 'Verify payment',
-        message: 'After completing payment, tap Verify to confirm your transaction.',
-        actions: [
-          {
-            text: 'Verify',
-            onPress: () => {
-              console.log('[Checkout] User tapped Verify, navigating to PaymentReturn', payment.tx_ref);
-              navigation.navigate('PaymentReturn', { tx_ref: payment.tx_ref });
-            },
-          },
-          { text: 'Close', style: 'cancel', onPress: () => { console.log('[Checkout] User closed verify alert'); return undefined; } },
-        ],
-      });
+      const returnedUrl = (result as any)?.url as string | undefined;
+      const parsed = returnedUrl ? ExpoLinking.parse(returnedUrl) : null;
+      const statusRaw = parsed?.queryParams?.status;
+      const status = typeof statusRaw === 'string' ? statusRaw.trim().toLowerCase() : '';
+
+      if (status && status !== 'success') {
+        console.log('[Checkout] Payment returned non-success status:', status);
+        setPaymentOverlay(false);
+        return;
+      }
+
+      const txRefRaw = parsed?.queryParams?.tx_ref;
+      const txRef =
+        (typeof txRefRaw === 'string' ? txRefRaw.trim() : '') || (payment.tx_ref || '').trim();
+
+      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      const fallbackOrder: Order = {
+        id: txRef,
+        userId: String(user?.id || ''),
+        items: cartItems.map((item) => ({
+          id: String(item.id),
+          name: item.name,
+          description: item.description || '',
+          price: item.price,
+          category: item.category || '',
+          quantity: item.quantity,
+          courseCode: item.courseCode,
+        })),
+        total,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+      };
+
+      let nextOrder: Order | null = null;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        try {
+          const orders = await orderAPI.getOrders({ page: 1, limit: 20 });
+          nextOrder = orders.find((o) => o.id === txRef) || null;
+          if (nextOrder) break;
+        } catch {
+          // ignore
+        }
+        await delay(900);
+      }
+
+      clearCart();
+      navigation.replace('OrderReceipt', { order: nextOrder || fallbackOrder });
+      return;
     } catch (error: any) {
       console.log('[Checkout] Payment failed:', error);
       appMessage.alert({
@@ -104,6 +140,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       });
     } finally {
       setLoading(false);
+      setPaymentOverlay(false);
       console.log('[Checkout] Payment process finished. Loading set to false.');
     }
   };
@@ -190,6 +227,20 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {paymentOverlay ? (
+        <View
+          pointerEvents="auto"
+          style={[
+            styles.paymentOverlay,
+            { backgroundColor: 'rgba(0,0,0,0.40)' },
+          ]}
+        >
+          <View style={[styles.paymentOverlayCard, { backgroundColor: "transparent" }]}>
+            <ActivityIndicator color={colors.accent} size={150} />
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -249,11 +300,8 @@ const styles = StyleSheet.create({
   mediaCard: {
     borderRadius: 22,
     padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
-    elevation: 8,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   media: {
     height: 180,
@@ -269,11 +317,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   detailsCard: {
     marginTop: 12,
@@ -388,6 +433,21 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  paymentOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  paymentOverlayCard: {
+    width: '100%',
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
 });
 
