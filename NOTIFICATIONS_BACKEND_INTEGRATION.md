@@ -1,5 +1,7 @@
 # Nivasity Notifications (Backend Integration Guide)
 
+Status: the backend repo now includes these endpoints in `API/notifications/*` and a matching doc at `API/NOTIFICATIONS_BACKEND_INTEGRATION.md`. This file remains as the mobile-side contract reference.
+
 This mobile app is wired for **Expo Push Notifications** + an **in-app notification inbox**. To make it work end-to-end, implement the endpoints below and store notifications per user.
 
 ## Overview (how it works)

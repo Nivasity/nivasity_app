@@ -86,6 +86,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const appMessage = useAppMessage();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [serverUnreadCount, setServerUnreadCount] = useState<number | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<Notifications.PermissionStatus | 'undetermined'>('undetermined');
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>(undefined);
@@ -94,7 +95,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const registeringToken = useRef<Promise<string | undefined> | null>(null);
   const mounted = useRef(true);
 
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.readAt).length, [notifications]);
+  const localUnreadCount = useMemo(() => notifications.filter((n) => !n.readAt).length, [notifications]);
+  const unreadCount = useMemo(() => {
+    if (serverUnreadCount == null) return localUnreadCount;
+    return Math.max(serverUnreadCount, localUnreadCount);
+  }, [localUnreadCount, serverUnreadCount]);
 
   const persist = useCallback((next: AppNotification[]) => {
     AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => undefined);
@@ -133,9 +138,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       if (!isAuthenticated) return;
       setIsRefreshing(true);
       try {
-        const { notifications: list } = await notificationAPI.listNotifications({ page: 1, limit: 50 });
+        const { notifications: list, unreadCount: nextUnreadCount } = await notificationAPI.listNotifications({ page: 1, limit: 50 });
         if (!mounted.current) return;
         setNotifications(list);
+        if (typeof nextUnreadCount === 'number') setServerUnreadCount(nextUnreadCount);
         persist(list);
         lastRefreshAt.current = Date.now();
       } catch (e: any) {
@@ -220,11 +226,17 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
   const markAsRead = useCallback(async (id: string) => {
     const now = new Date().toISOString();
+    let wasUnread = false;
     setNotifications((prev) => {
+      const existing = prev.find((n) => n.id === id);
+      wasUnread = !!existing && !existing.readAt;
       const next = prev.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n));
       persist(next);
       return next;
     });
+    if (wasUnread && serverUnreadCount != null) {
+      setServerUnreadCount((c) => (typeof c === 'number' ? Math.max(0, c - 1) : c));
+    }
 
     try {
       await notificationAPI.markRead({ id });
@@ -240,6 +252,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       persist(next);
       return next;
     });
+    if (serverUnreadCount != null) setServerUnreadCount(0);
 
     try {
       await notificationAPI.markAllRead();
@@ -331,6 +344,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     if (isAuthenticated) return;
     setNotifications([]);
     setExpoPushToken(undefined);
+    setServerUnreadCount(undefined);
     AsyncStorage.removeItem(CACHE_KEY).catch(() => undefined);
   }, [isAuthenticated]);
 
