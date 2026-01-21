@@ -6,12 +6,14 @@ import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import OptionPickerDialog from '../components/OptionPickerDialog';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoginCredentials } from '../types';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { referenceAPI } from '../services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -44,6 +46,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
   const appMessage = useAppMessage();
   const processedGoogleResponseKeyRef = useRef<string | null>(null);
+  const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [schoolsOpen, setSchoolsOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState('');
+  const [pendingGoogleTokens, setPendingGoogleTokens] = useState<{ idToken?: string; accessToken?: string } | null>(null);
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
@@ -54,6 +61,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const needsSchoolIdMessage = (e: any) => {
+    const msg = String(e?.response?.data?.message || e?.message || '').toLowerCase();
+    return msg.includes('school_id is required') || msg.includes('school id is required');
+  };
+
+  useEffect(() => {
+    if (!schoolsOpen) return;
+    if (schoolsLoading) return;
+    if (schools.length > 0) return;
+
+    let mounted = true;
+    setSchoolsLoading(true);
+    (async () => {
+      try {
+        const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
+        if (!mounted) return;
+        setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
+      } catch (e: any) {
+        if (!mounted) return;
+        setSchools([]);
+        appMessage.toast({
+          status: 'failed',
+          message: e?.response?.data?.message || e?.message || 'Could not load schools',
+        });
+      } finally {
+        if (mounted) setSchoolsLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [appMessage, schools.length, schoolsLoading, schoolsOpen]);
 
   const nativeRedirectUri = Platform.select({
     android: getGoogleRedirectUri(GOOGLE_ANDROID_CLIENT_ID),
@@ -144,11 +185,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         if (processedGoogleResponseKeyRef.current === responseKey) return;
         processedGoogleResponseKeyRef.current = responseKey;
 
-        await loginWithGoogle({ idToken, accessToken });
+        try {
+          await loginWithGoogle({ idToken, accessToken });
+        } catch (e: any) {
+          if (needsSchoolIdMessage(e)) {
+            setPendingGoogleTokens({ idToken, accessToken });
+            setSchoolsOpen(true);
+            appMessage.toast({ status: 'info', message: 'Select your school to complete Google sign-in.' });
+            return;
+          }
+          throw e;
+        }
       } catch (e: any) {
         appMessage.alert({
           title: 'Google Login Error',
-          message: e?.message || 'Unknown error',
+          message: e?.response?.data?.message || e?.message || 'Unknown error',
         });
       } finally {
         if (!cancelled) {
@@ -194,6 +245,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleGoogleLogin = async () => {
     try {
+      setPendingGoogleTokens(null);
+      setSelectedSchool('');
       const expectedClientId = Platform.select({
         android: GOOGLE_ANDROID_CLIENT_ID,
         ios: GOOGLE_IOS_CLIENT_ID,
@@ -267,7 +320,37 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
   };
 
+  const schoolNames = schools.map((s) => s.name);
+  const canOpenSchools = !schoolsLoading && schoolNames.length > 0;
+
+  const confirmSchoolForGoogle = async (schoolName: string) => {
+    const match = schools.find((s) => s.name === schoolName);
+    const schoolId = match?.id;
+    const tokens = pendingGoogleTokens;
+    if (!schoolId || (!tokens?.idToken && !tokens?.accessToken)) {
+      appMessage.alert({
+        title: 'Google Sign-in',
+        message: !schoolId ? 'Select a valid school.' : 'Missing Google token. Please try again.',
+      });
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle({ idToken: tokens.idToken, accessToken: tokens.accessToken, schoolId });
+      setPendingGoogleTokens(null);
+    } catch (e: any) {
+      appMessage.alert({
+        title: 'Google Login Error',
+        message: e?.response?.data?.message || e?.message || 'Unknown error',
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
+    <>
     <AuthScaffold navigation={navigation} title="Welcome back!">
       <TouchableOpacity
         onPress={handleGoogleLogin}
@@ -351,6 +434,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </AuthScaffold>
+
+    <OptionPickerDialog
+      visible={schoolsOpen}
+      title="Select your school"
+      searchPlaceholder="Search school..."
+      options={schoolNames}
+      selected={selectedSchool}
+      loading={schoolsLoading}
+      onClose={() => {
+        setSchoolsOpen(false);
+      }}
+      onSelect={(value) => {
+        if (!canOpenSchools) {
+          appMessage.toast({
+            status: schoolsLoading ? 'info' : 'failed',
+            message: schoolsLoading ? 'Loading schools...' : 'No schools available',
+          });
+          return;
+        }
+        setSelectedSchool(value);
+        confirmSchoolForGoogle(value);
+      }}
+    />
+    </>
   );
 };
 

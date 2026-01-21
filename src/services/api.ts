@@ -321,6 +321,7 @@ export const authAPI = {
   googleLogin: async (args: {
     idToken?: string;
     accessToken?: string;
+    schoolId?: number;
   }): Promise<{ user: User; accessToken: string; refreshToken?: string }> => {
     if (!args.idToken && !args.accessToken) {
       throw new Error('Google login failed: missing token');
@@ -431,6 +432,7 @@ export const authAPI = {
     const fullPayload: any = {};
     if (args.idToken) fullPayload.id_token = args.idToken;
     if (args.accessToken) fullPayload.access_token = args.accessToken;
+    if (args.schoolId != null) fullPayload.school_id = args.schoolId;
 
     let data: GoogleLoginSuccessData;
     try {

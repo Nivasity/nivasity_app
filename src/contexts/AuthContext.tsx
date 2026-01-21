@@ -10,7 +10,7 @@ interface AuthContextType {
   authEntryRoute: 'Welcome' | 'Login';
   needsAcademicInfo: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  loginWithGoogle: (args: { idToken?: string; accessToken?: string }) => Promise<void>;
+  loginWithGoogle: (args: { idToken?: string; accessToken?: string; schoolId?: number }) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<{ message: string }>;
   verifyOtp: (email: string, otp: string, meta?: { schoolName?: string }) => Promise<void>;
   updateAcademicInfo: (data: { deptId: number | string; matricNo: string; admissionYear: string }) => Promise<void>;
@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [hydrateProfile]);
 
-  const loginWithGoogle = useCallback(async (args: { idToken?: string; accessToken?: string }) => {
+  const loginWithGoogle = useCallback(async (args: { idToken?: string; accessToken?: string; schoolId?: number }) => {
     try {
       const { user: nextUser } = await authAPI.googleLogin(args);
       setUser(nextUser);
