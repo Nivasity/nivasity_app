@@ -54,6 +54,7 @@ export type AppIconName =
   | 'chatbubble-ellipses-outline'
   | 'chatbubbles-outline'
   | 'log-out-outline'
+  | 'notifications-outline'
   // Order status icons
   | 'checkmark-circle-outline'
   | 'close-circle-outline'

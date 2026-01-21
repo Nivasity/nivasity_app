@@ -6,6 +6,7 @@ import AppText from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
+import { useNotifications } from '../contexts/NotificationsContext';
 import Loading from '../components/Loading';
 import { orderAPI, storeAPI } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
@@ -23,6 +24,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const { user } = useAuth();
   const { colors } = useTheme();
   const { count: cartCount, lastActionAt, has, toggle } = useCart();
+  const { unreadCount } = useNotifications();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -135,12 +137,20 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             </View>
 
             <TouchableOpacity
-              onPress={() => navigation.navigate('Store')}
-              style={[styles.searchButton, { backgroundColor: 'transparent' }]}
+              onPress={() => navigation.navigate('Notifications')}
+              style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
               accessibilityRole="button"
-              accessibilityLabel="Browse store"
+              accessibilityLabel="Open notifications"
+              activeOpacity={0.85}
             >
-              {/* <AppIcon name="search-outline" size={20} color={colors.text} /> */}
+              <AppIcon name="notifications-outline" size={20} color={colors.text} />
+              {unreadCount > 0 ? (
+                <View style={[styles.notifBadge, { backgroundColor: colors.accent, borderColor: colors.surface }]}>
+                  <Text style={[styles.notifBadgeText, { color: colors.onAccent }]}>
+                    {unreadCount > 9 ? '9+' : String(unreadCount)}
+                  </Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
           </View>
         </View>
@@ -433,6 +443,22 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: -0.2,
   },
   heroCard: {
     marginHorizontal: 16,

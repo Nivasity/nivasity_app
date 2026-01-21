@@ -9,6 +9,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { AppMessageProvider } from './src/contexts/AppMessageContext';
+import { NotificationsProvider } from './src/contexts/NotificationsContext';
 
 export default function App() {
   const [fontsLoaded] = useAppFonts();
@@ -54,7 +55,9 @@ const AppRoot = () => {
   return (
     <PaperProvider theme={paperTheme}>
       <AppMessageProvider>
-        <AppNavigator />
+        <NotificationsProvider>
+          <AppNavigator />
+        </NotificationsProvider>
       </AppMessageProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </PaperProvider>

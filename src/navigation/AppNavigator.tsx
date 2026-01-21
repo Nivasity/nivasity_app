@@ -8,6 +8,7 @@ import AppIcon, { AppIconName } from '../components/AppIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { createNavigationTheme } from '../theme/navigationTheme';
+import { flushPendingNavigation, navigationRef } from './navigationRef';
 import Loading from '../components/Loading';
 import AcademicDetailsDialog from '../components/AcademicDetailsDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderReceiptScreen from '../screens/OrderReceiptScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -147,7 +149,12 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer theme={createNavigationTheme(colors, isDark)} linking={linking as any}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={flushPendingNavigation}
+      theme={createNavigationTheme(colors, isDark)}
+      linking={linking as any}
+    >
       {!isAuthenticated ? (
         <AuthStack initialRouteName={authEntryRoute} />
       ) : (
@@ -191,6 +198,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="SupportChat"
               component={SupportChatScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

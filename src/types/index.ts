@@ -75,3 +75,15 @@ export interface DashboardStats {
   totalSpent?: number;
   pendingOrders?: number;
 }
+
+export type AppNotificationData = Record<string, any>;
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  type?: string;
+  data?: AppNotificationData;
+  createdAt: string;
+  readAt?: string | null;
+}

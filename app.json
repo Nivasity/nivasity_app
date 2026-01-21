@@ -17,6 +17,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#ff9100"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nivasity.app"
@@ -46,6 +50,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
@@ -71,6 +76,7 @@
         }
       ],
       "expo-font",
+      "expo-notifications",
       "expo-web-browser"
     ],
     "web": {

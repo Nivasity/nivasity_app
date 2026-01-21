@@ -8,6 +8,7 @@ import {
   Order,
   DashboardStats,
   CartItem,
+  AppNotification,
 } from '../types';
 
 type ApiStatus = 'success' | 'error';
@@ -1164,6 +1165,137 @@ export const supportAPI = {
       throw new Error(response.data.message || 'Failed to send message');
     }
     return response.data.data as any;
+  },
+};
+
+type NotificationApiItem = {
+  id?: number | string | null;
+  notification_id?: number | string | null;
+  title?: string | null;
+  body?: string | null;
+  message?: string | null;
+  type?: string | null;
+  data?: any;
+  payload?: any;
+  created_at?: string | null;
+  createdAt?: string | null;
+  read_at?: string | null;
+  readAt?: string | null;
+};
+
+const parseMaybeJson = (value: any) => {
+  if (value == null) return undefined;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // ignore
+  }
+  return undefined;
+};
+
+const toNormalizedDateString = (value: any) => {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  return raw;
+};
+
+const mapNotification = (raw: NotificationApiItem): AppNotification => {
+  const idValue = raw.id ?? raw.notification_id ?? '';
+  const title = String(raw.title ?? '').trim();
+  const body = String(raw.body ?? raw.message ?? '').trim();
+  const type = raw.type != null ? String(raw.type).trim() : undefined;
+  const data = parseMaybeJson(raw.data) ?? parseMaybeJson(raw.payload) ?? (raw.data && typeof raw.data === 'object' ? raw.data : undefined);
+  const createdAt = toNormalizedDateString(raw.created_at ?? raw.createdAt);
+  const readAt = raw.read_at ?? raw.readAt ?? null;
+
+  return {
+    id: String(idValue),
+    title: title || 'Notification',
+    body,
+    type: type || undefined,
+    data: data || undefined,
+    createdAt: createdAt || new Date().toISOString(),
+    readAt: typeof readAt === 'string' ? readAt : readAt == null ? null : String(readAt),
+  };
+};
+
+export const notificationAPI = {
+  registerDevice: async (args: {
+    expoPushToken: string;
+    deviceId?: string;
+    platform: 'ios' | 'android' | 'web';
+    appVersion?: string;
+  }): Promise<{ ok: true }> => {
+    const response = await api.post<ApiResponse<any>>('/notifications/register-device.php', {
+      expo_push_token: args.expoPushToken,
+      device_id: args.deviceId,
+      platform: args.platform,
+      app_version: args.appVersion,
+    });
+
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to register device');
+    }
+    return { ok: true };
+  },
+
+  unregisterDevice: async (args: { expoPushToken: string; deviceId?: string }): Promise<{ ok: true }> => {
+    const response = await api.post<ApiResponse<any>>('/notifications/unregister-device.php', {
+      expo_push_token: args.expoPushToken,
+      device_id: args.deviceId,
+    });
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to unregister device');
+    }
+    return { ok: true };
+  },
+
+  listNotifications: async (args?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{ notifications: AppNotification[]; unreadCount?: number }> => {
+    const params = new URLSearchParams();
+    params.set('page', String(args?.page ?? 1));
+    params.set('limit', String(args?.limit ?? 50));
+
+    const suffix = params.toString();
+    const response = await api.get<ApiResponse<any>>(`/notifications/list.php${suffix ? `?${suffix}` : ''}`);
+
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to load notifications');
+    }
+
+    const data = response.data.data as any;
+    const list = Array.isArray(data?.notifications) ? data.notifications : Array.isArray(data) ? data : [];
+    const notifications = list.map((item: any) => mapNotification(item));
+    const unreadCount =
+      typeof data?.unread_count === 'number'
+        ? data.unread_count
+        : typeof data?.unreadCount === 'number'
+          ? data.unreadCount
+          : undefined;
+    return { notifications, unreadCount };
+  },
+
+  markRead: async (args: { id: string }): Promise<{ ok: true }> => {
+    const response = await api.post<ApiResponse<any>>('/notifications/mark-read.php', { id: args.id });
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to mark notification as read');
+    }
+    return { ok: true };
+  },
+
+  markAllRead: async (): Promise<{ ok: true }> => {
+    const response = await api.post<ApiResponse<any>>('/notifications/mark-all-read.php', {});
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Failed to mark all notifications as read');
+    }
+    return { ok: true };
   },
 };
 
