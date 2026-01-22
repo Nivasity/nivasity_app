@@ -41,7 +41,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
       <View style={styles.content}>
         <View style={styles.brand}>
           <Animated.Image
-            source={require('../../assets/image.png')}
+            source={require('../../assets/logo.png')}
             style={[
               styles.logo,
               { transform: [{ perspective: 800 }, { rotateY }] },
@@ -86,7 +86,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
               <View style={styles.ctaLeft}>
                 <View style={styles.ctaBadge}>
                   <Image
-                    source={require('../../assets/image.png')}
+                    source={require('../../assets/logo.png')}
                     style={[styles.ctaBadgeIcon]}
                     resizeMode="contain"
                   />
