@@ -1,5 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
@@ -319,82 +333,100 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
             />
           </Pressable>
 
-          <View
-            style={[
-              styles.sheet,
-              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 14 + insets.bottom },
-            ]}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'position' : 'position'}
+            style={{ width: '100%' }}
+            keyboardVerticalOffset={0}
           >
-            <View style={styles.sheetHeader}>
-              <View style={[styles.handle, { backgroundColor: colors.border }]} />
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>New ticket</Text>
-            </View>
-
-            <Input label="Subject" value={subject} onChangeText={setSubject} placeholder="What do you need help with?" />
-            <TouchableOpacity
-              onPress={() => setCategoryOpen(true)}
-              activeOpacity={0.9}
-              accessibilityRole="button"
-              accessibilityLabel="Select support category"
+            <View
+              style={[
+                styles.sheet,
+                { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 14 + insets.bottom },
+              ]}
             >
-              <View pointerEvents="none">
-                <Input
-                  label="Category"
-                  value={category}
-                  editable={false}
-                  right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
-                />
+              <View style={styles.sheetHeader}>
+                <View style={[styles.handle, { backgroundColor: colors.border }]} />
+                <Text style={[styles.sheetTitle, { color: colors.text }]}>New ticket</Text>
               </View>
-            </TouchableOpacity>
-            <Input
-              label="Message"
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Describe the issue..."
-              multiline
-              style={{ minHeight: 120 }}
-            />
 
-            <View style={styles.attachRow}>
-              <TouchableOpacity
-                onPress={pickPhoto}
-                style={[styles.attachButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Attach photo"
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                contentContainerStyle={{ paddingBottom: 18 }}
               >
-                <AppIcon name="image-outline" size={18} color={colors.textMuted} />
-                <Text style={[styles.attachText, { color: colors.text }]}>Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={pickFile}
-                style={[styles.attachButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Attach file"
-              >
-                <AppIcon name="document-attach-outline" size={18} color={colors.textMuted} />
-                <Text style={[styles.attachText, { color: colors.text }]}>File</Text>
-              </TouchableOpacity>
-              {attachment ? (
+                <Input
+                  label="Subject"
+                  value={subject}
+                  onChangeText={setSubject}
+                  placeholder="What do you need help with?"
+                />
                 <TouchableOpacity
-                  onPress={() => setAttachment(null)}
-                  style={[styles.attachmentPill, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-                  activeOpacity={0.85}
+                  onPress={() => setCategoryOpen(true)}
+                  activeOpacity={0.9}
                   accessibilityRole="button"
-                  accessibilityLabel="Remove attachment"
+                  accessibilityLabel="Select support category"
                 >
-                  <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
-                  <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
-                    {attachment.name}
-                  </Text>
-                  <AppIcon name="close-outline" size={14} color={colors.textMuted} />
+                  <View pointerEvents="none">
+                    <Input
+                      label="Category"
+                      value={category}
+                      editable={false}
+                      right={<PaperTextInput.Icon icon="chevron-down" color={colors.textMuted} />}
+                    />
+                  </View>
                 </TouchableOpacity>
-              ) : null}
-            </View>
+                <Input
+                  label="Message"
+                  value={message}
+                  onChangeText={setMessage}
+                  placeholder="Describe the issue..."
+                  multiline
+                  style={{ minHeight: 120 }}
+                />
 
-            <Button title={creating ? 'Creating...' : 'Create ticket'} onPress={submitTicket} disabled={creating} />
-          </View>
+                <View style={styles.attachRow}>
+                  <TouchableOpacity
+                    onPress={pickPhoto}
+                    style={[styles.attachButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Attach photo"
+                  >
+                    <AppIcon name="image-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.attachText, { color: colors.text }]}>Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={pickFile}
+                    style={[styles.attachButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Attach file"
+                  >
+                    <AppIcon name="document-attach-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.attachText, { color: colors.text }]}>File</Text>
+                  </TouchableOpacity>
+                  {attachment ? (
+                    <TouchableOpacity
+                      onPress={() => setAttachment(null)}
+                      style={[styles.attachmentPill, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove attachment"
+                    >
+                      <AppIcon name="attach-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.attachmentName, { color: colors.textMuted }]} numberOfLines={1}>
+                        {attachment.name}
+                      </Text>
+                      <AppIcon name="close-outline" size={14} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                <Button title={creating ? 'Creating...' : 'Create ticket'} onPress={submitTicket} disabled={creating} />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -508,6 +540,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 20,
+    maxHeight: '85%',
   },
   sheetHeader: {
     alignItems: 'center',
