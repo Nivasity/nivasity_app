@@ -795,6 +795,30 @@ export const referenceAPI = {
     }
     return response.data.data;
   },
+
+  getSupportDetails: async (): Promise<{ whatsapp?: string; email?: string }> => {
+    const tryGet = async (path: string) => {
+      const response = await api.get<ApiResponse<any>>(path, { skipAuth: true } as any);
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error(response.data.message || 'Failed to load support details');
+      }
+      return response.data.data as any;
+    };
+
+    const candidates = ['/reference/support.php'];
+    let lastError: any;
+    for (const path of candidates) {
+      try {
+        const data = await tryGet(path);
+        const whatsapp = String(data.whatsapp ?? data.whats_app ?? data.whatsapp_phone ?? '').trim() || undefined;
+        const email = String(data.email ?? data.support_email ?? '').trim() || undefined;
+        return { whatsapp, email };
+      } catch (e: any) {
+        lastError = e;
+      }
+    }
+    throw lastError || new Error('Failed to load support details');
+  },
 };
 
 type MaterialListItem = {

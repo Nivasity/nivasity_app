@@ -14,6 +14,7 @@ export type AppIconName =
   | 'arrow-up-outline'
   | 'chevron-forward'
   | 'logo-google'
+  | 'logo-whatsapp'
   | 'checkmark'
   | 'receipt-outline'
   | 'time-outline'
@@ -53,6 +54,7 @@ export type AppIconName =
   | 'help-circle-outline'
   | 'chatbubble-ellipses-outline'
   | 'chatbubbles-outline'
+  | 'mail-outline'
   | 'log-out-outline'
   | 'notifications-outline'
   // Order status icons

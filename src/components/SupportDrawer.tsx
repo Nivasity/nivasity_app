@@ -1,15 +1,21 @@
-import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
+import { referenceAPI } from '../services/api';
 
 type SupportDrawerProps = {
   visible: boolean;
   onClose: () => void;
   onSearchHelp: () => void;
   onMessages: () => void;
+};
+
+type SupportContacts = {
+  whatsapp?: string;
+  email?: string;
 };
 
 const SupportOption = ({
@@ -48,9 +54,106 @@ const SupportOption = ({
   );
 };
 
+const SupportContactOption = ({
+  title,
+  subtitle,
+  rightIcon,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  rightIcon: React.ComponentProps<typeof AppIcon>['name'];
+  onPress: () => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.option, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.optionTitle, { color: colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[styles.optionSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
+          {subtitle}
+        </Text>
+      </View>
+      <AppIcon name={rightIcon} size={18} color={colors.textMuted} />
+    </TouchableOpacity>
+  );
+};
+
 const SupportDrawer: React.FC<SupportDrawerProps> = ({ visible, onClose, onSearchHelp, onMessages }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [contacts, setContacts] = useState<SupportContacts>({});
+  const [contactsLoaded, setContactsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (contactsLoaded) return;
+
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await referenceAPI.getSupportDetails();
+        if (!mounted) return;
+        setContacts({ whatsapp: res.whatsapp, email: res.email });
+        setContactsLoaded(true);
+      } catch (e: any) {
+        if (__DEV__) {
+          console.log('[SupportDrawer] support details not available:', e?.response?.data?.message || e?.message);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [contactsLoaded, visible]);
+
+  const whatsappValue = (contacts.whatsapp || '').trim();
+  const emailValue = (contacts.email || '').trim();
+  const hasContacts = !!whatsappValue || !!emailValue;
+
+  const toWhatsAppDigits = (raw: string) => raw.replace(/[^\d]/g, '');
+
+  const openWhatsApp = useCallback(async () => {
+    const digits = toWhatsAppDigits(whatsappValue);
+    if (!digits) return;
+    const deepLink = `whatsapp://send?phone=${digits}`;
+    const webLink = `https://wa.me/${digits}`;
+    try {
+      const can = await Linking.canOpenURL(deepLink);
+      await Linking.openURL(can ? deepLink : webLink);
+    } catch {
+      try {
+        await Linking.openURL(webLink);
+      } catch {
+        // ignore
+      }
+    }
+  }, [whatsappValue]);
+
+  const openEmail = useCallback(async () => {
+    const email = emailValue;
+    if (!email) return;
+    const url = `mailto:${encodeURIComponent(email)}`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // ignore
+    }
+  }, [emailValue]);
+
+  const divider = useMemo(() => {
+    if (!hasContacts) return null;
+    return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
+  }, [colors.border, hasContacts]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -98,6 +201,26 @@ const SupportDrawer: React.FC<SupportDrawerProps> = ({ visible, onClose, onSearc
             subtitle="View your support tickets and chat with support."
             onPress={onMessages}
           />
+
+          {divider}
+
+          {whatsappValue ? (
+            <SupportContactOption
+              title="Chat us on WhatsApp"
+              subtitle={whatsappValue}
+              rightIcon="logo-whatsapp"
+              onPress={openWhatsApp}
+            />
+          ) : null}
+
+          {emailValue ? (
+            <SupportContactOption
+              title="Email Support"
+              subtitle={emailValue}
+              rightIcon="mail-outline"
+              onPress={openEmail}
+            />
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -144,6 +267,12 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.55,
+    marginVertical: 8,
+    marginHorizontal: 6,
+  },
   optionIcon: {
     width: 42,
     height: 42,
@@ -165,4 +294,3 @@ const styles = StyleSheet.create({
 });
 
 export default SupportDrawer;
-
