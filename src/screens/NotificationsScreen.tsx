@@ -37,7 +37,21 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const appMessage = useAppMessage();
-  const { notifications, unreadCount, isRefreshing, permissionStatus, expoPushToken, refresh, requestPushPermission, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isRefreshing,
+    permissionStatus,
+    expoPushToken,
+    apiBaseUrl,
+    lastDeviceRegisterAttemptAt,
+    lastDeviceRegisterSuccessAt,
+    lastDeviceRegisterError,
+    refresh,
+    requestPushPermission,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
 
   const highlightId = (route?.params?.highlightId as string | undefined) || undefined;
   const listRef = useRef<FlatList<AppNotification> | null>(null);
@@ -63,6 +77,14 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     if (t.length <= 18) return t;
     return `${t.slice(0, 12)}…${t.slice(-6)}`;
   }, [expoPushToken]);
+
+  const formatTimestamp = (value?: string) => {
+    const raw = (value || '').trim();
+    if (!raw) return 'none';
+    const t = new Date(raw.replace(' ', 'T'));
+    if (Number.isNaN(t.getTime())) return raw;
+    return `${t.toLocaleString()} (${raw})`;
+  };
 
   useEffect(() => {
     if (!highlightId) return;
@@ -122,6 +144,28 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
             variant="outline"
             style={{ borderRadius: 16, minHeight: 46 }}
           />
+        </View>
+
+        <View style={[styles.diagCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.diagTitle, { color: colors.text }]}>Diagnostics</Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            permissionStatus: {permissionStatus}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            expoPushToken: {expoPushToken ? expoPushToken : 'none'}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            apiBaseUrl: {apiBaseUrl}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastRegisterAttemptAt: {formatTimestamp(lastDeviceRegisterAttemptAt)}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastRegisterSuccessAt: {formatTimestamp(lastDeviceRegisterSuccessAt)}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastRegisterError: {lastDeviceRegisterError ? lastDeviceRegisterError : 'none'}
+          </Text>
         </View>
 
         <View style={{ height: 14 }} />
@@ -290,6 +334,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 16,
+  },
+  diagCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 12,
+  },
+  diagTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+    marginBottom: 8,
+  },
+  diagLine: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 16,
+    marginBottom: 4,
   },
   row: {
     marginHorizontal: 16,

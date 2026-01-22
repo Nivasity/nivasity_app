@@ -4,7 +4,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
-import { notificationAPI } from '../services/api';
+import { API_BASE_URL, notificationAPI } from '../services/api';
 import { AppNotification, AppNotificationData } from '../types';
 import { navigate } from '../navigation/navigationRef';
 import { useAppMessage } from './AppMessageContext';
@@ -26,6 +26,10 @@ type NotificationsContextValue = {
   isRefreshing: boolean;
   permissionStatus: Notifications.PermissionStatus | 'undetermined';
   expoPushToken?: string;
+  apiBaseUrl: string;
+  lastDeviceRegisterAttemptAt?: string;
+  lastDeviceRegisterSuccessAt?: string;
+  lastDeviceRegisterError?: string;
   refresh: (opts?: { silent?: boolean }) => Promise<void>;
   requestPushPermission: () => Promise<boolean>;
   markAsRead: (id: string) => Promise<void>;
@@ -91,6 +95,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<Notifications.PermissionStatus | 'undetermined'>('undetermined');
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>(undefined);
+  const [lastDeviceRegisterAttemptAt, setLastDeviceRegisterAttemptAt] = useState<string | undefined>(undefined);
+  const [lastDeviceRegisterSuccessAt, setLastDeviceRegisterSuccessAt] = useState<string | undefined>(undefined);
+  const [lastDeviceRegisterError, setLastDeviceRegisterError] = useState<string | undefined>(undefined);
 
   const lastRefreshAt = useRef(0);
   const registeringToken = useRef<Promise<string | undefined> | null>(null);
@@ -181,6 +188,8 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
     if (registeringDevice.current) return registeringDevice.current;
     registeringDevice.current = (async () => {
+      setLastDeviceRegisterAttemptAt(new Date().toISOString());
+      setLastDeviceRegisterError(undefined);
       try {
         const appVersion =
           (Constants.expoConfig as any)?.version ||
@@ -192,15 +201,18 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
           appVersion,
         });
         lastDeviceRegKey.current = regKey;
+        setLastDeviceRegisterSuccessAt(new Date().toISOString());
         return true;
       } catch (e: any) {
+        const msg = String(e?.response?.data?.message || e?.message || 'Failed to register device for push notifications.');
+        setLastDeviceRegisterError(msg);
         if (!opts?.silent) {
           appMessage.toast({
             status: 'failed',
-            message: e?.response?.data?.message || e?.message || 'Failed to register device for push notifications.',
+            message: msg,
           });
         } else if (__DEV__) {
-          console.log('[Notifications] device registration failed:', e?.response?.data?.message || e?.message);
+          console.log('[Notifications] device registration failed:', msg);
         }
         return false;
       } finally {
@@ -413,6 +425,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     setNotifications([]);
     setExpoPushToken(undefined);
     setServerUnreadCount(undefined);
+    setLastDeviceRegisterAttemptAt(undefined);
+    setLastDeviceRegisterSuccessAt(undefined);
+    setLastDeviceRegisterError(undefined);
     lastDeviceRegKey.current = null;
     AsyncStorage.removeItem(CACHE_KEY).catch(() => undefined);
     AsyncStorage.removeItem(EXPO_PUSH_TOKEN_KEY).catch(() => undefined);
@@ -425,6 +440,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       isRefreshing,
       permissionStatus,
       expoPushToken,
+      apiBaseUrl: API_BASE_URL,
+      lastDeviceRegisterAttemptAt,
+      lastDeviceRegisterSuccessAt,
+      lastDeviceRegisterError,
       refresh,
       requestPushPermission,
       markAsRead,
@@ -437,6 +456,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       isRefreshing,
       permissionStatus,
       expoPushToken,
+      lastDeviceRegisterAttemptAt,
+      lastDeviceRegisterSuccessAt,
+      lastDeviceRegisterError,
       refresh,
       requestPushPermission,
       markAsRead,

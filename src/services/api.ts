@@ -133,11 +133,13 @@ const DEFAULT_BASE_URL = 'https://api.nivasity.com';
 const RESOLVED_BASE_URL = normalizeBaseUrl(
   ((process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) || DEFAULT_BASE_URL).trim()
 );
+export const API_BASE_URL = RESOLVED_BASE_URL;
 
 const DEFAULT_ASSETS_BASE_URL = 'https://assets.nivasity.com';
 const RESOLVED_ASSETS_BASE_URL = normalizeBaseUrl(
   ((process.env.EXPO_PUBLIC_ASSETS_BASE_URL as string | undefined) || DEFAULT_ASSETS_BASE_URL).trim()
 );
+export const ASSETS_BASE_URL = RESOLVED_ASSETS_BASE_URL;
 
 // Create axios instance
 const api = axios.create({
