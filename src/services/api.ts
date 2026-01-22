@@ -810,8 +810,19 @@ export const referenceAPI = {
     for (const path of candidates) {
       try {
         const data = await tryGet(path);
-        const whatsapp = String(data.whatsapp ?? data.whats_app ?? data.whatsapp_phone ?? '').trim() || undefined;
-        const email = String(data.email ?? data.support_email ?? '').trim() || undefined;
+        const contact =
+          data?.contact && typeof data.contact === 'object' && !Array.isArray(data.contact) ? data.contact : undefined;
+
+        const whatsapp = String(
+          contact?.whatsapp ??
+            contact?.phone ??
+            data?.whatsapp ??
+            data?.whats_app ??
+            data?.whatsapp_phone ??
+            ''
+        ).trim() || undefined;
+
+        const email = String(contact?.email ?? data?.email ?? data?.support_email ?? '').trim() || undefined;
         return { whatsapp, email };
       } catch (e: any) {
         lastError = e;

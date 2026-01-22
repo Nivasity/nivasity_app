@@ -37,7 +37,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const appMessage = useAppMessage();
-  const { notifications, unreadCount, isRefreshing, permissionStatus, refresh, requestPushPermission, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, isRefreshing, permissionStatus, expoPushToken, refresh, requestPushPermission, markAsRead, markAllAsRead } = useNotifications();
 
   const highlightId = (route?.params?.highlightId as string | undefined) || undefined;
   const listRef = useRef<FlatList<AppNotification> | null>(null);
@@ -49,10 +49,20 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   }, []);
 
   const headerSubtitle = useMemo(() => {
-    if (permissionStatus === 'granted') return 'Push notifications are enabled.';
+    if (permissionStatus === 'granted') {
+      if (expoPushToken) return 'Push notifications are enabled and ready.';
+      return 'Push notifications are enabled, but setup is not complete yet.';
+    }
     if (permissionStatus === 'denied') return 'Push notifications are off. Enable them in your phone settings.';
     return 'Enable push notifications to get updates even when the app is closed.';
-  }, [permissionStatus]);
+  }, [expoPushToken, permissionStatus]);
+
+  const tokenHint = useMemo(() => {
+    const t = String(expoPushToken || '').trim();
+    if (!t) return undefined;
+    if (t.length <= 18) return t;
+    return `${t.slice(0, 12)}…${t.slice(-6)}`;
+  }, [expoPushToken]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -90,28 +100,31 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   const renderHeader = () => {
     return (
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        {permissionStatus !== 'granted' ? (
-          <View style={[styles.pushCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.pushCardTop}>
-              <View style={styles.pushCardIcon}>
-                <AppIcon name="notifications-outline" size={20} color={colors.secondary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.pushTitle, { color: colors.text }]}>Push notifications</Text>
-                <Text style={[styles.pushSubtitle, { color: colors.textMuted }]}>{headerSubtitle}</Text>
-              </View>
+        <View style={[styles.pushCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.pushCardTop}>
+            <View style={styles.pushCardIcon}>
+              <AppIcon name="notifications-outline" size={20} color={colors.secondary} />
             </View>
-            <Button
-              title="Enable"
-              onPress={enablePush}
-              loading={enablingPush}
-              variant="outline"
-              style={{ borderRadius: 16, minHeight: 46 }}
-            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pushTitle, { color: colors.text }]}>Push notifications</Text>
+              <Text style={[styles.pushSubtitle, { color: colors.textMuted }]}>{headerSubtitle}</Text>
+              {tokenHint ? (
+                <Text style={[styles.pushSubtitle, { color: colors.textMuted, marginTop: 4 }]}>
+                  Token: {tokenHint}
+                </Text>
+              ) : null}
+            </View>
           </View>
-        ) : null}
+          <Button
+            title={permissionStatus === 'granted' ? 'Sync device' : 'Enable'}
+            onPress={enablePush}
+            loading={enablingPush}
+            variant="outline"
+            style={{ borderRadius: 16, minHeight: 46 }}
+          />
+        </View>
 
-        <View style={{ height: permissionStatus !== 'granted' ? 14 : 6 }} />
+        <View style={{ height: 14 }} />
       </View>
     );
   };
@@ -335,4 +348,3 @@ const styles = StyleSheet.create({
 });
 
 export default NotificationsScreen;
-

@@ -37,7 +37,6 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 
 const CACHE_KEY = 'notifications.cache.v1';
 const EXPO_PUSH_TOKEN_KEY = 'notifications.expoPushToken.v1';
-const DEVICE_REG_KEY = 'notifications.deviceReg.v1';
 
 const parseCache = (raw: string): AppNotification[] | null => {
   try {
@@ -180,12 +179,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     const regKey = `${userId}:${token}`;
     if (lastDeviceRegKey.current === regKey) return true;
 
-    const cached = await AsyncStorage.getItem(DEVICE_REG_KEY).catch(() => null);
-    if (cached === regKey) {
-      lastDeviceRegKey.current = regKey;
-      return true;
-    }
-
     if (registeringDevice.current) return registeringDevice.current;
     registeringDevice.current = (async () => {
       try {
@@ -198,8 +191,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
           platform: Platform.OS as 'ios' | 'android' | 'web',
           appVersion,
         });
-
-        await AsyncStorage.setItem(DEVICE_REG_KEY, regKey).catch(() => undefined);
         lastDeviceRegKey.current = regKey;
         return true;
       } catch (e: any) {
@@ -269,10 +260,18 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       setPermissionStatus(res.status);
       if (res.status !== 'granted') return false;
       const token = await registerPushTokenIfGranted();
-      if (token) {
-        await registerDeviceIfNeeded(token);
+      if (!token) {
+        appMessage.toast({
+          status: 'failed',
+          message: Device.isDevice
+            ? 'Push permission granted, but no Expo push token was returned.'
+            : 'Push notifications require a physical device build (emulators/simulators cannot register for push).',
+        });
+        return false;
       }
-      return true;
+
+      const ok = await registerDeviceIfNeeded(token);
+      return ok;
     } catch (e: any) {
       appMessage.toast({ status: 'failed', message: e?.message || 'Failed to enable push notifications.' });
       return false;
@@ -417,7 +416,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     lastDeviceRegKey.current = null;
     AsyncStorage.removeItem(CACHE_KEY).catch(() => undefined);
     AsyncStorage.removeItem(EXPO_PUSH_TOKEN_KEY).catch(() => undefined);
-    AsyncStorage.removeItem(DEVICE_REG_KEY).catch(() => undefined);
   }, [isAuthenticated]);
 
   const value = useMemo<NotificationsContextValue>(
