@@ -427,7 +427,8 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     });
 
     const handleResponse = (res: Notifications.NotificationResponse | null | undefined) => {
-      const data = (res?.notification?.request?.content?.data || {}) as any;
+      if (!res) return;
+      const data = (res.notification?.request?.content?.data || {}) as any;
       const id = String(data.notification_id ?? data.id ?? '').trim();
       navigate('Notifications', { highlightId: id || undefined });
     };

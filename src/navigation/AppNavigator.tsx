@@ -44,7 +44,17 @@ const TAB_BAR_MAX_WIDTH = 420;
 
 const linking = {
   prefixes: [ExpoLinking.createURL('/', { scheme: 'nivasity' }), 'nivasity://'],
-  config: { screens: {} },
+  config: {
+    screens: {
+      StudentMain: {
+        screens: {
+          Store: {
+            path: 'material/:materialId',
+          },
+        },
+      },
+    },
+  },
 };
 
 // Auth Stack Navigator

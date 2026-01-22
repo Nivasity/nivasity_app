@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button as PaperButton, Dialog, Portal, RadioButton } from 'react-native-paper';
@@ -17,6 +17,7 @@ import EmptyState from '../components/EmptyState';
 
 interface StoreScreenProps {
   navigation: any;
+  route: any;
 }
 
 type SortOption = 'recommended' | 'low-high' | 'high-low';
@@ -28,7 +29,7 @@ const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
   __shimmer: true,
 }));
 
-const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
+const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
@@ -51,6 +52,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const lastOpenedMaterialId = useRef<string | null>(null);
 
   const showCardsShimmer = loading && !refreshing && !loadingMore;
 
@@ -58,6 +60,43 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
     const handle = setTimeout(() => setSearch(query.trim()), 350);
     return () => clearTimeout(handle);
   }, [query]);
+
+  useEffect(() => {
+    const rawId = route?.params?.materialId;
+    const materialId = rawId != null ? String(rawId).trim() : '';
+    if (!materialId) return;
+    if (lastOpenedMaterialId.current === materialId) return;
+    lastOpenedMaterialId.current = materialId;
+
+    navigation.setParams({ materialId: undefined });
+
+    let canceled = false;
+    (async () => {
+      try {
+        const existing = materials.find((m) => String(m.id) === materialId) || null;
+        if (existing) {
+          if (!canceled) {
+            setActiveProduct(existing);
+            setDetailsOpen(true);
+          }
+          return;
+        }
+
+        const fetched = await storeAPI.getProduct(materialId);
+        if (canceled) return;
+        setActiveProduct(fetched);
+        setDetailsOpen(true);
+      } catch (e: any) {
+        if (canceled) return;
+        appMessage.toast({ status: 'failed', message: e?.message || 'Failed to load material.' });
+      }
+    })();
+
+    return () => {
+      canceled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params?.materialId]);
 
   const loadPage = useCallback(
     async (args: { nextPage: number; append: boolean }) => {
@@ -131,8 +170,11 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation }) => {
 
   const shareProduct = async (product: Product) => {
     try {
+      const materialId = encodeURIComponent(String(product.id));
+      const deepLink = `nivasity://material/${materialId}`;
+      const storeUrl = 'https://play.google.com/store/apps/details?id=com.nivasity.app';
       await Share.share({
-        message: `${product.name} — ${product.description}\nPrice: ₦${product.price.toLocaleString()}`,
+        message: `${product.name}\n${product.description}\nPrice: ₦${product.price.toLocaleString()}\n\nOpen in Nivasity: ${deepLink}\nGet the app: ${storeUrl}`,
       });
     } catch {
       // ignore
