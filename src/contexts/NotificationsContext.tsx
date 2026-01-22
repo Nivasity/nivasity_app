@@ -36,6 +36,8 @@ type NotificationsContextValue = {
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
 
 const CACHE_KEY = 'notifications.cache.v1';
+const EXPO_PUSH_TOKEN_KEY = 'notifications.expoPushToken.v1';
+const DEVICE_REG_KEY = 'notifications.deviceReg.v1';
 
 const parseCache = (raw: string): AppNotification[] | null => {
   try {
@@ -93,7 +95,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
   const lastRefreshAt = useRef(0);
   const registeringToken = useRef<Promise<string | undefined> | null>(null);
+  const registeringDevice = useRef<Promise<boolean> | null>(null);
   const mounted = useRef(true);
+  const lastDeviceRegKey = useRef<string | null>(null);
 
   const localUnreadCount = useMemo(() => notifications.filter((n) => !n.readAt).length, [notifications]);
   const unreadCount = useMemo(() => {
@@ -169,6 +173,53 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     }
   }, []);
 
+  const registerDeviceIfNeeded = useCallback(async (token: string, opts?: { silent?: boolean }) => {
+    const userId = user?.id ? String(user.id) : '';
+    if (!isAuthenticated || !userId) return false;
+
+    const regKey = `${userId}:${token}`;
+    if (lastDeviceRegKey.current === regKey) return true;
+
+    const cached = await AsyncStorage.getItem(DEVICE_REG_KEY).catch(() => null);
+    if (cached === regKey) {
+      lastDeviceRegKey.current = regKey;
+      return true;
+    }
+
+    if (registeringDevice.current) return registeringDevice.current;
+    registeringDevice.current = (async () => {
+      try {
+        const appVersion =
+          (Constants.expoConfig as any)?.version ||
+          (Constants as any)?.nativeAppVersion ||
+          undefined;
+        await notificationAPI.registerDevice({
+          expoPushToken: token,
+          platform: Platform.OS as 'ios' | 'android' | 'web',
+          appVersion,
+        });
+
+        await AsyncStorage.setItem(DEVICE_REG_KEY, regKey).catch(() => undefined);
+        lastDeviceRegKey.current = regKey;
+        return true;
+      } catch (e: any) {
+        if (!opts?.silent) {
+          appMessage.toast({
+            status: 'failed',
+            message: e?.response?.data?.message || e?.message || 'Failed to register device for push notifications.',
+          });
+        } else if (__DEV__) {
+          console.log('[Notifications] device registration failed:', e?.response?.data?.message || e?.message);
+        }
+        return false;
+      } finally {
+        registeringDevice.current = null;
+      }
+    })();
+
+    return registeringDevice.current;
+  }, [appMessage, isAuthenticated, user?.id]);
+
   const registerPushTokenIfGranted = useCallback(async () => {
     if (registeringToken.current) return registeringToken.current;
     registeringToken.current = (async () => {
@@ -179,36 +230,37 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         setPermissionStatus(perm.status);
         if (perm.status !== 'granted') return undefined;
 
-        if (!Device.isDevice) return undefined;
+        if (!Device.isDevice) {
+          if (__DEV__) console.log('[Notifications] not a physical device, skipping push token registration');
+          return undefined;
+        }
 
         const projectId = getProjectId();
-        const tokenRes = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined as any);
+        const tokenRes = projectId
+          ? await Notifications.getExpoPushTokenAsync({ projectId })
+          : await Notifications.getExpoPushTokenAsync();
         const token = tokenRes.data;
         if (!token) return undefined;
         setExpoPushToken(token);
+        AsyncStorage.setItem(EXPO_PUSH_TOKEN_KEY, token).catch(() => undefined);
 
-        try {
-          const appVersion =
-            (Constants.expoConfig as any)?.version ||
-            (Constants as any)?.nativeAppVersion ||
-            undefined;
-          await notificationAPI.registerDevice({
-            expoPushToken: token,
-            platform: Platform.OS as 'ios' | 'android' | 'web',
-            appVersion,
-          });
-        } catch (e) {
-          // Backend endpoint may not exist yet; token is still valid locally.
-          if (__DEV__) console.log('[Notifications] device registration failed:', (e as any)?.message);
-        }
+        await registerDeviceIfNeeded(token, { silent: true });
 
         return token;
+      } catch (e: any) {
+        appMessage.toast({
+          status: 'failed',
+          message:
+            e?.message ||
+            'Failed to get push token from Expo. Make sure this is a real device build and the Expo projectId is configured.',
+        });
+        return undefined;
       } finally {
         registeringToken.current = null;
       }
     })();
     return registeringToken.current;
-  }, [ensureAndroidChannel]);
+  }, [appMessage, ensureAndroidChannel, registerDeviceIfNeeded]);
 
   const requestPushPermission = useCallback(async () => {
     try {
@@ -216,13 +268,16 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       const res = await Notifications.requestPermissionsAsync();
       setPermissionStatus(res.status);
       if (res.status !== 'granted') return false;
-      await registerPushTokenIfGranted();
+      const token = await registerPushTokenIfGranted();
+      if (token) {
+        await registerDeviceIfNeeded(token);
+      }
       return true;
     } catch (e: any) {
       appMessage.toast({ status: 'failed', message: e?.message || 'Failed to enable push notifications.' });
       return false;
     }
-  }, [appMessage, ensureAndroidChannel, registerPushTokenIfGranted]);
+  }, [appMessage, ensureAndroidChannel, registerDeviceIfNeeded, registerPushTokenIfGranted]);
 
   const markAsRead = useCallback(async (id: string) => {
     const now = new Date().toISOString();
@@ -271,6 +326,13 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       })
       .catch(() => undefined);
 
+    AsyncStorage.getItem(EXPO_PUSH_TOKEN_KEY)
+      .then((raw) => {
+        const token = String(raw || '').trim();
+        if (token && mounted.current) setExpoPushToken(token);
+      })
+      .catch(() => undefined);
+
     Notifications.getPermissionsAsync()
       .then((res) => setPermissionStatus(res.status))
       .catch(() => undefined);
@@ -285,6 +347,13 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     refresh({ silent: true });
     registerPushTokenIfGranted();
   }, [isAuthenticated, refresh, registerPushTokenIfGranted, user?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    if (permissionStatus !== 'granted') return;
+    if (!expoPushToken) return;
+    registerDeviceIfNeeded(expoPushToken, { silent: true });
+  }, [expoPushToken, isAuthenticated, permissionStatus, registerDeviceIfNeeded, user?.id]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -345,7 +414,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     setNotifications([]);
     setExpoPushToken(undefined);
     setServerUnreadCount(undefined);
+    lastDeviceRegKey.current = null;
     AsyncStorage.removeItem(CACHE_KEY).catch(() => undefined);
+    AsyncStorage.removeItem(EXPO_PUSH_TOKEN_KEY).catch(() => undefined);
+    AsyncStorage.removeItem(DEVICE_REG_KEY).catch(() => undefined);
   }, [isAuthenticated]);
 
   const value = useMemo<NotificationsContextValue>(
