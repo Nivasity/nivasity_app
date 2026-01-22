@@ -44,6 +44,11 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     permissionStatus,
     expoPushToken,
     apiBaseUrl,
+    expoProjectId,
+    devicePushToken,
+    lastTokenAttemptAt,
+    lastTokenSuccessAt,
+    lastTokenError,
     lastDeviceRegisterAttemptAt,
     lastDeviceRegisterSuccessAt,
     lastDeviceRegisterError,
@@ -152,10 +157,25 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
             permissionStatus: {permissionStatus}
           </Text>
           <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            expoProjectId: {expoProjectId ? expoProjectId : 'none'}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            devicePushToken: {devicePushToken ? devicePushToken : 'none'}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
             expoPushToken: {expoPushToken ? expoPushToken : 'none'}
           </Text>
           <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
             apiBaseUrl: {apiBaseUrl}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastTokenAttemptAt: {formatTimestamp(lastTokenAttemptAt)}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastTokenSuccessAt: {formatTimestamp(lastTokenSuccessAt)}
+          </Text>
+          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
+            lastTokenError: {lastTokenError ? lastTokenError : 'none'}
           </Text>
           <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
             lastRegisterAttemptAt: {formatTimestamp(lastDeviceRegisterAttemptAt)}

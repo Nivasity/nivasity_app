@@ -27,6 +27,11 @@ type NotificationsContextValue = {
   permissionStatus: Notifications.PermissionStatus | 'undetermined';
   expoPushToken?: string;
   apiBaseUrl: string;
+  expoProjectId?: string;
+  devicePushToken?: string;
+  lastTokenAttemptAt?: string;
+  lastTokenSuccessAt?: string;
+  lastTokenError?: string;
   lastDeviceRegisterAttemptAt?: string;
   lastDeviceRegisterSuccessAt?: string;
   lastDeviceRegisterError?: string;
@@ -95,6 +100,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<Notifications.PermissionStatus | 'undetermined'>('undetermined');
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>(undefined);
+  const [expoProjectId, setExpoProjectId] = useState<string | undefined>(undefined);
+  const [devicePushToken, setDevicePushToken] = useState<string | undefined>(undefined);
+  const [lastTokenAttemptAt, setLastTokenAttemptAt] = useState<string | undefined>(undefined);
+  const [lastTokenSuccessAt, setLastTokenSuccessAt] = useState<string | undefined>(undefined);
+  const [lastTokenError, setLastTokenError] = useState<string | undefined>(undefined);
   const [lastDeviceRegisterAttemptAt, setLastDeviceRegisterAttemptAt] = useState<string | undefined>(undefined);
   const [lastDeviceRegisterSuccessAt, setLastDeviceRegisterSuccessAt] = useState<string | undefined>(undefined);
   const [lastDeviceRegisterError, setLastDeviceRegisterError] = useState<string | undefined>(undefined);
@@ -239,18 +249,34 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         }
 
         const projectId = getProjectId();
+        setExpoProjectId(projectId ? String(projectId) : undefined);
+        setLastTokenAttemptAt(new Date().toISOString());
+        setLastTokenError(undefined);
+
+        try {
+          const devToken = await Notifications.getDevicePushTokenAsync();
+          const rawDev = typeof (devToken as any)?.data === 'string' ? String((devToken as any).data) : '';
+          setDevicePushToken(rawDev.trim() || undefined);
+        } catch (e: any) {
+          const msg = String(e?.message || 'Failed to get native device push token');
+          setLastTokenError(msg);
+          if (__DEV__) console.log('[Notifications] getDevicePushTokenAsync failed:', msg);
+        }
+
         const tokenRes = projectId
           ? await Notifications.getExpoPushTokenAsync({ projectId })
           : await Notifications.getExpoPushTokenAsync();
         const token = tokenRes.data;
         if (!token) return undefined;
         setExpoPushToken(token);
+        setLastTokenSuccessAt(new Date().toISOString());
         AsyncStorage.setItem(EXPO_PUSH_TOKEN_KEY, token).catch(() => undefined);
 
         await registerDeviceIfNeeded(token, { silent: true });
 
         return token;
       } catch (e: any) {
+        setLastTokenError(String(e?.message || 'Failed to get Expo push token'));
         appMessage.toast({
           status: 'failed',
           message:
@@ -425,6 +451,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     setNotifications([]);
     setExpoPushToken(undefined);
     setServerUnreadCount(undefined);
+    setExpoProjectId(undefined);
+    setDevicePushToken(undefined);
+    setLastTokenAttemptAt(undefined);
+    setLastTokenSuccessAt(undefined);
+    setLastTokenError(undefined);
     setLastDeviceRegisterAttemptAt(undefined);
     setLastDeviceRegisterSuccessAt(undefined);
     setLastDeviceRegisterError(undefined);
@@ -441,6 +472,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       permissionStatus,
       expoPushToken,
       apiBaseUrl: API_BASE_URL,
+      expoProjectId,
+      devicePushToken,
+      lastTokenAttemptAt,
+      lastTokenSuccessAt,
+      lastTokenError,
       lastDeviceRegisterAttemptAt,
       lastDeviceRegisterSuccessAt,
       lastDeviceRegisterError,
@@ -456,6 +492,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       isRefreshing,
       permissionStatus,
       expoPushToken,
+      expoProjectId,
+      devicePushToken,
+      lastTokenAttemptAt,
+      lastTokenSuccessAt,
+      lastTokenError,
       lastDeviceRegisterAttemptAt,
       lastDeviceRegisterSuccessAt,
       lastDeviceRegisterError,

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "310503296847",
+    "project_id": "nivasity",
+    "storage_bucket": "nivasity.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:310503296847:android:00cc6e17b18c2c6a9c3f3a",
+        "android_client_info": {
+          "package_name": "com.nivasity.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "310503296847-97hk6jnt3celij3of2mocmjremh8vct4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOH1fjYklC4r043mR6flYTUfmk2mK7cNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "310503296847-97hk6jnt3celij3of2mocmjremh8vct4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -30,6 +30,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "package": "com.nivasity.app",
       "intentFilters": [
