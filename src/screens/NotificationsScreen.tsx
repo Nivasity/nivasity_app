@@ -42,16 +42,6 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     unreadCount,
     isRefreshing,
     permissionStatus,
-    expoPushToken,
-    apiBaseUrl,
-    expoProjectId,
-    devicePushToken,
-    lastTokenAttemptAt,
-    lastTokenSuccessAt,
-    lastTokenError,
-    lastDeviceRegisterAttemptAt,
-    lastDeviceRegisterSuccessAt,
-    lastDeviceRegisterError,
     refresh,
     requestPushPermission,
     markAsRead,
@@ -68,28 +58,9 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   }, []);
 
   const headerSubtitle = useMemo(() => {
-    if (permissionStatus === 'granted') {
-      if (expoPushToken) return 'Push notifications are enabled and ready.';
-      return 'Push notifications are enabled, but setup is not complete yet.';
-    }
     if (permissionStatus === 'denied') return 'Push notifications are off. Enable them in your phone settings.';
     return 'Enable push notifications to get updates even when the app is closed.';
-  }, [expoPushToken, permissionStatus]);
-
-  const tokenHint = useMemo(() => {
-    const t = String(expoPushToken || '').trim();
-    if (!t) return undefined;
-    if (t.length <= 18) return t;
-    return `${t.slice(0, 12)}…${t.slice(-6)}`;
-  }, [expoPushToken]);
-
-  const formatTimestamp = (value?: string) => {
-    const raw = (value || '').trim();
-    if (!raw) return 'none';
-    const t = new Date(raw.replace(' ', 'T'));
-    if (Number.isNaN(t.getTime())) return raw;
-    return `${t.toLocaleString()} (${raw})`;
-  };
+  }, [permissionStatus]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -125,6 +96,10 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   };
 
   const renderHeader = () => {
+    if (permissionStatus === 'granted') {
+      return <View style={{ height: 8 }} />;
+    }
+
     return (
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <View style={[styles.pushCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -135,57 +110,15 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
             <View style={{ flex: 1 }}>
               <Text style={[styles.pushTitle, { color: colors.text }]}>Push notifications</Text>
               <Text style={[styles.pushSubtitle, { color: colors.textMuted }]}>{headerSubtitle}</Text>
-              {tokenHint ? (
-                <Text style={[styles.pushSubtitle, { color: colors.textMuted, marginTop: 4 }]}>
-                  Token: {tokenHint}
-                </Text>
-              ) : null}
             </View>
           </View>
           <Button
-            title={permissionStatus === 'granted' ? 'Sync device' : 'Enable'}
+            title="Enable"
             onPress={enablePush}
             loading={enablingPush}
             variant="outline"
             style={{ borderRadius: 16, minHeight: 46 }}
           />
-        </View>
-
-        <View style={[styles.diagCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.diagTitle, { color: colors.text }]}>Diagnostics</Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            permissionStatus: {permissionStatus}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            expoProjectId: {expoProjectId ? expoProjectId : 'none'}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            devicePushToken: {devicePushToken ? devicePushToken : 'none'}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            expoPushToken: {expoPushToken ? expoPushToken : 'none'}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            apiBaseUrl: {apiBaseUrl}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastTokenAttemptAt: {formatTimestamp(lastTokenAttemptAt)}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastTokenSuccessAt: {formatTimestamp(lastTokenSuccessAt)}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastTokenError: {lastTokenError ? lastTokenError : 'none'}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastRegisterAttemptAt: {formatTimestamp(lastDeviceRegisterAttemptAt)}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastRegisterSuccessAt: {formatTimestamp(lastDeviceRegisterSuccessAt)}
-          </Text>
-          <Text style={[styles.diagLine, { color: colors.textMuted }]} selectable>
-            lastRegisterError: {lastDeviceRegisterError ? lastDeviceRegisterError : 'none'}
-          </Text>
         </View>
 
         <View style={{ height: 14 }} />
@@ -245,7 +178,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.iconButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+          style={[styles.iconButton]}
           accessibilityRole="button"
           accessibilityLabel="Back"
           activeOpacity={0.85}
@@ -260,7 +193,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
             if (unreadCount < 1) return;
             markAllAsRead();
           }}
-          style={[styles.iconButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+          style={[styles.iconButton]}
           accessibilityRole="button"
           accessibilityLabel="Mark all as read"
           activeOpacity={0.85}
@@ -310,10 +243,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 16,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

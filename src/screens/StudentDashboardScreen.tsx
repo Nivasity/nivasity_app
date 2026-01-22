@@ -138,7 +138,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
 
             <TouchableOpacity
               onPress={() => navigation.navigate('Notifications')}
-              style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
+              style={[styles.iconButton]}
               accessibilityRole="button"
               accessibilityLabel="Open notifications"
               activeOpacity={0.85}
@@ -437,9 +437,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     maxWidth: 220,
   },
-  searchButton: {
-    width: 44,
-    height: 44,
+  iconButton: {
+    width: 40,
+    height: 40,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
