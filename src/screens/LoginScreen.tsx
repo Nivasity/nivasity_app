@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import AuthScaffold from '../components/auth/AuthScaffold';
@@ -51,6 +51,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [schoolsOpen, setSchoolsOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState('');
   const [pendingGoogleTokens, setPendingGoogleTokens] = useState<{ idToken?: string; accessToken?: string } | null>(null);
+  const schoolsRequestIdRef = useRef(0);
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
@@ -67,34 +68,31 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     return msg.includes('school_id is required') || msg.includes('school id is required');
   };
 
+  const loadSchools = useCallback(async () => {
+    if (schoolsLoading) return;
+    const requestId = ++schoolsRequestIdRef.current;
+    setSchoolsLoading(true);
+    try {
+      const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
+      if (requestId !== schoolsRequestIdRef.current) return;
+      setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
+    } catch (e: any) {
+      if (requestId !== schoolsRequestIdRef.current) return;
+      setSchools([]);
+      appMessage.toast({
+        status: 'failed',
+        message: e?.response?.data?.message || e?.message || 'Could not load schools',
+      });
+    } finally {
+      if (requestId === schoolsRequestIdRef.current) setSchoolsLoading(false);
+    }
+  }, [appMessage, schoolsLoading]);
+
   useEffect(() => {
     if (!schoolsOpen) return;
-    if (schoolsLoading) return;
     if (schools.length > 0) return;
-
-    let mounted = true;
-    setSchoolsLoading(true);
-    (async () => {
-      try {
-        const data = await referenceAPI.getSchools({ page: 1, limit: 100 });
-        if (!mounted) return;
-        setSchools((data.schools || []).map((s) => ({ id: s.id, name: s.name })));
-      } catch (e: any) {
-        if (!mounted) return;
-        setSchools([]);
-        appMessage.toast({
-          status: 'failed',
-          message: e?.response?.data?.message || e?.message || 'Could not load schools',
-        });
-      } finally {
-        if (mounted) setSchoolsLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [appMessage, schools.length, schoolsLoading, schoolsOpen]);
+    loadSchools();
+  }, [loadSchools, schools.length, schoolsOpen]);
 
   const nativeRedirectUri = Platform.select({
     android: getGoogleRedirectUri(GOOGLE_ANDROID_CLIENT_ID),
@@ -443,7 +441,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       selected={selectedSchool}
       loading={schoolsLoading}
       onClose={() => {
+        schoolsRequestIdRef.current += 1;
         setSchoolsOpen(false);
+        setPendingGoogleTokens(null);
+        setSelectedSchool('');
       }}
       onSelect={(value) => {
         if (!canOpenSchools) {
