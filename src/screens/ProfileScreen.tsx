@@ -189,6 +189,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     }, [fireworksSize])
   );
 
+  useFocusEffect(
+    React.useCallback(() => {
+      referenceAPI.getSupportDetails().catch(() => undefined);
+    }, [])
+  );
+
   useEffect(() => {
     let mounted = true;
     (async () => {

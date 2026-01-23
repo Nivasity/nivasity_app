@@ -752,6 +752,10 @@ export const profileAPI = {
   },
 };
 
+const SUPPORT_DETAILS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+let supportDetailsCache: { value: { whatsapp?: string; email?: string }; fetchedAt: number } | null = null;
+let supportDetailsInflight: Promise<{ whatsapp?: string; email?: string }> | null = null;
+
 export const referenceAPI = {
   getSchools: async (args?: { page?: number; limit?: number }): Promise<ReferenceListResponse<{ schools: ReferenceSchool[] }>> => {
     const page = args?.page ?? 1;
@@ -799,6 +803,11 @@ export const referenceAPI = {
   },
 
   getSupportDetails: async (): Promise<{ whatsapp?: string; email?: string }> => {
+    if (supportDetailsCache && Date.now() - supportDetailsCache.fetchedAt < SUPPORT_DETAILS_CACHE_TTL_MS) {
+      return supportDetailsCache.value;
+    }
+    if (supportDetailsInflight) return supportDetailsInflight;
+
     const tryGet = async (path: string) => {
       const response = await api.get<ApiResponse<any>>(path, { skipAuth: true } as any);
       if (response.data.status !== 'success' || !response.data.data) {
@@ -807,30 +816,41 @@ export const referenceAPI = {
       return response.data.data as any;
     };
 
-    const candidates = ['/reference/support.php'];
-    let lastError: any;
-    for (const path of candidates) {
-      try {
-        const data = await tryGet(path);
-        const contact =
-          data?.contact && typeof data.contact === 'object' && !Array.isArray(data.contact) ? data.contact : undefined;
+    supportDetailsInflight = (async () => {
+      const candidates = ['/reference/support.php'];
+      let lastError: any;
+      for (const path of candidates) {
+        try {
+          const data = await tryGet(path);
+          const contact =
+            data?.contact && typeof data.contact === 'object' && !Array.isArray(data.contact) ? data.contact : undefined;
 
-        const whatsapp = String(
-          contact?.whatsapp ??
-            contact?.phone ??
-            data?.whatsapp ??
-            data?.whats_app ??
-            data?.whatsapp_phone ??
-            ''
-        ).trim() || undefined;
+          const whatsapp =
+            String(
+              contact?.whatsapp ??
+                contact?.phone ??
+                data?.whatsapp ??
+                data?.whats_app ??
+                data?.whatsapp_phone ??
+                ''
+            ).trim() || undefined;
 
-        const email = String(contact?.email ?? data?.email ?? data?.support_email ?? '').trim() || undefined;
-        return { whatsapp, email };
-      } catch (e: any) {
-        lastError = e;
+          const email = String(contact?.email ?? data?.email ?? data?.support_email ?? '').trim() || undefined;
+          const value = { whatsapp, email };
+          supportDetailsCache = { value, fetchedAt: Date.now() };
+          return value;
+        } catch (e: any) {
+          lastError = e;
+        }
       }
+      throw lastError || new Error('Failed to load support details');
+    })();
+
+    try {
+      return await supportDetailsInflight;
+    } finally {
+      supportDetailsInflight = null;
     }
-    throw lastError || new Error('Failed to load support details');
   },
 };
 
