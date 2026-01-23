@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useNotifications } from '../contexts/NotificationsContext';
@@ -20,11 +22,14 @@ interface StudentDashboardScreenProps {
   navigation: any;
 }
 
+const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
+
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const appMessage = useAppMessage();
   const { count: cartCount, lastActionAt, has, toggle } = useCart();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -68,6 +73,41 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    let canceled = false;
+    const today = new Date().toISOString().slice(0, 10);
+
+    (async () => {
+      try {
+        const last = String((await AsyncStorage.getItem(NOTIFICATIONS_DAILY_PROMPT_KEY)) || '').trim();
+        if (last === today) return;
+
+        await AsyncStorage.setItem(NOTIFICATIONS_DAILY_PROMPT_KEY, today);
+
+        if (permissionStatus === 'granted') return;
+
+        if (permissionStatus === 'undetermined') {
+          if (canceled) return;
+          await requestPushPermission();
+          return;
+        }
+
+        if (permissionStatus === 'denied') {
+          appMessage.toast({
+            status: 'info',
+            message: 'Enable notifications in Settings to get updates.',
+          });
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      canceled = true;
+    };
+  }, [appMessage, permissionStatus, requestPushPermission]);
 
   const onRefresh = () => {
     setRefreshing(true);

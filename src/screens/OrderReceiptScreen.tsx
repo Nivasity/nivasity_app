@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,11 +9,12 @@ import AppText from '../components/AppText';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { orderAPI } from '../services/api';
 import { CartItem, Order } from '../types';
 
 interface OrderReceiptScreenProps {
   navigation: any;
-  route: { params?: { order?: Order } };
+  route: { params?: { order?: Order; txRef?: string } };
 }
 
 const sanitizeFilePart = (value: string) => value.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80);
@@ -47,7 +48,35 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
   const receiptRef = useRef<View>(null);
   const { user } = useAuth();
 
-  const order = route.params?.order;
+  const txRef = (route.params?.txRef || '').trim();
+  const [resolvedOrder, setResolvedOrder] = useState<Order | undefined>(route.params?.order);
+  const [resolving, setResolving] = useState(false);
+
+  useEffect(() => {
+    if (resolvedOrder) return;
+    if (!txRef) return;
+
+    let canceled = false;
+    setResolving(true);
+    (async () => {
+      try {
+        const orders = await orderAPI.getOrders({ page: 1, limit: 100 });
+        const found = (orders || []).find((o) => String(o.id) === txRef) || undefined;
+        if (canceled) return;
+        setResolvedOrder(found);
+      } catch {
+        // ignore
+      } finally {
+        if (!canceled) setResolving(false);
+      }
+    })();
+
+    return () => {
+      canceled = true;
+    };
+  }, [resolvedOrder, txRef]);
+
+  const order = resolvedOrder;
   const [working, setWorking] = useState(false);
   const [savedUri, setSavedUri] = useState<string | null>(null);
 
@@ -107,7 +136,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
         <View style={styles.missing}>
           <AppText style={[styles.missingTitle, { color: colors.text }]}>No order found</AppText>
           <AppText style={[styles.missingText, { color: colors.textMuted }]}>
-            Go back and select an order.
+            {resolving ? 'Loading receipt...' : 'Go back and select an order.'}
           </AppText>
           <TouchableOpacity
             onPress={() => navigation.goBack()}

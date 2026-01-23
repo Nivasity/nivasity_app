@@ -46,6 +46,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     requestPushPermission,
     markAsRead,
     markAllAsRead,
+    openNotificationTarget,
   } = useNotifications();
 
   const highlightId = (route?.params?.highlightId as string | undefined) || undefined;
@@ -73,6 +74,9 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
 
   const openNotification = async (n: AppNotification) => {
     await markAsRead(n.id);
+    const handled = openNotificationTarget(n.data);
+    if (handled) return;
+
     const message = n.body || 'Notification';
     appMessage.alert({
       title: n.title || 'Notification',

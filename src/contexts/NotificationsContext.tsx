@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import * as ExpoLinking from 'expo-linking';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 import { API_BASE_URL, notificationAPI } from '../services/api';
@@ -39,6 +40,7 @@ type NotificationsContextValue = {
   requestPushPermission: () => Promise<boolean>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  openNotificationTarget: (data?: AppNotificationData) => boolean;
   upsertLocal: (n: AppNotification) => void;
 };
 
@@ -83,6 +85,40 @@ const toExpoTokenNotification = (args: {
     createdAt: args.createdAt || new Date().toISOString(),
     readAt: null,
   };
+};
+
+const extractDeepLink = (data?: AppNotificationData) => {
+  if (!data) return undefined;
+  const anyData: any = data as any;
+  const candidates = [
+    anyData?.deep_link,
+    anyData?.deepLink,
+    anyData?.deeplink,
+    anyData?.deeplink_url,
+    anyData?.deeplinkUrl,
+    anyData?.url,
+    anyData?.link,
+  ];
+  for (const value of candidates) {
+    const str = typeof value === 'string' ? value.trim() : '';
+    if (str) return str;
+  }
+  return undefined;
+};
+
+const toStringParam = (value: any) => {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') return String(value);
+  return String(value).trim();
+};
+
+const parsePossibleId = (value: any) => {
+  const raw = toStringParam(value);
+  if (!raw) return undefined;
+  const n = Number(raw);
+  if (Number.isFinite(n)) return n;
+  return undefined;
 };
 
 export const useNotifications = () => {
@@ -232,6 +268,104 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
     return registeringDevice.current;
   }, [appMessage, isAuthenticated, user?.id]);
+
+  const openNotificationTarget = useCallback((data?: AppNotificationData) => {
+    const deepLink = extractDeepLink(data);
+    const anyData: any = (data || {}) as any;
+
+    const openMaterial = (materialIdRaw: any) => {
+      const materialId = toStringParam(materialIdRaw);
+      if (!materialId) return false;
+      navigate('StudentMain', { screen: 'Store', params: { materialId } });
+      return true;
+    };
+
+    const openReceipt = (txRefRaw: any) => {
+      const txRef = toStringParam(txRefRaw);
+      if (!txRef) return false;
+      navigate('OrderReceipt', { txRef });
+      return true;
+    };
+
+    const openSupport = (args: { ticketId?: any; ticketCode?: any; subject?: any }) => {
+      const ticketId = parsePossibleId(args.ticketId);
+      const ticketCode = toStringParam(args.ticketCode);
+      const subject = toStringParam(args.subject);
+      if (!ticketId && !ticketCode) return false;
+      navigate('SupportChat', {
+        ticketId: ticketId ?? undefined,
+        ticketCode: ticketCode || undefined,
+        subject: subject || undefined,
+      });
+      return true;
+    };
+
+    if (deepLink) {
+      const parsed = ExpoLinking.parse(deepLink);
+      const host = (parsed.hostname || '').trim().toLowerCase();
+      const path = (parsed.path || '').replace(/^\/+/, '').trim();
+      const qp: any = parsed.queryParams || {};
+
+      if (host === 'material') {
+        const id = path.split('/')[0] || toStringParam(qp.materialId ?? qp.material_id ?? qp.id);
+        return openMaterial(id);
+      }
+
+      if (host === 'payment') {
+        const txRef =
+          toStringParam(qp.tx_ref ?? qp.txRef ?? qp.ref ?? qp.reference ?? qp.transaction_ref) ||
+          toStringParam(anyData.tx_ref ?? anyData.txRef);
+        return openReceipt(txRef);
+      }
+
+      if (host === 'support' || host === 'ticket' || host === 'support-ticket') {
+        const ticketId = qp.ticket_id ?? qp.ticketId ?? qp.id ?? anyData.ticket_id ?? anyData.ticketId;
+        const ticketCode = qp.ticket_code ?? qp.ticketCode ?? qp.code ?? anyData.ticket_code ?? anyData.ticketCode;
+        const subject = qp.subject ?? anyData.subject;
+        return openSupport({ ticketId, ticketCode, subject });
+      }
+
+      if (host === 'notifications') {
+        const highlightId = toStringParam(qp.id ?? qp.notification_id ?? qp.notificationId ?? anyData.notification_id);
+        navigate('Notifications', { highlightId: highlightId || undefined });
+        return true;
+      }
+
+      // Fallback: try to interpret path-based routes (e.g. nivasity://support/ticket?ticket_id=1)
+      if (path.startsWith('material/')) return openMaterial(path.replace(/^material\//, ''));
+      if (path.startsWith('payment/')) return openReceipt(qp.tx_ref ?? qp.txRef);
+      if (path.includes('support')) return openSupport({ ticketId: qp.ticket_id ?? qp.id, ticketCode: qp.ticket_code ?? qp.code });
+    }
+
+    // Non-URL payloads (backend may send action + ids)
+    const action = toStringParam(anyData.action ?? anyData.type ?? anyData.event).toLowerCase();
+    if (action === 'material' || action === 'material_details' || action === 'open_material') {
+      return openMaterial(anyData.material_id ?? anyData.materialId ?? anyData.id);
+    }
+    if (action === 'order_receipt' || action === 'payment_receipt' || action === 'payment_success') {
+      return openReceipt(anyData.tx_ref ?? anyData.txRef ?? anyData.order_id ?? anyData.orderId ?? anyData.ref);
+    }
+    if (action === 'support_ticket' || action === 'open_ticket' || action === 'ticket') {
+      return openSupport({
+        ticketId: anyData.ticket_id ?? anyData.ticketId ?? anyData.id,
+        ticketCode: anyData.ticket_code ?? anyData.ticketCode ?? anyData.code,
+        subject: anyData.subject,
+      });
+    }
+
+    // Field-based fallback
+    if (anyData.material_id || anyData.materialId) return openMaterial(anyData.material_id ?? anyData.materialId);
+    if (anyData.tx_ref || anyData.txRef) return openReceipt(anyData.tx_ref ?? anyData.txRef);
+    if (anyData.ticket_id || anyData.ticketId || anyData.ticket_code || anyData.ticketCode) {
+      return openSupport({
+        ticketId: anyData.ticket_id ?? anyData.ticketId,
+        ticketCode: anyData.ticket_code ?? anyData.ticketCode,
+        subject: anyData.subject,
+      });
+    }
+
+    return false;
+  }, []);
 
   const registerPushTokenIfGranted = useCallback(async () => {
     if (registeringToken.current) return registeringToken.current;
@@ -422,13 +556,18 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         title: (content?.title || 'New notification').trim(),
         message: (content?.body || '').trim() || 'Open Notifications to view.',
         actionText: 'View',
-        onAction: () => navigate('Notifications', { highlightId: local.id }),
+        onAction: () => {
+          const handled = openNotificationTarget(local.data);
+          if (!handled) navigate('Notifications', { highlightId: local.id });
+        },
       });
     });
 
     const handleResponse = (res: Notifications.NotificationResponse | null | undefined) => {
       if (!res) return;
       const data = (res.notification?.request?.content?.data || {}) as any;
+      const handled = openNotificationTarget(data);
+      if (handled) return;
       const id = String(data.notification_id ?? data.id ?? '').trim();
       navigate('Notifications', { highlightId: id || undefined });
     };
@@ -445,7 +584,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       received.remove();
       response.remove();
     };
-  }, [appMessage, upsertLocal]);
+  }, [appMessage, openNotificationTarget, upsertLocal]);
 
   useEffect(() => {
     if (isAuthenticated) return;
@@ -485,6 +624,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       requestPushPermission,
       markAsRead,
       markAllAsRead,
+      openNotificationTarget,
       upsertLocal,
     }),
     [
@@ -505,6 +645,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       requestPushPermission,
       markAsRead,
       markAllAsRead,
+      openNotificationTarget,
       upsertLocal,
     ]
   );
