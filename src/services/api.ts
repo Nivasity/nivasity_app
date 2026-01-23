@@ -1301,6 +1301,10 @@ export const notificationAPI = {
     const params = new URLSearchParams();
     params.set('page', String(args?.page ?? 1));
     params.set('limit', String(args?.limit ?? 50));
+    // Backend limits results to the last 7 days ending at end_date.
+    const now = new Date();
+    const endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    params.set('end_date', endDate);
 
     const suffix = params.toString();
     const response = await api.get<ApiResponse<any>>(`/notifications/list.php${suffix ? `?${suffix}` : ''}`);
