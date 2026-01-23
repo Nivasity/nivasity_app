@@ -26,7 +26,7 @@ const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
 
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { count: cartCount, lastActionAt, has, toggle } = useCart();
   const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
@@ -201,10 +201,10 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
 
         <View style={[styles.heroCard, { backgroundColor: colors.secondary }]}>
           <View style={styles.heroText}>
-            <Text style={[styles.heroTitle, { color: colors.surface }]}>
+            <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
               Campus essentials{'\n'}delivered fast
             </Text>
-            <Text style={[styles.heroSubtitle, { color: colors.surface }]}>
+            <Text style={[styles.heroSubtitle, { color: '#FFFFFF' }]}>
               Browse the store and checkout in minutes.
             </Text>
             <TouchableOpacity
@@ -214,12 +214,12 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
               accessibilityLabel="Browse store"
               activeOpacity={0.85}
             >
-              <Text style={[styles.heroButtonText, { color: colors.secondary }]}>Check now</Text>
-              <AppIcon name="arrow-forward" size={16} color={colors.secondary} />
+              <Text style={[styles.heroButtonText, { color: isDark ? '#FFFFFF' : colors.secondary }]}>Check now</Text>
+              <AppIcon name="arrow-forward" size={16} color={isDark ? '#FFFFFF' : colors.secondary} />
             </TouchableOpacity>
           </View>
           <View style={[styles.heroArt]}>
-            <AppIcon name="school-outline" size={34} color={colors.surface} />
+            <AppIcon name="school-outline" size={34} color={'#FFFFFF'} />
           </View>
         </View>
 

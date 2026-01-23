@@ -150,6 +150,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const registeringDevice = useRef<Promise<boolean> | null>(null);
   const mounted = useRef(true);
   const lastDeviceRegKey = useRef<string | null>(null);
+  const pendingOpenData = useRef<AppNotificationData | undefined>(undefined);
 
   const localUnreadCount = useMemo(() => notifications.filter((n) => !n.readAt).length, [notifications]);
   const unreadCount = useMemo(() => {
@@ -270,6 +271,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   }, [appMessage, isAuthenticated, user?.id]);
 
   const openNotificationTarget = useCallback((data?: AppNotificationData) => {
+    if (!isAuthenticated) {
+      pendingOpenData.current = data;
+      return false;
+    }
+
     const deepLink = extractDeepLink(data);
     const anyData: any = (data || {}) as any;
 
@@ -365,7 +371,16 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     }
 
     return false;
-  }, []);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const data = pendingOpenData.current;
+    if (!data) return;
+    pendingOpenData.current = undefined;
+    const handled = openNotificationTarget(data);
+    if (!handled) navigate('Notifications');
+  }, [isAuthenticated, openNotificationTarget]);
 
   const registerPushTokenIfGranted = useCallback(async () => {
     if (registeringToken.current) return registeringToken.current;
@@ -557,6 +572,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         message: (content?.body || '').trim() || 'Open Notifications to view.',
         actionText: 'View',
         onAction: () => {
+          if (!isAuthenticated) {
+            pendingOpenData.current = local.data;
+            navigate('Login');
+            return;
+          }
           const handled = openNotificationTarget(local.data);
           if (!handled) navigate('Notifications', { highlightId: local.id });
         },
@@ -566,6 +586,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     const handleResponse = (res: Notifications.NotificationResponse | null | undefined) => {
       if (!res) return;
       const data = (res.notification?.request?.content?.data || {}) as any;
+      if (!isAuthenticated) {
+        pendingOpenData.current = data;
+        Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+        return;
+      }
       const handled = openNotificationTarget(data);
       if (handled) return;
       const id = String(data.notification_id ?? data.id ?? '').trim();
@@ -573,7 +598,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     };
 
     Notifications.getLastNotificationResponseAsync()
-      .then((res) => handleResponse(res))
+      .then((res) => {
+        handleResponse(res);
+        if (res) Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+      })
       .catch(() => undefined);
 
     const response = Notifications.addNotificationResponseReceivedListener((res) => {
@@ -584,7 +612,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       received.remove();
       response.remove();
     };
-  }, [appMessage, openNotificationTarget, upsertLocal]);
+  }, [appMessage, isAuthenticated, openNotificationTarget, upsertLocal]);
 
   useEffect(() => {
     if (isAuthenticated) return;
