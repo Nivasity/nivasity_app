@@ -13,6 +13,7 @@ import Loading from '../components/Loading';
 import AcademicDetailsDialog from '../components/AcademicDetailsDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { referenceAPI } from '../services/api';
+import { getCountryOptions } from '../utils/country';
 
 // Auth Screens
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -158,6 +159,11 @@ const StudentTabs = () => {
 const AppNavigator = () => {
   const { isAuthenticated, isLoading, authEntryRoute } = useAuth();
   const { colors, isDark } = useTheme();
+
+  useEffect(() => {
+    // Prefetch local country dialing codes so the picker opens instantly.
+    getCountryOptions();
+  }, []);
 
   if (isLoading) {
     return <Loading message="Loading..." />;

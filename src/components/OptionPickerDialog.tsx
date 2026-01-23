@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, FlatList, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { TextInput as PaperTextInput } from 'react-native-paper';
@@ -66,6 +66,51 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
   const shimmerOpacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
   const skeletonRows = useMemo(() => Array.from({ length: 8 }, (_, i) => i), []);
 
+  const rowHeight = 45 + 10;
+  const getItemLayout = (_: any, index: number) => ({
+    length: rowHeight,
+    offset: rowHeight * index,
+    index,
+  });
+
+  const renderOption = ({ item: value }: { item: string }) => {
+    const isSelected = selected === value;
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          onSelect(value);
+          onClose();
+        }}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={value}
+        style={[
+          styles.optionRow,
+          {
+            borderColor: isSelected ? colors.secondary : colors.border,
+            backgroundColor: isSelected ? colors.secondary : colors.surface,
+          },
+        ]}
+      >
+        <AppText style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]} numberOfLines={1}>
+          {value}
+        </AppText>
+        {isSelected ? <AppIcon name="checkmark" size={20} color={colors.surface} /> : null}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderSkeleton = ({ item: idx }: { item: number }) => (
+    <View style={[styles.skeletonRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+      <Animated.View
+        style={[
+          styles.skeletonBar,
+          { backgroundColor: colors.surfaceAlt, opacity: shimmerOpacity },
+        ]}
+      />
+    </View>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
@@ -128,62 +173,37 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
             />
           ) : null}
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {loading ? (
-              <View style={styles.skeletonWrap} accessibilityLabel="Loading options">
-                {skeletonRows.map((idx) => (
-                  <View
-                    key={idx}
-                    style={[styles.skeletonRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.skeletonBar,
-                        { backgroundColor: colors.surfaceAlt, opacity: shimmerOpacity },
-                      ]}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : filteredOptions.length === 0 ? (
-              <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                <AppText style={[styles.emptyText, { color: colors.textMuted }]}>No results</AppText>
-              </View>
-            ) : null}
-
-            {!loading
-              ? filteredOptions.map((value) => {
-                  const isSelected = selected === value;
-                  return (
-                    <TouchableOpacity
-                      key={value}
-                      onPress={() => {
-                        onSelect(value);
-                        onClose();
-                      }}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel={value}
-                      style={[
-                        styles.optionRow,
-                        {
-                          borderColor: isSelected ? colors.secondary : colors.border,
-                          backgroundColor: isSelected ? colors.secondary : colors.surface,
-                        },
-                      ]}
-                    >
-                      <AppText
-                        style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]}
-                        numberOfLines={1}
-                      >
-                        {value}
-                      </AppText>
-                      {isSelected ? <AppIcon name="checkmark" size={20} color={colors.surface} /> : null}
-                    </TouchableOpacity>
-                  );
-                })
-              : null}
-          </ScrollView>
+          {loading ? (
+            <FlatList
+              data={skeletonRows}
+              keyExtractor={(item) => String(item)}
+              renderItem={renderSkeleton}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              getItemLayout={getItemLayout}
+              initialNumToRender={8}
+              windowSize={6}
+              removeClippedSubviews
+              contentContainerStyle={styles.skeletonWrap}
+              accessibilityLabel="Loading options"
+            />
+          ) : filteredOptions.length === 0 ? (
+            <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <AppText style={[styles.emptyText, { color: colors.textMuted }]}>No results</AppText>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredOptions}
+              keyExtractor={(item) => item}
+              renderItem={renderOption}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              getItemLayout={getItemLayout}
+              initialNumToRender={16}
+              windowSize={8}
+              removeClippedSubviews
+            />
+          )}
         </View>
       </View>
     </Modal>
