@@ -1,5 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
@@ -302,7 +315,11 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
       </TouchableOpacity>
 
       <Modal visible={composeVisible} transparent animationType="slide" onRequestClose={() => setComposeVisible(false)}>
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
           <Pressable
             style={StyleSheet.absoluteFillObject}
             onPress={() => setComposeVisible(false)}
@@ -395,7 +412,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
 
             <Button title={creating ? 'Creating...' : 'Create ticket'} onPress={submitTicket} disabled={creating} />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <OptionPickerDialog

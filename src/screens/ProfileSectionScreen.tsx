@@ -726,7 +726,11 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       </KeyboardAvoidingView>
 
       <Modal visible={editDialog === 'profile'} transparent animationType="slide" onRequestClose={closeEditDialog}>
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
           <Pressable
             style={StyleSheet.absoluteFillObject}
             onPress={closeEditDialog}
@@ -763,16 +767,18 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                {renderAccountForm({ onSave: saveAccountFromDialog, showEmail: false })}
-              </KeyboardAvoidingView>
+              {renderAccountForm({ onSave: saveAccountFromDialog, showEmail: false })}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={editDialog === 'academic'} transparent animationType="slide" onRequestClose={closeEditDialog}>
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
           <Pressable
             style={StyleSheet.absoluteFillObject}
             onPress={closeEditDialog}
@@ -809,12 +815,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                {renderAcademicForm(saveAcademicFromDialog)}
-              </KeyboardAvoidingView>
+              {renderAcademicForm(saveAcademicFromDialog)}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
