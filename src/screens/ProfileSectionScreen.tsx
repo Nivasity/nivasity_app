@@ -743,40 +743,31 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
             />
           </Pressable>
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'position' : 'position'}
-            style={{ width: '100%' }}
-            keyboardVerticalOffset={0}
+          <View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
+            ]}
           >
-            <View
-              style={[
-                styles.sheet,
-                { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
-              ]}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit profile information</Text>
-                <TouchableOpacity
-                  onPress={closeEditDialog}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  style={[styles.closeButton]}
-                >
-                  <AppIcon name="close-outline" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                contentContainerStyle={{ paddingBottom: 24 }}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit profile information</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
               >
-                {renderAccountForm({ onSave: saveAccountFromDialog, showEmail: false })}
-              </ScrollView>
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                {renderAccountForm({ onSave: saveAccountFromDialog, showEmail: false })}
+              </KeyboardAvoidingView>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -798,40 +789,31 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
             />
           </Pressable>
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'position' : 'position'}
-            style={{ width: '100%' }}
-            keyboardVerticalOffset={0}
+          <View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
+            ]}
           >
-            <View
-              style={[
-                styles.sheet,
-                { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
-              ]}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit academic info</Text>
-                <TouchableOpacity
-                  onPress={closeEditDialog}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  style={[styles.closeButton]}
-                >
-                  <AppIcon name="close-outline" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                contentContainerStyle={{ paddingBottom: 24 }}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Edit academic info</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
               >
-                {renderAcademicForm(saveAcademicFromDialog)}
-              </ScrollView>
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                {renderAcademicForm(saveAcademicFromDialog)}
+              </KeyboardAvoidingView>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
