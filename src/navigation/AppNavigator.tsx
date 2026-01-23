@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import { flushPendingNavigation, navigationRef } from './navigationRef';
 import Loading from '../components/Loading';
 import AcademicDetailsDialog from '../components/AcademicDetailsDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { referenceAPI } from '../services/api';
 
 // Auth Screens
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -59,6 +60,10 @@ const linking = {
 
 // Auth Stack Navigator
 const AuthStack = ({ initialRouteName }: { initialRouteName: 'Welcome' | 'Login' }) => {
+  useEffect(() => {
+    referenceAPI.getSchools({ page: 1, limit: 100 }).catch(() => undefined);
+  }, []);
+
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName}

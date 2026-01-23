@@ -752,35 +752,62 @@ export const profileAPI = {
   },
 };
 
-const SUPPORT_DETAILS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-let supportDetailsCache: { value: { whatsapp?: string; email?: string }; fetchedAt: number } | null = null;
-let supportDetailsInflight: Promise<{ whatsapp?: string; email?: string }> | null = null;
+const REFERENCE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const referenceCache = new Map<string, { value: any; fetchedAt: number }>();
+const referenceInflight = new Map<string, Promise<any>>();
+
+const cachedReference = async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+  const cached = referenceCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < REFERENCE_CACHE_TTL_MS) {
+    return cached.value as T;
+  }
+
+  const inflight = referenceInflight.get(key);
+  if (inflight) return inflight as Promise<T>;
+
+  const promise = (async () => {
+    const value = await fetcher();
+    referenceCache.set(key, { value, fetchedAt: Date.now() });
+    return value;
+  })();
+
+  referenceInflight.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    referenceInflight.delete(key);
+  }
+};
 
 export const referenceAPI = {
   getSchools: async (args?: { page?: number; limit?: number }): Promise<ReferenceListResponse<{ schools: ReferenceSchool[] }>> => {
     const page = args?.page ?? 1;
     const limit = args?.limit ?? 50;
-    const response = await api.get<ApiResponse<ReferenceListResponse<{ schools: ReferenceSchool[] }>>>(
-      `/reference/schools.php?page=${page}&limit=${limit}`,
-      { skipAuth: true } as any
-    );
-    if (response.data.status !== 'success' || !response.data.data) {
-      throw new Error(response.data.message || 'Failed to load schools');
-    }
-    return response.data.data;
+    return cachedReference(`reference.schools?page=${page}&limit=${limit}`, async () => {
+      const response = await api.get<ApiResponse<ReferenceListResponse<{ schools: ReferenceSchool[] }>>>(
+        `/reference/schools.php?page=${page}&limit=${limit}`,
+        { skipAuth: true } as any
+      );
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error(response.data.message || 'Failed to load schools');
+      }
+      return response.data.data;
+    });
   },
 
   getFaculties: async (args: { schoolId: number; page?: number; limit?: number }): Promise<ReferenceListResponse<{ faculties: ReferenceFaculty[] }>> => {
     const page = args.page ?? 1;
     const limit = args.limit ?? 50;
-    const response = await api.get<ApiResponse<ReferenceListResponse<{ faculties: ReferenceFaculty[] }>>>(
-      `/reference/faculties.php?school_id=${args.schoolId}&page=${page}&limit=${limit}`,
-      { skipAuth: true } as any
-    );
-    if (response.data.status !== 'success' || !response.data.data) {
-      throw new Error(response.data.message || 'Failed to load faculties');
-    }
-    return response.data.data;
+    return cachedReference(`reference.faculties?school_id=${args.schoolId}&page=${page}&limit=${limit}`, async () => {
+      const response = await api.get<ApiResponse<ReferenceListResponse<{ faculties: ReferenceFaculty[] }>>>(
+        `/reference/faculties.php?school_id=${args.schoolId}&page=${page}&limit=${limit}`,
+        { skipAuth: true } as any
+      );
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error(response.data.message || 'Failed to load faculties');
+      }
+      return response.data.data;
+    });
   },
 
   getDepartments: async (args: {
@@ -792,22 +819,22 @@ export const referenceAPI = {
     const page = args.page ?? 1;
     const limit = args.limit ?? 100;
     const facultyFilter = args.facultyId ? `&faculty_id=${args.facultyId}` : '';
-    const response = await api.get<ApiResponse<ReferenceListResponse<{ departments: ReferenceDepartment[] }>>>(
-      `/reference/departments.php?school_id=${args.schoolId}${facultyFilter}&page=${page}&limit=${limit}`,
-      { skipAuth: true } as any
+    return cachedReference(
+      `reference.departments?school_id=${args.schoolId}${facultyFilter}&page=${page}&limit=${limit}`,
+      async () => {
+        const response = await api.get<ApiResponse<ReferenceListResponse<{ departments: ReferenceDepartment[] }>>>(
+          `/reference/departments.php?school_id=${args.schoolId}${facultyFilter}&page=${page}&limit=${limit}`,
+          { skipAuth: true } as any
+        );
+        if (response.data.status !== 'success' || !response.data.data) {
+          throw new Error(response.data.message || 'Failed to load departments');
+        }
+        return response.data.data;
+      }
     );
-    if (response.data.status !== 'success' || !response.data.data) {
-      throw new Error(response.data.message || 'Failed to load departments');
-    }
-    return response.data.data;
   },
 
   getSupportDetails: async (): Promise<{ whatsapp?: string; email?: string }> => {
-    if (supportDetailsCache && Date.now() - supportDetailsCache.fetchedAt < SUPPORT_DETAILS_CACHE_TTL_MS) {
-      return supportDetailsCache.value;
-    }
-    if (supportDetailsInflight) return supportDetailsInflight;
-
     const tryGet = async (path: string) => {
       const response = await api.get<ApiResponse<any>>(path, { skipAuth: true } as any);
       if (response.data.status !== 'success' || !response.data.data) {
@@ -816,7 +843,7 @@ export const referenceAPI = {
       return response.data.data as any;
     };
 
-    supportDetailsInflight = (async () => {
+    return cachedReference('reference.supportDetails', async () => {
       const candidates = ['/reference/support.php'];
       let lastError: any;
       for (const path of candidates) {
@@ -837,20 +864,13 @@ export const referenceAPI = {
 
           const email = String(contact?.email ?? data?.email ?? data?.support_email ?? '').trim() || undefined;
           const value = { whatsapp, email };
-          supportDetailsCache = { value, fetchedAt: Date.now() };
           return value;
         } catch (e: any) {
           lastError = e;
         }
       }
       throw lastError || new Error('Failed to load support details');
-    })();
-
-    try {
-      return await supportDetailsInflight;
-    } finally {
-      supportDetailsInflight = null;
-    }
+    });
   },
 };
 

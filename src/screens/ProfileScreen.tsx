@@ -192,7 +192,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       referenceAPI.getSupportDetails().catch(() => undefined);
-    }, [])
+      referenceAPI.getSchools({ page: 1, limit: 100 }).catch(() => undefined);
+
+      const schoolId = Number(user?.schoolId);
+      if (Number.isFinite(schoolId)) {
+        referenceAPI.getFaculties({ schoolId, page: 1, limit: 100 }).catch(() => undefined);
+        referenceAPI.getDepartments({ schoolId, page: 1, limit: 100 }).catch(() => undefined);
+      }
+    }, [user?.schoolId])
   );
 
   useEffect(() => {
