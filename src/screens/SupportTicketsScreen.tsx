@@ -317,7 +317,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
       <Modal visible={composeVisible} transparent animationType="slide" onRequestClose={() => setComposeVisible(false)}>
         <KeyboardAvoidingView
           style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
           <Pressable

@@ -728,7 +728,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       <Modal visible={editDialog === 'profile'} transparent animationType="slide" onRequestClose={closeEditDialog}>
         <KeyboardAvoidingView
           style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
           <Pressable
@@ -776,7 +776,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       <Modal visible={editDialog === 'academic'} transparent animationType="slide" onRequestClose={closeEditDialog}>
         <KeyboardAvoidingView
           style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
           <Pressable
