@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
@@ -14,23 +14,33 @@ type NotificationsScreenProps = {
   route: any;
 };
 
-const formatRelative = (value?: string) => {
+const parseAppDate = (value?: string) => {
   const raw = (value || '').trim();
-  if (!raw) return '';
-  const t = new Date(raw.replace(' ', 'T')).getTime();
-  if (Number.isNaN(t)) return '';
-  const diffMs = Date.now() - t;
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 52) return `${weeks}w ago`;
-  const years = Math.floor(weeks / 52);
-  return `${years}y ago`;
+  if (!raw) return null;
+  const normalized = raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+};
+
+const isSameLocalDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const formatListTimestamp = (value?: string) => {
+  const d = parseAppDate(value);
+  if (!d) return '';
+
+  const now = new Date();
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  if (isSameLocalDay(d, now)) return `Today ${time}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameLocalDay(d, yesterday)) return `Yesterday ${time}`;
+
+  const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${day} ${time}`;
 };
 
 const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, route }) => {
@@ -132,8 +142,20 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
 
   const renderItem = ({ item }: { item: AppNotification }) => {
     const unread = !item.readAt;
-    const relative = formatRelative(item.createdAt);
+    const timeLabel = formatListTimestamp(item.createdAt);
     const highlighted = highlightId && item.id === highlightId;
+
+    const type = String(item.type || '').toLowerCase();
+    const anyData: any = (item.data || {}) as any;
+    const action = String(anyData.action || anyData.type || anyData.event || '').toLowerCase();
+    const icon =
+      action.includes('payment') || action.includes('order') || type.includes('payment') || type.includes('transaction')
+        ? 'receipt-outline'
+        : action.includes('support') || type.includes('support')
+          ? 'chatbubbles-outline'
+          : action.includes('material') || type.includes('material')
+            ? 'book-outline'
+            : 'notifications-outline';
 
     return (
       <TouchableOpacity
@@ -142,37 +164,53 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
         accessibilityRole="button"
         accessibilityLabel={item.title}
         style={[
-          styles.row,
+          styles.card,
           {
             backgroundColor: colors.surface,
             borderColor: highlighted ? colors.accent : colors.border,
           },
         ]}
       >
-        <View
-          style={[
-            styles.dot,
-            { backgroundColor: unread ? colors.accent : isDark ? 'rgba(255,255,255,0.20)' : 'rgba(15,23,42,0.14)' },
-          ]}
-        />
-        <View style={styles.rowBody}>
-          <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
-            {item.title || 'Notification'}
-          </Text>
-          {item.body ? (
-            <Text style={[styles.rowMessage, { color: colors.textMuted }]} numberOfLines={2}>
-              {item.body}
-            </Text>
-          ) : null}
-          {relative ? (
-            <Text style={[styles.rowMeta, { color: colors.textMuted }]}>{relative}</Text>
-          ) : null}
-        </View>
-        {unread ? (
-          <View style={[styles.unreadPill, { borderColor: colors.accent }]}>
-            <Text style={[styles.unreadPillText, { color: colors.accent }]}>NEW</Text>
+        <View style={styles.cardTop}>
+          <View
+            style={[
+              styles.cardIconWrap,
+              { backgroundColor: 'rgb(255, 255, 255)' },
+            ]}
+          >
+            <Image source={require('../../assets/logo.png')} style={styles.cardLogo} resizeMode="contain" />
+            {unread ? (
+              <View style={[styles.unreadDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />
+            ) : null}
           </View>
-        ) : null}
+
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+              {item.title || 'Notification'}
+            </Text>
+            {item.body ? (
+              <Text style={[styles.cardBody, { color: colors.textMuted }]} numberOfLines={2}>
+                {item.body}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.cardBottom}>
+          <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{timeLabel}</Text>
+          <TouchableOpacity
+            onPress={() => openNotification(item)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="View notification"
+            style={styles.viewCta}
+          >
+            <Text style={[styles.viewCtaText, { color: colors.accent }]}>View</Text>
+            <AppIcon name="chevron-forward" size={16} color={colors.accent} />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -291,71 +329,75 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 16,
   },
-  diagCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    marginTop: 12,
-  },
-  diagTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-    marginBottom: 8,
-  },
-  diagLine: {
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
-    marginBottom: 4,
-  },
-  row: {
+  card: {
     marginHorizontal: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 22,
+    gap: 12,
+    marginBottom: 12,
+  },
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
   },
-  dot: {
+  cardIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLogo: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
     width: 10,
     height: 10,
     borderRadius: 5,
-    marginTop: 6,
+    borderWidth: 2,
   },
-  rowBody: {
-    flex: 1,
-    paddingTop: 1,
-  },
-  rowTitle: {
-    fontSize: 13,
+  cardTitle: {
+    fontSize: 14,
     fontWeight: '900',
     letterSpacing: -0.2,
   },
-  rowMessage: {
-    marginTop: 4,
+  cardBody: {
+    marginTop: 6,
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 16,
   },
-  rowMeta: {
-    marginTop: 6,
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.7,
+  },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cardMeta: {
     fontSize: 11,
     fontWeight: '800',
   },
-  unreadPill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  viewCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
   },
-  unreadPillText: {
-    fontSize: 10,
+  viewCtaText: {
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.6,
   },
   emptyCard: {
     borderWidth: 1,
