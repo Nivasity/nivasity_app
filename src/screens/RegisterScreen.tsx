@@ -91,8 +91,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
   const schoolNames = useMemo(() => schools.map((s) => s.name), [schools]);
 
-  const canOpenSchools = !schoolsLoading && schoolNames.length > 0;
-
   const validate = (): boolean => {
     const newErrors: RegisterErrors = {};
 
@@ -182,11 +180,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
       <TouchableOpacity
         onPress={() => {
-          if (!canOpenSchools) {
-            appMessage.toast({
-              status: schoolsLoading ? 'info' : 'failed',
-              message: schoolsLoading ? 'Loading schools...' : 'No schools available',
-            });
+          if (!schoolsLoading && schoolNames.length === 0) {
+            appMessage.toast({ status: 'failed', message: 'No schools available' });
             return;
           }
           setSchoolOpen(true);

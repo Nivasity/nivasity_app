@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { TextInput as PaperTextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +38,14 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
     });
   }, [normalizedQuery, options]);
 
+  const rowHeight = 52;
+  const rowGap = 10;
+  const getItemLayout = (_: any, index: number) => ({
+    length: rowHeight + rowGap,
+    offset: (rowHeight + rowGap) * index,
+    index,
+  });
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
@@ -47,12 +55,14 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Close"
         >
-          <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+          ) : null}
           <View
             pointerEvents="none"
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              { backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.25)' },
             ]}
           />
         </Pressable>
@@ -103,18 +113,26 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
             }
           />
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {filtered.length === 0 ? (
+          <FlatList
+            data={filtered}
+            keyExtractor={(c) => `${c.cca2}:${c.callingCode}`}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            getItemLayout={getItemLayout}
+            initialNumToRender={18}
+            windowSize={8}
+            removeClippedSubviews
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={{ height: rowGap }} />}
+            ListEmptyComponent={
               <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <AppText style={[styles.emptyText, { color: colors.textMuted }]}>No results</AppText>
               </View>
-            ) : null}
-
-            {filtered.map((c) => {
+            }
+            renderItem={({ item: c }) => {
               const isSelected = (selectedCca2 || '').toUpperCase() === c.cca2;
               return (
                 <TouchableOpacity
-                  key={`${c.cca2}:${c.callingCode}`}
                   onPress={() => {
                     onSelect(c.cca2, c.callingCode);
                     onClose();
@@ -141,8 +159,8 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
                   </AppText>
                 </TouchableOpacity>
               );
-            })}
-          </ScrollView>
+            }}
+          />
         </View>
       </View>
     </Modal>
@@ -188,6 +206,10 @@ const styles = StyleSheet.create({
   searchContent: {
     height: 48,
   },
+  listContent: {
+    paddingTop: 2,
+    paddingBottom: 10,
+  },
   optionRow: {
     height: 52,
     borderRadius: 18,
@@ -196,7 +218,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
     gap: 12,
   },
   optionLeft: {
@@ -226,7 +247,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 12,
-    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -237,4 +257,3 @@ const styles = StyleSheet.create({
 });
 
 export default CountryPickerDialog;
-
