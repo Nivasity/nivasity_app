@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
@@ -295,17 +295,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     if (!user) return;
 
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        appMessage.toast({ status: 'failed', message: 'Allow photo access to upload a profile picture.' });
-        return;
-      }
-
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.9,
+      const res = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: ['image/*'],
       });
 
       if (res.canceled || !res.assets?.[0]?.uri) {
@@ -315,8 +308,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
       const asset = res.assets[0];
       const uri = asset.uri;
-      const name = (asset.fileName || `profile-${Date.now()}.jpg`).trim();
-      const type = toImageMimeType(uri, (asset as any).mimeType);
+      const name = (asset.name || `profile-${Date.now()}.jpg`).trim();
+      const type = toImageMimeType(uri, asset.mimeType);
 
       setAvatarMode('uploading');
 

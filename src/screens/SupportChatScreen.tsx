@@ -12,7 +12,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
@@ -156,17 +155,16 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
   }, [messages.length, loading]);
 
   const pickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      appMessage.toast({ status: 'failed', message: 'Allow photo access to attach an image.' });
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
-    const asset = res.assets[0];
-    const uri = asset.uri;
-    const name = (asset.fileName || `attachment-${Date.now()}.jpg`).trim();
-    const type = toMimeType(uri, (asset as any).mimeType);
+    const res = await DocumentPicker.getDocumentAsync({
+      copyToCacheDirectory: true,
+      multiple: false,
+      type: ['image/*'],
+    });
+    if (res.canceled) return;
+    const uri = res.assets?.[0]?.uri;
+    if (!uri) return;
+    const name = (res.assets?.[0]?.name || `attachment-${Date.now()}.jpg`).trim();
+    const type = toMimeType(uri, res.assets?.[0]?.mimeType);
     setAttachment({ uri, name, type });
   };
 
