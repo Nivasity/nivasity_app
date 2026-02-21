@@ -52,7 +52,6 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const lastOpenedMaterialId = useRef<string | null>(null);
   const detailsRequestIdRef = useRef(0);
 
   const showCardsShimmer = loading && !refreshing && !loadingMore;
@@ -63,13 +62,11 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   }, [query]);
 
   useEffect(() => {
-    const rawId = route?.params?.materialId;
-    const materialId = rawId != null ? String(rawId).trim() : '';
+    const rawId = route?.params?.materialId ?? route?.params?.material_id ?? route?.params?.id;
+    const materialId = rawId != null ? String(rawId).trim().split('/')[0] : '';
     if (!materialId) return;
-    if (lastOpenedMaterialId.current === materialId) return;
-    lastOpenedMaterialId.current = materialId;
 
-    navigation.setParams({ materialId: undefined });
+    navigation.setParams({ materialId: undefined, material_id: undefined, id: undefined });
 
     let canceled = false;
     (async () => {
@@ -97,7 +94,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
       canceled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route?.params?.materialId]);
+  }, [route?.params?.materialId, route?.params?.material_id, route?.params?.id]);
 
   const loadPage = useCallback(
     async (args: { nextPage: number; append: boolean }) => {

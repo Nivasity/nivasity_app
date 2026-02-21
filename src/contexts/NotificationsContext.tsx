@@ -406,8 +406,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     const data = pendingOpenData.current;
     if (!data) return;
     pendingOpenData.current = undefined;
-    const handled = openNotificationTarget(data);
-    if (!handled) navigate('Notifications');
+    openNotificationTarget(data);
   }, [isAuthenticated, openNotificationTarget]);
 
   const registerPushTokenIfGranted = useCallback(async () => {
@@ -605,8 +604,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
             navigate('Login');
             return;
           }
-          const handled = openNotificationTarget(local.data);
-          if (!handled) navigate('Notifications', { highlightId: local.id });
+          openNotificationTarget(local.data);
         },
       });
     });
@@ -619,10 +617,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
         return;
       }
-      const handled = openNotificationTarget(data);
-      if (handled) return;
-      const id = String(data.notification_id ?? data.id ?? '').trim();
-      navigate('Notifications', { highlightId: id || undefined });
+      openNotificationTarget(data);
     };
 
     Notifications.getLastNotificationResponseAsync()

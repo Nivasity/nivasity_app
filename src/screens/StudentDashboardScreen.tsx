@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useNotifications } from '../contexts/NotificationsContext';
@@ -27,7 +26,6 @@ const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
-  const appMessage = useAppMessage();
   const { count: cartCount, lastActionAt, has, toggle } = useCart();
   const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
   const insets = useSafeAreaInsets();
@@ -93,13 +91,6 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           await requestPushPermission();
           return;
         }
-
-        if (permissionStatus === 'denied') {
-          appMessage.toast({
-            status: 'info',
-            message: 'Enable notifications in Settings to get updates.',
-          });
-        }
       } catch {
         // ignore
       }
@@ -108,7 +99,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     return () => {
       canceled = true;
     };
-  }, [appMessage, permissionStatus, requestPushPermission]);
+  }, [permissionStatus, requestPushPermission]);
 
   const onRefresh = () => {
     setRefreshing(true);
