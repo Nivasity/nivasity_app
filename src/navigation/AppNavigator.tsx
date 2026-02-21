@@ -45,7 +45,12 @@ const TAB_BAR_WIDTH_RATIO = 0.68;
 const TAB_BAR_MAX_WIDTH = 420;
 
 const linking = {
-  prefixes: [ExpoLinking.createURL('/', { scheme: 'nivasity' }), 'nivasity://'],
+  prefixes: [
+    ExpoLinking.createURL('/', { scheme: 'nivasity' }),
+    'nivasity://',
+    'https://nivasity.com',
+    'https://www.nivasity.com',
+  ],
   config: {
     screens: {
       StudentMain: {

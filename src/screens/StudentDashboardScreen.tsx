@@ -146,10 +146,9 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const shareMaterial = async (product: Product) => {
     try {
       const materialId = encodeURIComponent(String(product.id));
-      const deepLink = `nivasity://material/${materialId}`;
-      const storeUrl = 'https://play.google.com/store/apps/details?id=com.nivasity.app';
+      const webUrl = `https://nivasity.com/material/${materialId}`;
       await Share.share({
-        message: `${product.name}\n${product.description}\nPrice: ₦${product.price.toLocaleString()}\n\nOpen in Nivasity: ${deepLink}\nGet the app: ${storeUrl}`,
+        message: `${product.name}\n${product.description}\nPrice: NGN ${product.price.toLocaleString()}\n\nGet the material here: ${webUrl}`,
       });
     } catch {
       // ignore
