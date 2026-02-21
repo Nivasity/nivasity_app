@@ -256,7 +256,14 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
           styles.listContent,
           { paddingBottom: 40 + insets.bottom },
         ]}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => refresh()}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         ListEmptyComponent={
           <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
             <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>

@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Easing,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -39,6 +40,51 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [resolvedSchoolName, setResolvedSchoolName] = useState<string>('');
   const [fireworksSize, setFireworksSize] = useState<{ width: number; height: number } | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const refreshProfileData = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      try {
+        const res = await profileAPI.getProfile(); // Ensure user is up-to-date
+        if (!isMountedRef.current) return;
+        updateUser(res);
+        const dash = await (await import('../services/api')).dashboardAPI.getStudentStats();
+        if (!isMountedRef.current) return;
+        setStats({
+          totalOrders: dash.totalOrders ?? 0,
+          totalSpent: dash.totalSpent ?? 0,
+          pendingOrders: dash.pendingOrders ?? 0,
+        });
+      } catch (e: any) {
+        if (!isMountedRef.current) return;
+        setStats({ totalOrders: 0, totalSpent: 0, pendingOrders: 0 });
+        if (!opts?.silent) {
+          appMessage.toast({
+            status: 'failed',
+            message: e?.response?.data?.message || e?.message || 'Failed to refresh profile data.',
+          });
+        }
+      }
+    },
+    [appMessage, updateUser]
+  );
+
+  const handlePullRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshProfileData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshProfileData]);
 
   const bubblesRef = React.useRef<
     Array<{
@@ -203,27 +249,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   );
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await profileAPI.getProfile(); // Ensure user is up-to-date
-        updateUser(res);
-        const dash = await (await import('../services/api')).dashboardAPI.getStudentStats();
-        if (mounted && dash) {
-          setStats({
-            totalOrders: dash.totalOrders ?? 0,
-            totalSpent: dash.totalSpent ?? 0,
-            pendingOrders: dash.pendingOrders ?? 0,
-          });
-        }
-      } catch {
-        if (mounted) setStats({ totalOrders: 0, totalSpent: 0, pendingOrders: 0 });
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [updateUser]);
+    refreshProfileData({ silent: true });
+  }, [refreshProfileData]);
 
   useEffect(() => {
     const direct = (user?.school || user?.institutionName || '').trim();
@@ -351,6 +378,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handlePullRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
       >
         <View style={[styles.header, { backgroundColor: colors.secondary }]}>
           <View

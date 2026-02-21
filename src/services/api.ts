@@ -1001,16 +1001,44 @@ export const cartAPI = {
     }
     return response.data.data;
   },
-  view: async (): Promise<{ items: CartItem[]; total_amount: number; total_items: number }> => {
-    const response = await api.get<ApiResponse<{ items: CartViewItem[]; total_amount: number; total_items: number }>>(
+  view: async (): Promise<{
+    items: CartItem[];
+    subtotal: number;
+    charge: number;
+    total_amount: number;
+    total_items: number;
+  }> => {
+    const response = await api.get<
+      ApiResponse<{
+        items: CartViewItem[];
+        subtotal?: number;
+        charge?: number;
+        total_amount: number;
+        total_items: number;
+      }>
+    >(
       '/materials/cart-view.php'
     );
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Failed to load cart');
     }
+    const items = (response.data.data.items || []).map(mapCartViewItemToCartItem);
+    const subtotal =
+      typeof response.data.data.subtotal === 'number'
+        ? response.data.data.subtotal
+        : items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalAmount =
+      typeof response.data.data.total_amount === 'number' ? response.data.data.total_amount : subtotal;
+    const charge =
+      typeof response.data.data.charge === 'number'
+        ? response.data.data.charge
+        : Math.max(0, totalAmount - subtotal);
+
     return {
-      items: (response.data.data.items || []).map(mapCartViewItemToCartItem),
-      total_amount: response.data.data.total_amount,
+      items,
+      subtotal,
+      charge,
+      total_amount: totalAmount,
       total_items: response.data.data.total_items,
     };
   },

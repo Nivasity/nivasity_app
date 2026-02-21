@@ -9,4 +9,4 @@ UI styling note: avoid shadows on cards, icons, and buttons; prefer no shadow, a
 
 
 Use this link to check backend API documentation:
-https://github.com/samakins672/nivasity/blob/copilot/add-api-endpoints-for-students/API/README.md
+https://github.com/samakins672/nivasity/blob/funaab/API/README.md

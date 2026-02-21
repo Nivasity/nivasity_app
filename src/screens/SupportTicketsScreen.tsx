@@ -274,7 +274,14 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={[styles.listContent, { paddingBottom: 90 + insets.bottom }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           loading ? (

@@ -266,7 +266,14 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 30 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         onEndReached={() => {
           if (loading || refreshing || loadingMore) return;
           if (!canLoadMore) return;

@@ -164,7 +164,14 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 130 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <EmptyState

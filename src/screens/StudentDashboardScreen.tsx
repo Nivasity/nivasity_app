@@ -145,7 +145,14 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     >
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
         stickyHeaderIndices={[0]}
       >
         <View

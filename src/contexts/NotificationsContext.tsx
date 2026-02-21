@@ -48,12 +48,47 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 
 const CACHE_KEY = 'notifications.cache.v1';
 const EXPO_PUSH_TOKEN_KEY = 'notifications.expoPushToken.v1';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const NOTIFICATION_WINDOW_DAYS = 7;
+const NOTIFICATION_WINDOW_MS = NOTIFICATION_WINDOW_DAYS * ONE_DAY_MS;
+const MAX_FUTURE_SKEW_MS = ONE_DAY_MS;
+
+const toNotificationTimeMs = (value?: string) => {
+  const raw = String(value || '').trim();
+  if (!raw) return Number.NaN;
+  const normalized = raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw;
+  const ms = new Date(normalized).getTime();
+  return Number.isNaN(ms) ? Number.NaN : ms;
+};
+
+const keepRecentNotifications = (list: AppNotification[]) => {
+  const now = Date.now();
+  const cutoff = now - NOTIFICATION_WINDOW_MS;
+  const maxAllowed = now + MAX_FUTURE_SKEW_MS;
+
+  const filtered = list.filter((item) => {
+    const ts = toNotificationTimeMs(item.createdAt);
+    if (Number.isNaN(ts)) return false;
+    return ts >= cutoff && ts <= maxAllowed;
+  });
+
+  filtered.sort((a, b) => {
+    const ta = toNotificationTimeMs(a.createdAt);
+    const tb = toNotificationTimeMs(b.createdAt);
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+    if (Number.isNaN(ta)) return 1;
+    if (Number.isNaN(tb)) return -1;
+    return tb - ta;
+  });
+
+  return filtered;
+};
 
 const parseCache = (raw: string): AppNotification[] | null => {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
-    return parsed.filter(Boolean) as AppNotification[];
+    return keepRecentNotifications(parsed.filter(Boolean) as AppNotification[]);
   } catch {
     return null;
   }
@@ -159,7 +194,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   }, [localUnreadCount, serverUnreadCount]);
 
   const persist = useCallback((next: AppNotification[]) => {
-    AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => undefined);
+    AsyncStorage.setItem(CACHE_KEY, JSON.stringify(keepRecentNotifications(next))).catch(() => undefined);
   }, []);
 
   const upsertLocal = useCallback(
@@ -174,17 +209,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
           next = [n, ...prev];
         }
 
-        next.sort((a, b) => {
-          const ta = new Date(String(a.createdAt || '').replace(' ', 'T')).getTime();
-          const tb = new Date(String(b.createdAt || '').replace(' ', 'T')).getTime();
-          if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
-          if (Number.isNaN(ta)) return 1;
-          if (Number.isNaN(tb)) return -1;
-          return tb - ta;
-        });
-
-        persist(next);
-        return next;
+        const recent = keepRecentNotifications(next);
+        persist(recent);
+        return recent;
       });
     },
     [persist]
@@ -197,9 +224,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       try {
         const { notifications: list, unreadCount: nextUnreadCount } = await notificationAPI.listNotifications({ page: 1, limit: 50 });
         if (!mounted.current) return;
-        setNotifications(list);
+        const recent = keepRecentNotifications(list);
+        setNotifications(recent);
         if (typeof nextUnreadCount === 'number') setServerUnreadCount(nextUnreadCount);
-        persist(list);
+        persist(recent);
         lastRefreshAt.current = Date.now();
       } catch (e: any) {
         if (!opts?.silent) {
@@ -471,7 +499,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     setNotifications((prev) => {
       const existing = prev.find((n) => n.id === id);
       wasUnread = !!existing && !existing.readAt;
-      const next = prev.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n));
+      const next = keepRecentNotifications(prev.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
       persist(next);
       return next;
     });
@@ -489,7 +517,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const markAllAsRead = useCallback(async () => {
     const now = new Date().toISOString();
     setNotifications((prev) => {
-      const next = prev.map((n) => ({ ...n, readAt: n.readAt ?? now }));
+      const next = keepRecentNotifications(prev.map((n) => ({ ...n, readAt: n.readAt ?? now })));
       persist(next);
       return next;
     });

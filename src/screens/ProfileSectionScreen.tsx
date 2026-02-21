@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -75,6 +76,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const title = useMemo(() => getSectionTitle(section), [section]);
 
   const [saving, setSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic'>(null);
 
   const [accountData, setAccountData] = useState<Pick<User, 'firstName' | 'lastName' | 'email'>>(() => {
@@ -213,6 +215,58 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const refreshMyAccountData = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!user) return;
+      try {
+        const refreshed = await authAPI.getCurrentUser();
+        updateUser({ ...user, ...refreshed, school: user.school, institutionName: user.institutionName });
+
+        const schoolId = Number(refreshed.schoolId ?? user.schoolId);
+        if (Number.isFinite(schoolId)) {
+          const [schoolsResult, departmentsResult] = await Promise.allSettled([
+            referenceAPI.getSchools({ page: 1, limit: 100 }),
+            referenceAPI.getDepartments({ schoolId, page: 1, limit: 100 }),
+          ]);
+
+          if (schoolsResult.status === 'fulfilled') {
+            setSchools(
+              (schoolsResult.value.schools || [])
+                .map((s) => ({ id: Number((s as any).id), name: String((s as any).name || '').trim() }))
+                .filter((s) => Number.isFinite(s.id) && !!s.name)
+            );
+          }
+
+          if (departmentsResult.status === 'fulfilled') {
+            setDepartments(
+              (departmentsResult.value.departments || [])
+                .map((d) => ({ id: Number((d as any).id), name: String((d as any).name || '').trim() }))
+                .filter((d) => Number.isFinite(d.id) && !!d.name)
+            );
+          }
+        }
+      } catch (error: any) {
+        if (!opts?.silent) {
+          appMessage.toast({
+            status: 'failed',
+            message: error?.response?.data?.message || error?.message || 'Failed to refresh account data.',
+          });
+        }
+      }
+    },
+    [appMessage, updateUser, user]
+  );
+
+  const handlePullRefresh = useCallback(async () => {
+    if (section !== 'myAccount') return;
+    setIsRefreshing(true);
+    try {
+      await refreshMyAccountData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshMyAccountData, section]);
 
   const saveProfilePatch = async (patch: Partial<User>, okMessage: string) => {
     if (!user) return;
@@ -565,6 +619,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           contentContainerStyle={[styles.content, { paddingBottom: 110 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            section === 'myAccount' ? (
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handlePullRefresh}
+                tintColor={colors.accent}
+                colors={[colors.accent]}
+              />
+            ) : undefined
+          }
         >
           <View style={styles.topBar}>
             <TouchableOpacity

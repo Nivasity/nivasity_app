@@ -9,7 +9,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
-import { orderAPI, paymentAPI } from '../services/api';
+import { cartAPI, orderAPI, paymentAPI } from '../services/api';
 import { CartItem, Order } from '../types';
 
 interface CheckoutScreenProps {
@@ -28,6 +28,8 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
+  const [handlingFee, setHandlingFee] = useState(0);
+  const [pricingReady, setPricingReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -47,7 +49,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
     };
   }, []);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () =>
       (cartItems as CartItem[]).reduce(
         (sum: number, item: CartItem) => sum + item.price * item.quantity,
@@ -55,11 +57,49 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       ),
     [cartItems]
   );
+  const total = useMemo(() => subtotal + handlingFee, [subtotal, handlingFee]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!cartItems || cartItems.length === 0) {
+      setHandlingFee(0);
+      setPricingReady(true);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setPricingReady(false);
+    cartAPI
+      .view()
+      .then((cart) => {
+        if (!mounted) return;
+        const subtotalFromApi = typeof cart.subtotal === 'number' ? cart.subtotal : subtotal;
+        const totalFromApi = typeof cart.total_amount === 'number' ? cart.total_amount : subtotalFromApi;
+        const feeFromApi =
+          typeof cart.charge === 'number' ? cart.charge : Math.max(0, totalFromApi - subtotalFromApi);
+        setHandlingFee(feeFromApi);
+        setPricingReady(true);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setHandlingFee(0);
+        setPricingReady(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [cartItems, subtotal]);
 
   const handlePayment = async () => {
     if (!cartItems || cartItems.length === 0) {
       console.log('[Checkout] Cart is empty');
       appMessage.alert({ title: 'Cart is empty', message: 'Add at least one item to checkout.' });
+      return;
+    }
+    if (!pricingReady) {
       return;
     }
 
@@ -211,13 +251,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
         </View>
 
         <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TotalRow label="Subtotal" value={`₦${total.toLocaleString()}`} />
-          <TotalRow label="Handling Fee" value="₦0" />
+          <TotalRow label="Subtotal" value={`₦${subtotal.toLocaleString()}`} />
+          <TotalRow label="Handling Fee" value={`₦${handlingFee.toLocaleString()}`} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <TotalRow label="Total" value={`₦${total.toLocaleString()}`} bold />
         </View>
 
-        <Button title="Proceed to Payment" onPress={handlePayment} loading={loading} />
+        <Button
+          title="Proceed to Payment"
+          onPress={handlePayment}
+          loading={loading}
+          disabled={!pricingReady || !cartItems || cartItems.length === 0}
+        />
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.cancel}
