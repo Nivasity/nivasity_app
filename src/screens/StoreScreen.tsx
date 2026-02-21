@@ -53,6 +53,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const lastOpenedMaterialId = useRef<string | null>(null);
+  const detailsRequestIdRef = useRef(0);
 
   const showCardsShimmer = loading && !refreshing && !loadingMore;
 
@@ -193,6 +194,23 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
     });
   };
 
+  const openMaterialDetails = useCallback(async (material: Product) => {
+    setActiveProduct(material);
+    setDetailsOpen(true);
+
+    const requestId = ++detailsRequestIdRef.current;
+    try {
+      const fetched = await storeAPI.getProduct(material.id);
+      if (detailsRequestIdRef.current !== requestId) return;
+      setActiveProduct((current) => {
+        if (!current || current.id !== material.id) return current;
+        return { ...current, ...fetched };
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const renderProduct = (material: Product) => {
     const inCart = has(material.id);
     const isAvailable = material.available !== false;
@@ -207,8 +225,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         onAdd={isAvailable ? () => toggle(material) : undefined}
         onShare={() => shareProduct(material)}
         onPress={() => {
-          setActiveProduct(material);
-          setDetailsOpen(true);
+          void openMaterialDetails(material);
         }}
       />
     );

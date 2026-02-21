@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +39,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [isOffline, setIsOffline] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
+  const detailsRequestIdRef = useRef(0);
 
   const computeStats = (orders: Order[]): DashboardStats => {
     const totalOrders = orders.length;
@@ -113,6 +114,23 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     setRefreshing(true);
     loadDashboard();
   };
+
+  const openMaterialDetails = useCallback(async (material: Product) => {
+    setActiveMaterial(material);
+    setDetailsOpen(true);
+
+    const requestId = ++detailsRequestIdRef.current;
+    try {
+      const fetched = await storeAPI.getProduct(material.id);
+      if (detailsRequestIdRef.current !== requestId) return;
+      setActiveMaterial((current) => {
+        if (!current || current.id !== material.id) return current;
+        return { ...current, ...fetched };
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (loading) {
     return <Loading message="Loading dashboard..." />;
@@ -297,8 +315,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                     onAdd={item.available === false ? undefined : () => toggle(item)}
                     onShare={() => shareMaterial(item)}
                     onPress={() => {
-                      setActiveMaterial(item);
-                      setDetailsOpen(true);
+                      void openMaterialDetails(item);
                     }}
                   />
                 </View>

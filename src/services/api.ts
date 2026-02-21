@@ -880,6 +880,8 @@ type MaterialListItem = {
   title: string;
   course_code?: string;
   price: number;
+  level?: string | number | null;
+  host_level?: string | number | null;
   quantity?: number;
   due_date?: string;
   dept_name?: string;
@@ -910,6 +912,7 @@ const mapMaterialToProduct = (item: MaterialListItem): Product => ({
   createdAt: item.created_at,
   department: item.dept_name,
   faculty: item.faculty_name,
+  level: String((item as any).level ?? (item as any).host_level ?? '').trim() || undefined,
   deadlineAt: item.due_date,
 });
 
