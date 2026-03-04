@@ -48,6 +48,12 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
 
   const title = product?.name ?? '';
   const subtitle = product?.description ?? '';
+  const hostedBy = useMemo(() => {
+    const raw = product?.hostFacultyName?.trim() || product?.faculty?.trim() || '';
+    if (!raw) return '—';
+    if (/faculty$/i.test(raw)) return raw;
+    return `${raw} Faculty`;
+  }, [product?.faculty, product?.hostFacultyName]);
   const price = useMemo(() => {
     if (!product) return '';
     return `₦${product.price.toLocaleString()}`;
@@ -107,10 +113,9 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
 
               <View style={[styles.section, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <Row label="Department" value={product.department || '—'} />
-                <Row label="Faculty" value={product.faculty || '—'} />
+                <Row label="Hosted by:" value={hostedBy} />
                 <Row label="Level" value={product.level || '—'} />
                 <Row label="Date posted" value={formatDate(product.createdAt)} />
-                <Row label="Deadline" value={formatDate(product.deadlineAt)} />
               </View>
 
               <View style={styles.actions}>

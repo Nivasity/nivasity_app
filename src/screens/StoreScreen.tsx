@@ -21,6 +21,7 @@ interface StoreScreenProps {
 }
 
 type SortOption = 'recommended' | 'low-high' | 'high-low';
+type LevelFilterOption = 'all' | '100' | '200' | '300' | '400' | '500';
 
 type StoreListItem = Product | { id: string; __shimmer: true };
 
@@ -50,6 +51,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
+  const [levelFilter, setLevelFilter] = useState<LevelFilterOption>('all');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const detailsRequestIdRef = useRef(0);
@@ -105,6 +107,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           limit: 20,
           search: search || undefined,
           sort: sortOption,
+          level: levelFilter === 'all' ? undefined : levelFilter,
         });
 
         setMaterials((current) => {
@@ -129,7 +132,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         setLoadingMore(false);
       }
     },
-    [search, sortOption]
+    [levelFilter, search, sortOption]
   );
 
   const loadProducts = useCallback(async () => {
@@ -178,18 +181,6 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
     }
   };
 
-  const formatCardDate = (iso?: string) => {
-    if (!iso) return 'Today';
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return 'Today';
-    return date.toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
   const openMaterialDetails = useCallback(async (material: Product) => {
     setActiveProduct(material);
     setDetailsOpen(true);
@@ -215,7 +206,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         code={material.courseCode || material.materialCode || ''}
         name={material.name}
         status={isAvailable ? 'Available' : 'Unavailable'}
-        date={formatCardDate(material.deadlineAt || material.createdAt)}
+        level={material.level || '—'}
         price={`₦${material.price.toLocaleString()}`}
         marked={inCart}
         onAdd={isAvailable ? () => toggle(material) : undefined}
@@ -364,12 +355,62 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
                 labelStyle={{ color: colors.text, fontWeight: '700' }}
               />
             </RadioButton.Group>
+
+            <Text style={[styles.filterSectionTitle, { color: colors.textMuted, marginTop: 8 }]}>Level</Text>
+            <RadioButton.Group
+              onValueChange={(value) => setLevelFilter(value as LevelFilterOption)}
+              value={levelFilter}
+            >
+              <RadioButton.Item
+                label="All levels"
+                value="all"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+              <RadioButton.Item
+                label="100 level"
+                value="100"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+              <RadioButton.Item
+                label="200 level"
+                value="200"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+              <RadioButton.Item
+                label="300 level"
+                value="300"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+              <RadioButton.Item
+                label="400 level"
+                value="400"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+              <RadioButton.Item
+                label="500 level"
+                value="500"
+                color={colors.accent}
+                uncheckedColor={colors.border}
+                labelStyle={{ color: colors.text, fontWeight: '700' }}
+              />
+            </RadioButton.Group>
           </Dialog.Content>
 
           <Dialog.Actions>
             <PaperButton
               onPress={() => {
                 setSortOption('recommended');
+                setLevelFilter('all');
               }}
               textColor={colors.textMuted}
             >

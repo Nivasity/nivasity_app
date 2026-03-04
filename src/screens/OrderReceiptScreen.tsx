@@ -79,6 +79,13 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
   const order = resolvedOrder;
   const [working, setWorking] = useState(false);
   const [savedUri, setSavedUri] = useState<string | null>(null);
+  const paidBy = useMemo(() => {
+    if (order?.payerNameWithMatric?.trim()) return order.payerNameWithMatric.trim();
+    const name = user?.name?.trim() || '';
+    const matric = user?.matricNumber?.trim() || '';
+    if (name && matric) return `${name} (${matric})`;
+    return name || matric || '';
+  }, [order?.payerNameWithMatric, user?.matricNumber, user?.name]);
 
   const derived = useMemo(() => {
     if (!order) return null;
@@ -245,7 +252,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           </View>
 
           <View style={styles.metaGrid}>
-            <Meta label="Paid by" value={user?.name || ''} />
+            <Meta label="Paid by" value={paidBy} />
             <Meta label="Date" value={derived.createdLabel} />
             <MetaBig label="Order ID" value={order.id} />
             <MetaSmall label="Items" value={`${derived.itemCount}`} />

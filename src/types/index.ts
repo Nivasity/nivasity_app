@@ -53,6 +53,7 @@ export interface Product {
   createdAt?: string;
   department?: string;
   faculty?: string;
+  hostFacultyName?: string;
   level?: string;
   deadlineAt?: string;
 }
@@ -64,6 +65,7 @@ export interface CartItem extends Product {
 export interface Order {
   id: string;
   userId: string;
+  payerNameWithMatric?: string;
   items: CartItem[];
   total: number;
   status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'failed' | 'refunded';

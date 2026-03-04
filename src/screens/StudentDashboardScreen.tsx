@@ -290,16 +290,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                     code={item.courseCode || item.materialCode || ''}
                     name={item.name}
                     status={item.available === false ? 'Unavailable' : 'Available'}
-                    date={
-                      item.deadlineAt || item.createdAt
-                        ? new Date(item.deadlineAt || item.createdAt || '').toLocaleDateString(undefined, {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })
-                        : ''
-                    }
+                    level={item.level || '—'}
                     price={`₦${item.price?.toLocaleString?.() ?? ''}`}
                     marked={has(item.id)}
                     onAdd={item.available === false ? undefined : () => toggle(item)}

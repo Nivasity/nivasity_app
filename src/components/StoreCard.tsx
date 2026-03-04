@@ -7,7 +7,7 @@ interface StoreCardProps {
   code: string;
   name: string;
   status: string;
-  date: string;
+  level: string;
   price: string;
   onPress?: () => void;
   onAdd?: () => void;
@@ -23,7 +23,7 @@ const BOTTOM_ACTION_SIZE = 46;
 export const StoreCard: React.FC<StoreCardProps> = ({
   code,
   name,
-  date,
+  level,
   price,
   onPress,
   onAdd,
@@ -91,9 +91,9 @@ export const StoreCard: React.FC<StoreCardProps> = ({
         <View style={styles.metaRow}>
           <View style={[styles.metaItem, styles.metaItemRight]}>
             <Text style={{ color: colors.onCard }}>
-              Deadline:</Text>
+              Level:</Text>
             <Text style={[styles.metaText, { color: colors.onCard }]} numberOfLines={1}>
-              {date}
+              {level}
             </Text>
           </View>
         </View>

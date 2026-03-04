@@ -886,6 +886,7 @@ type MaterialListItem = {
   due_date?: string;
   dept_name?: string;
   faculty_name?: string;
+  host_faculty_name?: string;
   seller_name?: string;
   is_purchased?: boolean;
   created_at?: string;
@@ -911,7 +912,8 @@ const mapMaterialToProduct = (item: MaterialListItem): Product => ({
   available: item.quantity ? item.quantity > 0 : true,
   createdAt: item.created_at,
   department: item.dept_name,
-  faculty: item.faculty_name,
+  faculty: item.host_faculty_name || item.faculty_name,
+  hostFacultyName: item.host_faculty_name || item.faculty_name,
   level: String((item as any).level ?? (item as any).host_level ?? '').trim() || undefined,
   deadlineAt: item.due_date,
 });
@@ -939,12 +941,14 @@ export const storeAPI = {
   getMaterials: async (args?: {
     search?: string;
     sort?: 'recommended' | 'low-high' | 'high-low';
+    level?: string;
     page?: number;
     limit?: number;
   }): Promise<{ materials: Product[]; pagination: MaterialsPagination }> => {
     const params = new URLSearchParams();
     if (args?.search) params.set('search', args.search);
     if (args?.sort) params.set('sort', args.sort);
+    if (args?.level) params.set('level', args.level);
     if (args?.page) params.set('page', String(args.page));
     if (args?.limit) params.set('limit', String(args.limit));
 
@@ -967,6 +971,7 @@ export const storeAPI = {
   getProducts: async (args?: {
     search?: string;
     sort?: 'recommended' | 'low-high' | 'high-low';
+    level?: string;
     page?: number;
     limit?: number;
   }): Promise<Product[]> => {
@@ -1062,11 +1067,19 @@ type Transaction = {
   status: string;
   items: TransactionItem[];
   created_at: string;
+  payer_name_with_matric?: string;
+  payer_name?: string;
+  payer_matric_no?: string;
+  matric_no?: string;
 };
 
 const mapTransactionToOrder = (tx: Transaction): Order => ({
   id: tx.ref_id || String(tx.id),
   userId: '',
+  payerNameWithMatric:
+    tx.payer_name_with_matric ||
+    [tx.payer_name, tx.payer_matric_no || tx.matric_no].filter(Boolean).join(' ').trim() ||
+    undefined,
   items: (tx.items || []).map((it) => ({
     id: String(it.id),
     name: it.title,
