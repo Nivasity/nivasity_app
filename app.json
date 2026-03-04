@@ -100,7 +100,8 @@
             "enableProguardInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "@react-native-firebase/app"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
