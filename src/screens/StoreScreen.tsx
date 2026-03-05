@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button as PaperButton, Dialog, Portal, RadioButton } from 'react-native-paper';
+import { Button as PaperButton, Dialog, Portal } from 'react-native-paper';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +24,19 @@ type SortOption = 'recommended' | 'low-high' | 'high-low';
 type LevelFilterOption = 'all' | '100' | '200' | '300' | '400' | '500';
 
 type StoreListItem = Product | { id: string; __shimmer: true };
+const SORT_FILTER_OPTIONS: Array<{ label: string; value: SortOption }> = [
+  { label: 'Recommended', value: 'recommended' },
+  { label: 'Low → High', value: 'low-high' },
+  { label: 'High → Low', value: 'high-low' },
+];
+const LEVEL_FILTER_OPTIONS: Array<{ label: string; value: LevelFilterOption }> = [
+  { label: 'All levels', value: 'all' },
+  { label: '100', value: '100' },
+  { label: '200', value: '200' },
+  { label: '300', value: '300' },
+  { label: '400', value: '400' },
+  { label: '500', value: '500' },
+];
 
 const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
   id: `shimmer-${idx}`,
@@ -328,82 +341,75 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         >
           <Dialog.Title style={[styles.filterTitle, { color: colors.text }]}>Search & Filter</Dialog.Title>
           <Dialog.Content>
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
-            <RadioButton.Group
-              onValueChange={(value) => setSortOption(value as SortOption)}
-              value={sortOption}
-            >
-              <RadioButton.Item
-                label="Recommended"
-                value="recommended"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="Price: low to high"
-                value="low-high"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="Price: high to low"
-                value="high-low"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-            </RadioButton.Group>
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
+              <View style={styles.filterChips}>
+                {SORT_FILTER_OPTIONS.map((option) => {
+                  const selected = sortOption === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => setSortOption(option.value)}
+                      style={[
+                        styles.filterChip,
+                        {
+                          borderColor: selected ? colors.accent : colors.border,
+                          backgroundColor: selected ? colors.accent : 'transparent',
+                        },
+                      ]}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Sort by ${option.label}`}
+                      accessibilityState={{ selected }}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: selected ? colors.background : colors.text },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted, marginTop: 8 }]}>Level</Text>
-            <RadioButton.Group
-              onValueChange={(value) => setLevelFilter(value as LevelFilterOption)}
-              value={levelFilter}
-            >
-              <RadioButton.Item
-                label="All levels"
-                value="all"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="100 level"
-                value="100"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="200 level"
-                value="200"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="300 level"
-                value="300"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="400 level"
-                value="400"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-              <RadioButton.Item
-                label="500 level"
-                value="500"
-                color={colors.accent}
-                uncheckedColor={colors.border}
-                labelStyle={{ color: colors.text, fontWeight: '700' }}
-              />
-            </RadioButton.Group>
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Level</Text>
+              <View style={styles.filterChips}>
+                {LEVEL_FILTER_OPTIONS.map((option) => {
+                  const selected = levelFilter === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => setLevelFilter(option.value)}
+                      style={[
+                        styles.filterChip,
+                        {
+                          borderColor: selected ? colors.accent : colors.border,
+                          backgroundColor: selected ? colors.accent : 'transparent',
+                        },
+                      ]}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter level ${option.label}`}
+                      accessibilityState={{ selected }}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: selected ? colors.background : colors.text },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           </Dialog.Content>
 
           <Dialog.Actions>
@@ -582,18 +588,21 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 12,
     fontWeight: '900',
+    marginBottom: 8,
+  },
+  filterSection: {
     marginBottom: 10,
   },
   filterChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   filterChip: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   filterChipText: {
     fontSize: 12,
