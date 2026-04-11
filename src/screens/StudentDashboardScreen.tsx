@@ -2,12 +2,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useNotifications } from '../contexts/NotificationsContext';
+import { useWallet } from '../contexts/WalletContext';
 import Loading from '../components/Loading';
 import { orderAPI, storeAPI } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
@@ -22,12 +25,15 @@ interface StudentDashboardScreenProps {
 }
 
 const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
+const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
 
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
+  const appMessage = useAppMessage();
   const { count: cartCount, lastActionAt, has, toggle } = useCart();
   const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
+  const { summary, hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -37,6 +43,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [isOffline, setIsOffline] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
+  const [balanceVisible, setBalanceVisible] = useState(true);
   const detailsRequestIdRef = useRef(0);
 
   const computeStats = (orders: Order[]): DashboardStats => {
@@ -50,6 +57,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     const [ordersRes, materialsRes] = await Promise.allSettled([
       orderAPI.getOrders({ page: 1, limit: 20 }),
       storeAPI.getMaterials({ page: 1, limit: 3, sort: 'recommended' }),
+      refreshCreditsAndSummary(),
     ]);
 
     const nextOrders = ordersRes.status === 'fulfilled' ? ordersRes.value || [] : [];
@@ -67,11 +75,13 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
 
     setLoading(false);
     setRefreshing(false);
-  }, []);
+  }, [refreshCreditsAndSummary]);
 
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadDashboard();
+    }, [loadDashboard])
+  );
 
   useEffect(() => {
     let canceled = false;
@@ -215,27 +225,60 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         <View style={styles.headerSpacer} />
 
         <View style={[styles.heroCard, { backgroundColor: colors.secondary }]}>
-          <View style={styles.heroText}>
-            <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
-              Campus essentials{'\n'}delivered fast
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: '#FFFFFF' }]}>
-              Browse the store and checkout in minutes.
-            </Text>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroText}>
+              <Text style={[styles.heroEyebrow, { color: 'rgba(255,255,255,0.78)' }]}>Wallet</Text>
+              <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
+                {hasWallet ? (balanceVisible ? formatMoney(summary?.wallet?.balance ?? 0) : '••••••') : 'Activate my wallet'}
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: '#FFFFFF' }]}>
+                {hasWallet
+                  ? summary?.wallet?.bankName || 'Dedicated account ready'
+                  : 'Get balance, funding account, and wallet checkout.'}
+              </Text>
+            </View>
+
+            {hasWallet ? (
+              <TouchableOpacity
+                onPress={() => setBalanceVisible((value) => !value)}
+                style={[styles.balanceToggle, { borderColor: 'rgba(255,255,255,0.18)' }]}
+                accessibilityRole="button"
+                accessibilityLabel={balanceVisible ? 'Hide wallet balance' : 'Show wallet balance'}
+                activeOpacity={0.85}
+              >
+                <AppIcon name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.heroArt}>
+                <AppIcon name="wallet-outline" size={30} color="#FFFFFF" />
+              </View>
+            )}
+          </View>
+
+          {hasWallet ? (
+            <View style={styles.heroActions}>
+              <HeroAction label="Fund wallet" icon="wallet-outline" onPress={() => navigation.navigate('WalletFund')} />
+              <HeroAction label="Transactions" icon="receipt-outline" onPress={() => navigation.navigate('WalletTransactions')} />
+            </View>
+          ) : (
             <TouchableOpacity
-              onPress={() => navigation.navigate('Store')}
+              onPress={async () => {
+                try {
+                  await createWallet();
+                  appMessage.toast({ status: 'success', message: 'Wallet ready' });
+                } catch (error: any) {
+                  appMessage.alert({ title: 'Could not activate wallet', message: error?.message || 'Please try again.' });
+                }
+              }}
               style={[styles.heroButton, { backgroundColor: colors.surface }]}
               accessibilityRole="button"
-              accessibilityLabel="Browse store"
+              accessibilityLabel="Activate my wallet"
               activeOpacity={0.85}
             >
-              <Text style={[styles.heroButtonText, { color: isDark ? '#FFFFFF' : colors.secondary }]}>Check now</Text>
+              <Text style={[styles.heroButtonText, { color: isDark ? '#FFFFFF' : colors.secondary }]}>Activate my wallet</Text>
               <AppIcon name="arrow-forward" size={16} color={isDark ? '#FFFFFF' : colors.secondary} />
             </TouchableOpacity>
-          </View>
-          <View style={[styles.heroArt]}>
-            <AppIcon name="school-outline" size={34} color={'#FFFFFF'} />
-          </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -376,6 +419,30 @@ const Chip = ({ label, active = false }: { label: string; active?: boolean }) =>
   );
 };
 
+const HeroAction = ({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  onPress: () => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.heroAction, { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.14)' }]}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <AppIcon name={icon} size={18} color={colors.onAccent} />
+      <AppText style={[styles.heroActionText, { color: colors.onAccent }]}>{label}</AppText>
+    </TouchableOpacity>
+  );
+};
+
 const CourseCard = ({
   title,
   subtitle,
@@ -512,24 +579,33 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 22,
     padding: 16,
+    gap: 14,
+  },
+  heroHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   heroText: {
     flex: 1,
     paddingRight: 12,
   },
+  heroEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
   heroTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    lineHeight: 22,
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 30,
     marginBottom: 6,
   },
   heroSubtitle: {
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 12,
   },
   heroButton: {
     alignSelf: 'flex-start',
@@ -550,6 +626,33 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  balanceToggle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroAction: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  heroActionText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   statRow: {
     marginTop: 12,

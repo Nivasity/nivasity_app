@@ -62,6 +62,64 @@ export interface CartItem extends Product {
   quantity: number;
 }
 
+export type PaymentChannel = 'gateway' | 'wallet';
+
+export interface WalletAccount {
+  id: number;
+  userId: number;
+  schoolId: number;
+  status: string;
+  balance: number;
+  currency: string;
+  provider?: string;
+  providerAccountId?: string;
+  accountName?: string;
+  accountNumber?: string;
+  bankName?: string;
+  bankSlug?: string;
+  accountStatus?: string;
+}
+
+export interface WalletSummary {
+  hasWallet: boolean;
+  hasPin: boolean;
+  wallet?: WalletAccount;
+}
+
+export interface WalletPricing {
+  hasWallet: boolean;
+  balance: number;
+  walletCharge: number;
+  walletTotalAmount: number;
+  canPayWithWallet: boolean;
+}
+
+export interface CartPricing {
+  items: CartItem[];
+  subtotal: number;
+  charge: number;
+  totalAmount: number;
+  totalItems: number;
+  wallet?: WalletPricing;
+}
+
+export interface WalletTransaction {
+  id: string;
+  entryType: string;
+  direction: 'credit' | 'debit' | 'neutral';
+  amount: number;
+  signedAmount: number;
+  status: string;
+  reference: string;
+  providerReference?: string;
+  displayReference?: string;
+  description: string;
+  balanceBefore?: number;
+  balanceAfter?: number;
+  createdAt: string;
+  displayDate?: string;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -70,6 +128,9 @@ export interface Order {
   total: number;
   status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'failed' | 'refunded';
   createdAt: string;
+  medium?: string;
+  paymentChannel?: PaymentChannel;
+  transactionContext?: string;
 }
 
 export interface DashboardStats {

@@ -8,7 +8,11 @@ import {
   Order,
   DashboardStats,
   CartItem,
+  CartPricing,
   AppNotification,
+  WalletAccount,
+  WalletSummary,
+  WalletTransaction,
 } from '../types';
 
 type ApiStatus = 'success' | 'error';
@@ -387,10 +391,10 @@ export const authAPI = {
               message: response.data.message,
               data: response.data.data
                 ? {
-                    ...response.data.data,
-                    access_token: redactToken((response.data.data as any).access_token),
-                    refresh_token: redactToken((response.data.data as any).refresh_token),
-                  }
+                  ...response.data.data,
+                  access_token: redactToken((response.data.data as any).access_token),
+                  refresh_token: redactToken((response.data.data as any).refresh_token),
+                }
                 : response.data.data,
             },
             null,
@@ -743,10 +747,10 @@ export const profileAPI = {
       message: response.data.message,
       data: next
         ? {
-            deptId: next.dept_id ?? undefined,
-            matricNo: next.matric_no ?? undefined,
-            admissionYear: next.adm_year ?? undefined,
-          }
+          deptId: next.dept_id ?? undefined,
+          matricNo: next.matric_no ?? undefined,
+          admissionYear: next.adm_year ?? undefined,
+        }
         : undefined,
     };
   },
@@ -855,11 +859,11 @@ export const referenceAPI = {
           const whatsapp =
             String(
               contact?.whatsapp ??
-                contact?.phone ??
-                data?.whatsapp ??
-                data?.whats_app ??
-                data?.whatsapp_phone ??
-                ''
+              contact?.phone ??
+              data?.whatsapp ??
+              data?.whats_app ??
+              data?.whatsapp_phone ??
+              ''
             ).trim() || undefined;
 
           const email = String(contact?.email ?? data?.email ?? data?.support_email ?? '').trim() || undefined;
@@ -902,6 +906,14 @@ type CartViewItem = {
   seller_name?: string;
 };
 
+type CartWalletView = {
+  has_wallet?: boolean;
+  balance?: number;
+  wallet_charge?: number;
+  wallet_total_amount?: number;
+  can_pay_with_wallet?: boolean;
+};
+
 const mapMaterialToProduct = (item: MaterialListItem): Product => ({
   id: String(item.id),
   name: item.title,
@@ -927,6 +939,58 @@ const mapCartViewItemToCartItem = (item: CartViewItem): CartItem => ({
   available: true,
   department: item.dept_name,
   quantity: 1,
+});
+
+const mapWalletAccount = (wallet: any): WalletAccount => ({
+  id: Number(wallet?.id ?? 0),
+  userId: Number(wallet?.user_id ?? 0),
+  schoolId: Number(wallet?.school_id ?? 0),
+  status: String(wallet?.status ?? '').trim() || 'inactive',
+  balance: Number(wallet?.balance ?? 0),
+  currency: String(wallet?.currency ?? 'NGN').trim() || 'NGN',
+  provider: String(wallet?.provider ?? '').trim() || undefined,
+  providerAccountId: String(wallet?.provider_account_id ?? '').trim() || undefined,
+  accountName: String(wallet?.account_name ?? '').trim() || undefined,
+  accountNumber: String(wallet?.account_number ?? '').trim() || undefined,
+  bankName: String(wallet?.bank_name ?? '').trim() || undefined,
+  bankSlug: String(wallet?.bank_slug ?? '').trim() || undefined,
+  accountStatus: String(wallet?.account_status ?? '').trim() || undefined,
+});
+
+const mapWalletSummary = (data: any): WalletSummary => ({
+  hasWallet: Boolean(data?.has_wallet),
+  hasPin: Boolean(data?.has_pin),
+  wallet: data?.wallet ? mapWalletAccount(data.wallet) : undefined,
+});
+
+const mapWalletTransaction = (item: any): WalletTransaction => ({
+  id: String(item?.id ?? ''),
+  entryType: String(item?.entry_type ?? '').trim() || 'neutral',
+  direction:
+    item?.direction === 'credit' || item?.direction === 'debit'
+      ? item.direction
+      : 'neutral',
+  amount: Number(item?.amount ?? 0),
+  signedAmount: Number(item?.signed_amount ?? 0),
+  status: String(item?.status ?? '').trim() || 'posted',
+  reference: String(item?.reference ?? '').trim(),
+  providerReference: String(item?.provider_reference ?? '').trim() || undefined,
+  displayReference: String(item?.display_reference ?? '').trim() || undefined,
+  description: String(item?.description ?? '').trim() || 'Wallet transaction',
+  balanceBefore:
+    typeof item?.balance_before === 'number'
+      ? item.balance_before
+      : Number.isFinite(Number(item?.balance_before))
+        ? Number(item.balance_before)
+        : undefined,
+  balanceAfter:
+    typeof item?.balance_after === 'number'
+      ? item.balance_after
+      : Number.isFinite(Number(item?.balance_after))
+        ? Number(item.balance_after)
+        : undefined,
+  createdAt: String(item?.created_at ?? '').trim(),
+  displayDate: String(item?.display_date ?? '').trim() || undefined,
 });
 
 type MaterialsPagination = {
@@ -1009,13 +1073,7 @@ export const cartAPI = {
     }
     return response.data.data;
   },
-  view: async (): Promise<{
-    items: CartItem[];
-    subtotal: number;
-    charge: number;
-    total_amount: number;
-    total_items: number;
-  }> => {
+  view: async (): Promise<CartPricing> => {
     const response = await api.get<
       ApiResponse<{
         items: CartViewItem[];
@@ -1023,6 +1081,7 @@ export const cartAPI = {
         charge?: number;
         total_amount: number;
         total_items: number;
+        wallet?: CartWalletView;
       }>
     >(
       '/materials/cart-view.php'
@@ -1042,12 +1101,23 @@ export const cartAPI = {
         ? response.data.data.charge
         : Math.max(0, totalAmount - subtotal);
 
+    const wallet = response.data.data.wallet
+      ? {
+        hasWallet: Boolean(response.data.data.wallet.has_wallet),
+        balance: Number(response.data.data.wallet.balance ?? 0),
+        walletCharge: Number(response.data.data.wallet.wallet_charge ?? 0),
+        walletTotalAmount: Number(response.data.data.wallet.wallet_total_amount ?? subtotal),
+        canPayWithWallet: Boolean(response.data.data.wallet.can_pay_with_wallet),
+      }
+      : undefined;
+
     return {
       items,
       subtotal,
       charge,
-      total_amount: totalAmount,
-      total_items: response.data.data.total_items,
+      totalAmount,
+      totalItems: response.data.data.total_items,
+      wallet,
     };
   },
 };
@@ -1065,6 +1135,9 @@ type Transaction = {
   ref_id: string;
   amount: number;
   status: string;
+  medium?: string;
+  payment_channel?: string;
+  transaction_context?: string;
   items: TransactionItem[];
   created_at: string;
   payer_name_with_matric?: string;
@@ -1099,6 +1172,14 @@ const mapTransactionToOrder = (tx: Transaction): Order => ({
           ? 'failed'
           : 'processing',
   createdAt: tx.created_at,
+  medium: tx.medium ? String(tx.medium).trim() : undefined,
+  paymentChannel:
+    tx.payment_channel === 'wallet'
+      ? 'wallet'
+      : tx.payment_channel === 'gateway'
+        ? 'gateway'
+        : undefined,
+  transactionContext: tx.transaction_context ? String(tx.transaction_context).trim() : undefined,
 });
 
 export const orderAPI = {
@@ -1162,12 +1243,12 @@ export type SupportTicketMessage = {
   user_role?: string;
   message: string;
   attachment?:
-    | string
-    | {
-        path: string;
-        original_name?: string;
-      }
-    | null;
+  | string
+  | {
+    path: string;
+    original_name?: string;
+  }
+  | null;
   created_at: string;
 };
 
@@ -1426,6 +1507,100 @@ export const notificationAPI = {
   },
 };
 
+export const walletAPI = {
+  createWallet: async (): Promise<{ created: boolean; wallet?: WalletAccount }> => {
+    const response = await api.post<ApiResponse<{ created: boolean; wallet?: any }>>('/wallet/create.php', {});
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to create wallet');
+    }
+    return {
+      created: Boolean(response.data.data.created),
+      wallet: response.data.data.wallet ? mapWalletAccount(response.data.data.wallet) : undefined,
+    };
+  },
+
+  getSummary: async (): Promise<WalletSummary> => {
+    const response = await api.get<ApiResponse<any>>('/wallet/summary.php');
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load wallet summary');
+    }
+    return mapWalletSummary(response.data.data);
+  },
+
+  getTransactions: async (args?: { page?: number }): Promise<{
+    summary: WalletSummary;
+    transactions: WalletTransaction[];
+    pagination?: ReferencePagination;
+  }> => {
+    const page = args?.page ?? 1;
+    const response = await api.get<ApiResponse<any>>(`/wallet/transactions.php?page=${page}`);
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to load wallet transactions');
+    }
+
+    return {
+      summary: mapWalletSummary(response.data.data),
+      transactions: Array.isArray(response.data.data.transactions)
+        ? response.data.data.transactions.map(mapWalletTransaction)
+        : [],
+      pagination: response.data.data.pagination,
+    };
+  },
+
+  sendPinCode: async (): Promise<{ status: string; purpose?: string; expiresAt?: string }> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/pin.php', { action: 'send_code' });
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to send wallet PIN code');
+    }
+    return {
+      status: String(response.data.data.status ?? 'sent'),
+      purpose: String(response.data.data.purpose ?? '').trim() || undefined,
+      expiresAt: String(response.data.data.expires_at ?? '').trim() || undefined,
+    };
+  },
+
+  verifyPinCode: async (code: string): Promise<{ status: string; purpose?: string; pinToken: string; tokenExpiresAt?: string }> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/pin.php', { action: 'verify_code', code });
+    if (response.data.status !== 'success' || !response.data.data?.pin_token) {
+      throw new Error(response.data.message || 'Failed to verify wallet PIN code');
+    }
+    return {
+      status: String(response.data.data.status ?? 'verified'),
+      purpose: String(response.data.data.purpose ?? '').trim() || undefined,
+      pinToken: String(response.data.data.pin_token),
+      tokenExpiresAt: String(response.data.data.token_expires_at ?? '').trim() || undefined,
+    };
+  },
+
+  savePin: async (args: { pinToken: string; pin: string; confirmPin: string }): Promise<{ status: string; hasPin: boolean }> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/pin.php', {
+      action: 'save_pin',
+      pin_token: args.pinToken,
+      pin: args.pin,
+      confirm_pin: args.confirmPin,
+    });
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to save wallet PIN');
+    }
+    return {
+      status: String(response.data.data.status ?? 'saved'),
+      hasPin: Boolean(response.data.data.has_pin),
+    };
+  },
+
+  refreshCredits: async (): Promise<{ status: string; processed: number; posted: number }> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/refresh-credits.php', {});
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to refresh wallet credits');
+    }
+    return {
+      status: String(response.data.data.status ?? 'ok'),
+      processed: Number(response.data.data.processed ?? 0),
+      posted: Number(response.data.data.posted ?? 0),
+    };
+  },
+};
+
 // Payment APIs (Interswitch)
 export const paymentAPI = {
   getGateway: async (): Promise<{ active: string; available: string[] }> => {
@@ -1438,17 +1613,38 @@ export const paymentAPI = {
 
   initPayment: async (args?: {
     redirectUrl?: string;
+    paymentChannel?: 'gateway' | 'wallet';
+    walletPin?: string;
   }): Promise<{
     tx_ref: string;
-    payment_url: string;
+    payment_url?: string;
     gateway: string;
-    amount: number;
+    amount?: number;
+    subtotal?: number;
+    charge?: number;
+    total_amount?: number;
+    payment_channel?: string;
+    wallet_balance_after?: number;
   }> => {
-    const payload = args?.redirectUrl ? { redirect_url: args.redirectUrl } : undefined;
+    const payload: Record<string, string> = {};
+    if (args?.redirectUrl) payload.redirect_url = args.redirectUrl;
+    if (args?.paymentChannel) payload.payment_channel = args.paymentChannel;
+    if (args?.walletPin) payload.wallet_pin = args.walletPin;
+    const requestBody = Object.keys(payload).length > 0 ? payload : undefined;
 
     const send = async (body?: any) => {
       const response = await api.post<
-        ApiResponse<{ tx_ref: string; payment_url: string; gateway: string; amount: number }>
+        ApiResponse<{
+          tx_ref: string;
+          payment_url?: string;
+          gateway: string;
+          amount?: number;
+          subtotal?: number;
+          charge?: number;
+          total_amount?: number;
+          payment_channel?: string;
+          wallet_balance_after?: number;
+        }>
       >('/payment/init.php', body);
 
       if (response.data.status !== 'success' || !response.data.data) {
@@ -1458,9 +1654,9 @@ export const paymentAPI = {
     };
 
     try {
-      return await send(payload);
+      return await send(requestBody);
     } catch (e) {
-      if (payload) return await send(undefined);
+      if (requestBody && args?.paymentChannel !== 'wallet') return await send(undefined);
       throw e;
     }
   },

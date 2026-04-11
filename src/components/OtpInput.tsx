@@ -10,6 +10,8 @@ type OtpInputProps = {
   errorText?: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  secureTextEntry?: boolean;
+  variant?: 'otp' | 'pin';
 };
 
 const digitsOnly = (text: string) => text.replace(/[^\d]/g, '');
@@ -21,6 +23,8 @@ const OtpInput: React.FC<OtpInputProps> = ({
   errorText,
   autoFocus,
   disabled = false,
+  secureTextEntry = false,
+  variant = 'otp',
 }) => {
   const { colors } = useTheme();
   const inputs = useRef<Array<TextInput | null>>([]);
@@ -45,9 +49,10 @@ const OtpInput: React.FC<OtpInputProps> = ({
 
   return (
     <View style={styles.root}>
-      <View style={styles.row}>
+      <View style={[styles.row, variant === 'pin' && styles.pinRow]}>
         {cells.map((cell, index) => {
           const isFocused = focusedIndex === index;
+          const isFilled = Boolean(cell);
           return (
             <TextInput
               key={index}
@@ -86,16 +91,20 @@ const OtpInput: React.FC<OtpInputProps> = ({
               editable={!disabled}
               keyboardType="number-pad"
               textContentType="oneTimeCode"
+              secureTextEntry={secureTextEntry}
               maxLength={length}
               autoFocus={autoFocus && index === 0}
               style={[
                 styles.cell,
+                variant === 'pin' && styles.pinCell,
                 {
                   borderColor: isFocused ? colors.secondary : colors.border,
-                  backgroundColor: colors.background,
+                  backgroundColor: variant === 'pin' ? colors.surface : colors.background,
                   color: colors.text,
                   opacity: disabled ? 0.6 : 1,
                 },
+                variant === 'pin' && isFilled && { borderColor: colors.accent },
+                variant === 'pin' && isFocused && { transform: [{ translateY: -1 }] },
               ]}
               placeholderTextColor={colors.textMuted}
               selectionColor={colors.secondary}
@@ -125,6 +134,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  pinRow: {
+    gap: 12,
+  },
   cell: {
     flex: 1,
     height: 54,
@@ -134,6 +146,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     paddingHorizontal: 0,
+  },
+  pinCell: {
+    height: 62,
+    borderRadius: 20,
+    fontSize: 22,
+    letterSpacing: 2,
   },
   helper: {
     marginTop: -2,

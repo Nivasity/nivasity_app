@@ -24,6 +24,7 @@ import { getAdmissionSessions } from '../config/options';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useWallet } from '../contexts/WalletContext';
 import { authAPI, profileAPI, referenceAPI } from '../services/api';
 import { User } from '../types';
 import { normalizePhone } from '../utils/phone';
@@ -72,6 +73,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { user, updateUser, logout } = useAuth();
+  const { hasWallet, hasPin } = useWallet();
   const section = (route?.params?.section as ProfileSection | undefined) ?? 'account';
   const title = useMemo(() => getSectionTitle(section), [section]);
 
@@ -555,17 +557,17 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => {
-                  if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
-                  else
-                    appMessage.toast({
-                      status: departmentsLoading ? 'info' : 'failed',
-                      message: departmentsLoading ? 'Loading departments...' : 'No departments found',
-                    });
-                }}
-                activeOpacity={0.9}
-                accessibilityRole="button"
-                accessibilityLabel="Select department"
-              >
+          if (!departmentsLoading && departments.length > 0) setDepartmentOpen(true);
+          else
+            appMessage.toast({
+              status: departmentsLoading ? 'info' : 'failed',
+              message: departmentsLoading ? 'Loading departments...' : 'No departments found',
+            });
+        }}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Select department"
+      >
         <View pointerEvents="none">
           <Input
             label="Department"
@@ -745,6 +747,24 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                   title={passwordLoading ? 'Updating...' : 'Change password'}
                   onPress={handleChangePassword}
                   disabled={passwordLoading}
+                />
+              </View>
+
+              <View style={{ height: 12 }} />
+
+              <View style={[styles.card, { borderColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Wallet PIN</Text>
+                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+                  {hasWallet
+                    ? hasPin
+                      ? 'Update the PIN you use for wallet checkout.'
+                      : 'Create a PIN for wallet checkout.'
+                    : 'Activate your wallet first, then add a checkout PIN.'}
+                </Text>
+                <View style={{ height: 12 }} />
+                <Button
+                  title={hasWallet ? (hasPin ? 'Manage wallet PIN' : 'Create wallet PIN') : 'Open wallet setup'}
+                  onPress={() => navigation.navigate(hasWallet ? 'WalletPin' : 'WalletFund')}
                 />
               </View>
 

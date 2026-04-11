@@ -10,6 +10,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { AppMessageProvider } from './src/contexts/AppMessageContext';
 import { NotificationsProvider } from './src/contexts/NotificationsContext';
+import { WalletProvider } from './src/contexts/WalletContext';
+import AppUpdateGate from './src/components/AppUpdateGate';
 
 export default function App() {
   const [fontsLoaded] = useAppFonts();
@@ -25,7 +27,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
-            <AppRoot />
+            <WalletProvider>
+              <AppRoot />
+            </WalletProvider>
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>
@@ -56,7 +60,9 @@ const AppRoot = () => {
     <PaperProvider theme={paperTheme}>
       <AppMessageProvider>
         <NotificationsProvider>
-          <AppNavigator />
+          <AppUpdateGate>
+            <AppNavigator />
+          </AppUpdateGate>
         </NotificationsProvider>
       </AppMessageProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />

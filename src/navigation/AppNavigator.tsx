@@ -32,6 +32,10 @@ import StoreScreen from '../screens/StoreScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderReceiptScreen from '../screens/OrderReceiptScreen';
+import WalletFundScreen from '../screens/WalletFundScreen';
+import WalletTransactionsScreen from '../screens/WalletTransactionsScreen';
+import WalletTransactionReceiptScreen from '../screens/WalletTransactionReceiptScreen';
+import WalletPinScreen from '../screens/WalletPinScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -214,6 +218,26 @@ const AppNavigator = () => {
             <Stack.Screen
               name="OrderReceipt"
               component={OrderReceiptScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="WalletFund"
+              component={WalletFundScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="WalletTransactions"
+              component={WalletTransactionsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="WalletTransactionReceipt"
+              component={WalletTransactionReceiptScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="WalletPin"
+              component={WalletPinScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
