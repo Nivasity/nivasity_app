@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { Checkbox } from 'react-native-paper';
+import {
+  GoogleSignin,
+  isCancelledResponse,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
@@ -11,11 +18,7 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoginCredentials } from '../types';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { referenceAPI } from '../services/api';
-
-WebBrowser.maybeCompleteAuthSession();
 
 interface LoginScreenProps {
   navigation: any;
@@ -25,27 +28,10 @@ const GOOGLE_WEB_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as st
 const GOOGLE_ANDROID_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string | undefined);
 const GOOGLE_IOS_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string | undefined) || '';
 
-const getGoogleRedirectUri = (clientId: string | undefined) => {
-  const trimmed = (clientId || '').trim();
-  if (!trimmed) return undefined;
-  const match = trimmed.match(/^(.+)\.apps\.googleusercontent\.com$/);
-  if (!match) return undefined;
-  return `com.googleusercontent.apps.${match[1]}:/oauthredirect`;
-};
-
-const redactToken = (value: unknown) => {
-  const token = typeof value === 'string' ? value : '';
-  if (!token) return undefined;
-  const trimmed = token.trim();
-  if (trimmed.length <= 10) return `${trimmed.slice(0, 3)}…(${trimmed.length})`;
-  return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}(${trimmed.length})`;
-};
-
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, loginWithGoogle } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
-  const processedGoogleResponseKeyRef = useRef<string | null>(null);
   const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [schoolsOpen, setSchoolsOpen] = useState(false);
@@ -60,7 +46,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [errors, setErrors] = useState<Partial<LoginCredentials>>({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [googlePending, setGooglePending] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
   const needsSchoolIdMessage = (e: any) => {
@@ -94,123 +79,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     loadSchools();
   }, [loadSchools, schools.length, schoolsOpen]);
 
-  const nativeRedirectUri = Platform.select({
-    android: getGoogleRedirectUri(GOOGLE_ANDROID_CLIENT_ID),
-    ios: getGoogleRedirectUri(GOOGLE_IOS_CLIENT_ID),
-    default: undefined,
-  });
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
-    {
+  useEffect(() => {
+    GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
-      androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-      iosClientId: GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID,
-      scopes: ['openid', 'profile', 'email'],
-      selectAccount: true,
-      ...(nativeRedirectUri ? { redirectUri: nativeRedirectUri } : {}),
-    },
-    undefined
-  );
-
-  useEffect(() => {
-    if (!googlePending) return;
-
-    const timeout = setTimeout(() => {
-      appMessage.alert({
-        title: 'Google Login Failed',
-        message: 'Google login took too long. Please try again.',
-      });
-      setGooglePending(false);
-      setGoogleLoading(false);
-    }, 25000);
-
-    return () => clearTimeout(timeout);
-  }, [appMessage, googlePending]);
-
-  useEffect(() => {
-    if (!googlePending) return;
-    if (!response) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        if (__DEV__) console.log('[GoogleAuth] response:', response);
-        if (response.type !== 'success') {
-          return;
-        }
-
-        const rawParams = (response as any).params as Record<string, any> | undefined;
-        if (__DEV__) {
-          console.log('[GoogleAuth] response.params:', {
-            ...rawParams,
-            id_token: redactToken(rawParams?.id_token),
-            access_token: redactToken(rawParams?.access_token),
-          });
-          console.log('[GoogleAuth] response.authentication:', {
-            ...((response as any).authentication || undefined),
-            idToken: redactToken((response as any).authentication?.idToken),
-            accessToken: redactToken((response as any).authentication?.accessToken),
-          });
-        }
-        const idToken =
-          String(rawParams?.id_token || '').trim() ||
-          String((response as any).authentication?.idToken || '').trim() ||
-          undefined;
-        const accessToken =
-          String(rawParams?.access_token || '').trim() ||
-          String((response as any).authentication?.accessToken || '').trim() ||
-          undefined;
-
-        if (!idToken && !accessToken) {
-          const maybeCode = String(rawParams?.code || '').trim();
-          if (maybeCode) {
-            return;
-          }
-
-          appMessage.alert({
-            title: 'Google Login Failed',
-            message: 'No token returned from Google. Please try again.',
-          });
-          return;
-        }
-
-        const responseKey = String(
-          idToken ||
-            accessToken ||
-            String((response as any).authentication?.accessToken || '').trim() ||
-            String((response as any).url || '').trim()
-        );
-        if (processedGoogleResponseKeyRef.current === responseKey) return;
-        processedGoogleResponseKeyRef.current = responseKey;
-
-        try {
-          await loginWithGoogle({ idToken, accessToken });
-        } catch (e: any) {
-          if (needsSchoolIdMessage(e)) {
-            setPendingGoogleTokens({ idToken, accessToken });
-            setSchoolsOpen(true);
-            appMessage.toast({ status: 'info', message: 'Select your school to complete Google sign-in.' });
-            return;
-          }
-          throw e;
-        }
-      } catch (e: any) {
-        appMessage.alert({
-          title: 'Google Login Error',
-          message: e?.response?.data?.message || e?.message || 'Unknown error',
-        });
-      } finally {
-        if (!cancelled) {
-          setGooglePending(false);
-          setGoogleLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [appMessage, googlePending, loginWithGoogle, response]);
+      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+      profileImageSize: 120,
+    });
+  }, []);
 
   const validate = (): boolean => {
     const newErrors: Partial<LoginCredentials> = {};
@@ -245,6 +120,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       setPendingGoogleTokens(null);
       setSelectedSchool('');
+      if (Platform.OS === 'web') {
+        appMessage.alert({
+          title: 'Google Login',
+          message: 'Native Google sign-in popup is available on Android and iOS builds.',
+        });
+        return;
+      }
+
       const expectedClientId = Platform.select({
         android: GOOGLE_ANDROID_CLIENT_ID,
         ios: GOOGLE_IOS_CLIENT_ID,
@@ -268,52 +151,76 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         return;
       }
 
-      if (!request) {
+      setGoogleLoading(true);
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // Ignore. This only ensures the account chooser appears again.
+      }
+
+      const result = await GoogleSignin.signIn();
+      if (isCancelledResponse(result)) {
+        return;
+      }
+      if (!isSuccessResponse(result)) {
+        appMessage.alert({ title: 'Google Login Failed', message: 'Google sign-in did not complete.' });
+        return;
+      }
+
+      let idToken = result.data.idToken || undefined;
+      let accessToken: string | undefined;
+
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = idToken || tokens.idToken || undefined;
+        accessToken = tokens.accessToken || undefined;
+      } catch {
+        accessToken = undefined;
+      }
+
+      if (!idToken && !accessToken) {
         appMessage.alert({
-          title: 'Google Login',
-          message: 'Auth request is not ready yet. Please try again.',
+          title: 'Google Login Failed',
+          message: 'No token returned from Google. Please try again.',
         });
         return;
       }
 
-      setGoogleLoading(true);
-      setGooglePending(true);
-      if (__DEV__) console.log('[GoogleAuth] redirectUri:', (request as any).redirectUri);
-      const result = await promptAsync();
-      if (__DEV__) {
-        const rawParams = (result as any)?.params as Record<string, any> | undefined;
-        console.log('[GoogleAuth] promptAsync result:', {
-          ...result,
-          params: rawParams
-            ? {
-                ...rawParams,
-                id_token: redactToken(rawParams?.id_token),
-                access_token: redactToken(rawParams?.access_token),
-              }
-            : rawParams,
-          authentication: (result as any)?.authentication
-            ? {
-                ...(result as any).authentication,
-                idToken: redactToken((result as any).authentication?.idToken),
-                accessToken: redactToken((result as any).authentication?.accessToken),
-              }
-            : (result as any)?.authentication,
-        });
-      }
-      if (result.type !== 'success') {
-        if (result.type !== 'dismiss') {
-          appMessage.alert({ title: 'Google Login', message: 'Login was cancelled.' });
+      try {
+        await loginWithGoogle({ idToken, accessToken });
+      } catch (e: any) {
+        if (needsSchoolIdMessage(e)) {
+          setPendingGoogleTokens({ idToken, accessToken });
+          setSchoolsOpen(true);
+          appMessage.toast({ status: 'info', message: 'Select your school to complete Google sign-in.' });
+          return;
         }
-        setGooglePending(false);
-        setGoogleLoading(false);
-        return;
+        throw e;
       }
     } catch (e: any) {
+      if (isErrorWithCode(e)) {
+        if (e.code === statusCodes.IN_PROGRESS) {
+          appMessage.toast({ status: 'info', message: 'Google sign-in is already in progress.' });
+          return;
+        }
+        if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          appMessage.alert({
+            title: 'Google Play Services required',
+            message: 'Update Google Play Services to continue with Google sign-in.',
+          });
+          return;
+        }
+      }
+
       appMessage.alert({
         title: 'Google Login Error',
-        message: e?.message || 'Unknown error',
+        message: e?.response?.data?.message || e?.message || 'Unknown error',
       });
-      setGooglePending(false);
+    } finally {
       setGoogleLoading(false);
     }
   };
@@ -349,115 +256,113 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <>
-    <AuthScaffold navigation={navigation} title="Welcome back!">
-      <TouchableOpacity
-        onPress={handleGoogleLogin}
-        disabled={loading || googleLoading}
-        style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with Google"
-        activeOpacity={0.9}
-      >
-        <AppIcon name="logo-google" size={18} color={colors.text} />
-        <AppText style={[styles.googleText, { color: colors.text }]}>
-          {googleLoading ? 'Signing in...' : 'Continue with Google'}
-        </AppText>
-      </TouchableOpacity>
-
-      <View style={styles.dividerRow}>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      </View>
-
-      <Input
-        label="Email"
-        placeholder="student@nivasity.com"
-        value={credentials.email}
-        onChangeText={(text) => setCredentials((s) => ({ ...s, email: text }))}
-        errorText={errors.email}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="email"
-        inputMode="email"
-      />
-
-      <Input
-        label="Password"
-        placeholder="Enter your password"
-        value={credentials.password}
-        onChangeText={(text) => setCredentials((s) => ({ ...s, password: text }))}
-        errorText={errors.password}
-        isPassword
-        autoComplete="password"
-      />
-
-      <View style={styles.rowBetween}>
+      <AuthScaffold navigation={navigation} title="Welcome back!">
         <TouchableOpacity
-          onPress={() => setRememberMe((v) => !v)}
-          style={styles.checkRow}
-          accessibilityRole="checkbox"
-          accessibilityLabel="Remember me"
-          accessibilityState={{ checked: rememberMe }}
-          activeOpacity={0.85}
-        >
-          <View pointerEvents="none">
-            <Checkbox
-              status={rememberMe ? 'checked' : 'unchecked'}
-              color={colors.secondary}
-              uncheckedColor={colors.border}
-            />
-          </View>
-          <AppText style={[styles.checkText, { color: colors.textMuted }]}>Remember me</AppText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('ForgotPassword')}
+          onPress={handleGoogleLogin}
+          disabled={loading || googleLoading}
+          style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
           accessibilityRole="button"
-          accessibilityLabel="Need help"
-          activeOpacity={0.85}
+          accessibilityLabel="Continue with Google"
+          activeOpacity={0.9}
         >
-          <AppText style={[styles.link, { color: colors.accent }]}>Need help?</AppText>
+          <AppIcon name="logo-google" size={18} color={colors.text} />
+          <AppText style={[styles.googleText, { color: colors.text }]}>
+            {googleLoading ? 'Signing in...' : 'Continue with Google'}
+          </AppText>
         </TouchableOpacity>
-      </View>
 
-      <Button title="Log in" onPress={handleLogin} loading={loading} style={styles.primaryButton} />
+        <View style={styles.dividerRow}>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        </View>
 
-      <View style={styles.bottomRow}>
-        <AppText style={[styles.bottomText, { color: colors.textMuted }]}>
-          Don't have an account?{' '}
-        </AppText>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.85}>
-          <AppText style={[styles.link, { color: colors.accent }]}>Sign up</AppText>
-        </TouchableOpacity>
-      </View>
-    </AuthScaffold>
+        <Input
+          label="Email"
+          placeholder="student@nivasity.com"
+          value={credentials.email}
+          onChangeText={(text) => setCredentials((s) => ({ ...s, email: text }))}
+          errorText={errors.email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          inputMode="email"
+        />
 
-    <OptionPickerDialog
-      visible={schoolsOpen}
-      title="Select your school"
-      searchPlaceholder="Search school..."
-      options={schoolNames}
-      selected={selectedSchool}
-      loading={schoolsLoading}
-      onClose={() => {
-        schoolsRequestIdRef.current += 1;
-        setSchoolsOpen(false);
-        setPendingGoogleTokens(null);
-        setSelectedSchool('');
-      }}
-      onSelect={(value) => {
-        if (!canOpenSchools) {
-          appMessage.toast({
-            status: schoolsLoading ? 'info' : 'failed',
-            message: schoolsLoading ? 'Loading schools...' : 'No schools available',
-          });
-          return;
-        }
-        setSelectedSchool(value);
-        confirmSchoolForGoogle(value);
-      }}
-    />
+        <Input
+          label="Password"
+          placeholder="Enter your password"
+          value={credentials.password}
+          onChangeText={(text) => setCredentials((s) => ({ ...s, password: text }))}
+          errorText={errors.password}
+          isPassword
+          autoComplete="password"
+        />
+
+        <View style={styles.rowBetween}>
+          <TouchableOpacity
+            onPress={() => setRememberMe((v) => !v)}
+            style={styles.checkRow}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Remember me"
+            accessibilityState={{ checked: rememberMe }}
+            activeOpacity={0.85}
+          >
+            <View pointerEvents="none">
+              <Checkbox
+                status={rememberMe ? 'checked' : 'unchecked'}
+                color={colors.secondary}
+                uncheckedColor={colors.border}
+              />
+            </View>
+            <AppText style={[styles.checkText, { color: colors.textMuted }]}>Remember me</AppText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            accessibilityRole="button"
+            accessibilityLabel="Need help"
+            activeOpacity={0.85}
+          >
+            <AppText style={[styles.link, { color: colors.accent }]}>Need help?</AppText>
+          </TouchableOpacity>
+        </View>
+
+        <Button title="Log in" onPress={handleLogin} loading={loading} style={styles.primaryButton} />
+
+        <View style={styles.bottomRow}>
+          <AppText style={[styles.bottomText, { color: colors.textMuted }]}>Don't have an account? </AppText>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.85}>
+            <AppText style={[styles.link, { color: colors.accent }]}>Sign up</AppText>
+          </TouchableOpacity>
+        </View>
+      </AuthScaffold>
+
+      <OptionPickerDialog
+        visible={schoolsOpen}
+        title="Select your school"
+        searchPlaceholder="Search school..."
+        options={schoolNames}
+        selected={selectedSchool}
+        loading={schoolsLoading}
+        onClose={() => {
+          schoolsRequestIdRef.current += 1;
+          setSchoolsOpen(false);
+          setPendingGoogleTokens(null);
+          setSelectedSchool('');
+        }}
+        onSelect={(value) => {
+          if (!canOpenSchools) {
+            appMessage.toast({
+              status: schoolsLoading ? 'info' : 'failed',
+              message: schoolsLoading ? 'Loading schools...' : 'No schools available',
+            });
+            return;
+          }
+          setSelectedSchool(value);
+          confirmSchoolForGoogle(value);
+        }}
+      />
     </>
   );
 };
