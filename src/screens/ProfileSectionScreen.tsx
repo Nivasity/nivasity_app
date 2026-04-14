@@ -18,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import OtpInput from '../components/OtpInput';
 import OptionPickerDialog from '../components/OptionPickerDialog';
 import PhoneField from '../components/PhoneField';
 import { getAdmissionSessions } from '../config/options';
@@ -77,7 +78,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
   const [saving, setSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic' | 'password' | 'delete'>(null);
+  const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic' | 'password' | 'delete' | 'email'>(null);
 
   const [accountData, setAccountData] = useState<Pick<User, 'firstName' | 'lastName' | 'email'>>(() => {
     const derived = (user?.name || '').trim().split(/\s+/).filter(Boolean);
@@ -215,6 +216,10 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
 
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [emailChangeStep, setEmailChangeStep] = useState<'request' | 'verify'>('request');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
 
   const refreshMyAccountData = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -292,9 +297,6 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     if (!accountData.firstName?.trim()) nextErrors.firstName = 'First name is required';
     if (!accountData.lastName?.trim()) nextErrors.lastName = 'Last name is required';
 
-    if (!accountData.email?.trim()) nextErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(accountData.email)) nextErrors.email = 'Email is invalid';
-
     const phoneDigits = phoneData.phoneNumber.replace(/[^\d]/g, '');
     if (!phoneDigits) nextErrors.phoneNumber = 'Phone number is required';
     else if (phoneDigits.length < 7) nextErrors.phoneNumber = 'Phone number is too short';
@@ -307,10 +309,9 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     if (!validateAccount()) return;
     const firstName = (accountData.firstName || '').trim();
     const lastName = (accountData.lastName || '').trim();
-    const email = accountData.email.trim().toLowerCase();
     const phone = normalizePhone(phoneData.callingCode, phoneData.phoneNumber);
     await saveProfilePatch(
-      { firstName, lastName, name: `${firstName} ${lastName}`.trim(), email, phone },
+      { firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone },
       'Account settings updated.'
     );
   };
@@ -447,6 +448,13 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     setEditDialog(null);
   };
 
+  const openEmailDialog = () => {
+    setNewEmail((user?.email || '').trim());
+    setEmailOtp('');
+    setEmailChangeStep('request');
+    setEditDialog('email');
+  };
+
   const openPasswordDialog = () => {
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setEditDialog('password');
@@ -455,6 +463,63 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const openDeleteDialog = () => {
     setDeletePassword('');
     setEditDialog('delete');
+  };
+
+  const handleRequestEmailChange = async () => {
+    const trimmedEmail = newEmail.trim().toLowerCase();
+    if (!trimmedEmail) {
+      appMessage.alert({ title: 'Email required', message: 'Enter the new email address.' });
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
+      appMessage.alert({ title: 'Invalid email', message: 'Enter a valid email address.' });
+      return;
+    }
+    if (trimmedEmail === String(user?.email || '').trim().toLowerCase()) {
+      appMessage.alert({ title: 'Use a different email', message: 'Enter a new email address to continue.' });
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const response = await profileAPI.requestEmailChangeOtp(trimmedEmail);
+      setNewEmail(response.newEmail);
+      setEmailChangeStep('verify');
+      setEmailOtp('');
+      appMessage.toast({ status: 'success', message: response.message || 'OTP sent to your new email.' });
+    } catch (error: any) {
+      appMessage.alert({
+        title: 'Could not send OTP',
+        message: error?.response?.data?.message || error?.message || 'Please try again.',
+      });
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleVerifyEmailChange = async () => {
+    const trimmedOtp = emailOtp.trim();
+    if (trimmedOtp.length !== 6) {
+      appMessage.alert({ title: 'Enter OTP', message: 'Use the 6-digit code sent to your new email.' });
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const response = await profileAPI.verifyEmailChangeOtp({ newEmail: newEmail.trim().toLowerCase(), otp: trimmedOtp });
+      if (user) {
+        updateUser({ ...user, email: response.email });
+      }
+      appMessage.toast({ status: 'success', message: response.message || 'Email updated successfully.' });
+      closeEditDialog();
+    } catch (error: any) {
+      appMessage.alert({
+        title: 'Could not verify OTP',
+        message: error?.response?.data?.message || error?.message || 'Please try again.',
+      });
+    } finally {
+      setEmailChangeLoading(false);
+    }
   };
 
   const saveAccountFromDialog = async () => {
@@ -674,8 +739,8 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                 <View style={styles.kvList}>
                   <KeyValueRow label="First name" value={displayFirstName} />
                   <KeyValueRow label="Last name" value={displayLastName} />
-                  <KeyValueRow label="Email" value={displayEmail} />
                   <KeyValueRow label="Phone" value={displayPhone} />
+                  <KeyValueRow label="Email" value={displayEmail} actionText="Change" onAction={openEmailDialog} />
                 </View>
               </View>
 
@@ -987,6 +1052,93 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal visible={editDialog === 'email'} transparent animationType="slide" onRequestClose={closeEditDialog}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEditDialog}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              ]}
+            />
+          </Pressable>
+
+          <View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Change email</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
+              >
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {emailChangeStep === 'request' ? (
+                <>
+                  <Text style={[styles.sectionHint, { color: colors.textMuted, marginBottom: 12 }]}>Enter your new email address. We’ll send a 6-digit OTP to verify it.</Text>
+                  <Input
+                    label="New email address"
+                    placeholder="Enter new email"
+                    value={newEmail}
+                    onChangeText={setNewEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                  <Button
+                    title={emailChangeLoading ? 'Sending OTP...' : 'Send OTP'}
+                    onPress={handleRequestEmailChange}
+                    disabled={emailChangeLoading}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.sectionHint, { color: colors.textMuted, marginBottom: 12 }]}>Enter the 6-digit OTP sent to {newEmail.trim().toLowerCase()}.</Text>
+                  <OtpInput value={emailOtp} onChange={setEmailOtp} autoFocus />
+                  <View style={{ height: 16 }} />
+                  <Button
+                    title={emailChangeLoading ? 'Verifying...' : 'Verify OTP'}
+                    onPress={handleVerifyEmailChange}
+                    disabled={emailChangeLoading}
+                  />
+                  <TouchableOpacity
+                    onPress={handleRequestEmailChange}
+                    style={styles.inlineAction}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resend OTP"
+                  >
+                    <Text style={[styles.inlineActionText, { color: colors.accent }]}>Resend OTP</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1037,21 +1189,40 @@ const KeyValueRow = ({
   label,
   value,
   valueLines = 1,
+  actionText,
+  onAction,
 }: {
   label: string;
   value?: string;
   valueLines?: number;
+  actionText?: string;
+  onAction?: () => void;
 }) => {
   const { colors } = useTheme();
   const normalized = (value || '').trim();
   return (
     <View style={[styles.kvRow, { borderColor: colors.border }]}>
-      <Text style={[styles.kvLabel, { color: colors.textMuted }]} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={valueLines}>
-        {normalized || 'Not set'}
-      </Text>
+      <View style={styles.kvLabelWrap}>
+        <Text style={[styles.kvLabel, { color: colors.textMuted }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      <View style={styles.kvValueWrap}>
+        <Text style={[styles.kvValue, { color: colors.text }]} numberOfLines={valueLines}>
+          {normalized || 'Not set'}
+        </Text>
+        {actionText && onAction ? (
+          <TouchableOpacity
+            onPress={onAction}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={actionText}
+            style={styles.kvActionButton}
+          >
+            <Text style={[styles.kvAction, { color: colors.accent }]}>{actionText}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
 };
@@ -1149,20 +1320,33 @@ const styles = StyleSheet.create({
   },
   kvRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
     borderBottomWidth: 1,
     padding: 12,
   },
-  kvLabel: {
+  kvLabelWrap: {
     flex: 1,
+  },
+  kvLabel: {
     fontSize: 12,
     fontWeight: '500',
     paddingTop: 2,
   },
-  kvValue: {
+  kvValueWrap: {
     flex: 1,
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  kvActionButton: {
+    alignSelf: 'flex-end',
+  },
+  kvAction: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  kvValue: {
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: -0.2,
@@ -1221,6 +1405,14 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     fontSize: 16,
+    fontWeight: '800',
+  },
+  inlineAction: {
+    alignSelf: 'center',
+    paddingTop: 14,
+  },
+  inlineActionText: {
+    fontSize: 14,
     fontWeight: '800',
   },
 });

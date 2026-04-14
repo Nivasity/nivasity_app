@@ -647,6 +647,44 @@ export const profileAPI = {
     return authAPI.getCurrentUser();
   },
 
+  requestEmailChangeOtp: async (newEmail: string): Promise<{ message: string; newEmail: string; expiresIn?: number }> => {
+    const response = await api.post<ApiResponse<any>>('/profile/request-email-change.php', {
+      new_email: newEmail,
+    });
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to send email change OTP');
+    }
+
+    return {
+      message: response.data.message,
+      newEmail: String(response.data.data.new_email || newEmail).trim().toLowerCase(),
+      expiresIn:
+        typeof response.data.data.expires_in === 'number'
+          ? response.data.data.expires_in
+          : Number.isFinite(Number(response.data.data.expires_in))
+            ? Number(response.data.data.expires_in)
+            : undefined,
+    };
+  },
+
+  verifyEmailChangeOtp: async (args: { newEmail: string; otp: string }): Promise<{ message: string; oldEmail?: string; email: string }> => {
+    const response = await api.post<ApiResponse<any>>('/profile/verify-email-change.php', {
+      new_email: args.newEmail,
+      otp: args.otp,
+    });
+
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to verify email change OTP');
+    }
+
+    return {
+      message: response.data.message,
+      oldEmail: String(response.data.data.old_email || '').trim() || undefined,
+      email: String(response.data.data.email || args.newEmail).trim().toLowerCase(),
+    };
+  },
+
   updateProfilePhoto: async (args: {
     file: { uri: string; name: string; type: string };
     fallback?: User;
