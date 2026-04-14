@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
+import { Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import {
   GoogleSignin,
@@ -9,7 +9,6 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import AuthScaffold from '../components/auth/AuthScaffold';
-import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -265,7 +264,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           accessibilityLabel="Continue with Google"
           activeOpacity={0.9}
         >
-          <AppIcon name="logo-google" size={18} color={colors.text} />
+          <Image source={require('../../assets/icons/google.png')} style={styles.googleIcon} resizeMode="contain" />
           <AppText style={[styles.googleText, { color: colors.text }]}>
             {googleLoading ? 'Signing in...' : 'Continue with Google'}
           </AppText>
@@ -416,6 +415,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     marginBottom: 14,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
   },
   googleText: {
     fontSize: 16,
