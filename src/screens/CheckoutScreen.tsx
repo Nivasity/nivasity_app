@@ -29,7 +29,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const appMessage = useAppMessage();
   const { items: cartItemsFromContext, clear: clearCart } = useCart();
   const { summary, hasWallet, hasPin, refreshCreditsAndSummary } = useWallet();
-  const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext;
+  const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext ?? [];
   const [loading, setLoading] = useState(false);
   const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
@@ -69,7 +69,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
     [cartItems]
   );
   const total = useMemo(() => subtotal + handlingFee, [subtotal, handlingFee]);
-  const walletSavings = useMemo(() => Math.max(0, handlingFee - walletFee), [handlingFee, walletFee]);
 
   useEffect(() => {
     let mounted = true;
@@ -285,21 +284,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.detailsHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.detailsTitle, { color: colors.text }]}>Secure payment</Text>
-            </View>
-            <Text style={[styles.detailsSubtitle, { color: colors.textMuted }]}>
-              Powered by {gateway ? gateway.charAt(0).toUpperCase() + gateway.slice(1) : 'Payment'}
-            </Text>
-          </View>
-
-          <Text style={[styles.paragraph, { color: colors.textMuted }]}>
-            Confirm your items and proceed to payment. You can return to the app after completing the payment.
-          </Text>
-        </View>
-
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Pay with</Text>
         </View>
@@ -325,11 +309,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
                   {hasWallet ? `Bal ${formatMoney(summary?.wallet?.balance ?? 0)}` : 'Activate wallet'}
                 </Text>
               </View>
-              {paymentMethod === 'wallet' ? <AppIcon name="checkmark-circle-outline" size={20} color={colors.accent} /> : null}
+              <View style={styles.methodAmountWrap}>
+                <Text style={[styles.methodAmountLabel, { color: colors.textMuted }]}>Total</Text>
+                <Text style={[styles.methodAmountValue, { color: colors.text }]}>
+                  {formatMoney(walletTotal || subtotal)}
+                </Text>
+              </View>
+              <AppIcon
+                name={paymentMethod === 'wallet' ? 'checkmark-circle-outline' : 'ellipse-outline'}
+                size={20}
+                color={paymentMethod === 'wallet' ? colors.accent : colors.textMuted}
+              />
             </View>
-            <Text style={[styles.methodHint, { color: colors.textMuted }]}>
-              {walletSavings > 0 ? `Save ${formatMoney(walletSavings)}` : walletFee > 0 ? `Fee ${formatMoney(walletFee)}` : 'Lower fee'}
-            </Text>
             {!hasWallet ? (
               <Text style={[styles.methodState, { color: colors.secondary }]}>Activate first</Text>
             ) : !hasPin ? (
@@ -359,9 +350,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
                   {gateway ? gateway.charAt(0).toUpperCase() + gateway.slice(1) : 'Online payment'}
                 </Text>
               </View>
-              {paymentMethod === 'gateway' ? <AppIcon name="checkmark-circle-outline" size={20} color={colors.accent} /> : null}
+              <View style={styles.methodAmountWrap}>
+                <Text style={[styles.methodAmountLabel, { color: colors.textMuted }]}>Total</Text>
+                <Text style={[styles.methodAmountValue, { color: colors.text }]}>
+                  {formatMoney(total)}
+                </Text>
+              </View>
+              <AppIcon
+                name={paymentMethod === 'gateway' ? 'checkmark-circle-outline' : 'ellipse-outline'}
+                size={20}
+                color={paymentMethod === 'gateway' ? colors.accent : colors.textMuted}
+              />
             </View>
-            <Text style={[styles.methodHint, { color: colors.textMuted }]}>Fee {formatMoney(handlingFee)}</Text>
           </TouchableOpacity>
         </View>
 
@@ -396,7 +396,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
         <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TotalRow label="Subtotal" value={`₦${subtotal.toLocaleString()}`} />
           <TotalRow label={paymentMethod === 'wallet' ? 'Wallet fee' : 'Handling Fee'} value={paymentMethod === 'wallet' ? formatMoney(walletFee) : formatMoney(handlingFee)} />
-          {walletSavings > 0 ? <TotalRow label="Wallet save" value={`-${formatMoney(walletSavings)}`} /> : null}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <TotalRow label="Total" value={paymentMethod === 'wallet' ? formatMoney(walletTotal || subtotal) : formatMoney(total)} bold />
         </View>
@@ -531,32 +530,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-  detailsCard: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 14,
-  },
-  detailsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  detailsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  detailsSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  paragraph: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
   metaPill: {
     flex: 1,
     borderRadius: 20,
@@ -613,9 +586,19 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  methodHint: {
-    fontSize: 13,
-    fontWeight: '700',
+  methodAmountWrap: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  methodAmountLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  methodAmountValue: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   methodState: {
     fontSize: 12,
