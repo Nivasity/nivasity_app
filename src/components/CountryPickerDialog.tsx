@@ -23,6 +23,7 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const selectedColor = isDark ? colors.accentMuted : colors.secondary;
 
   useEffect(() => {
     if (!visible) setQuery('');
@@ -143,18 +144,18 @@ const CountryPickerDialog: React.FC<CountryPickerDialogProps> = ({
                   style={[
                     styles.optionRow,
                     {
-                      borderColor: colors.border,
-                      backgroundColor: isSelected ? colors.surfaceAlt : colors.surface,
+                      borderColor: isSelected ? selectedColor : colors.border,
+                      backgroundColor: isSelected ? selectedColor : colors.surface,
                     },
                   ]}
                 >
                   <View style={styles.optionLeft}>
-                    <AppText style={[styles.flag, { color: colors.text }]}>{c.flag}</AppText>
-                    <AppText style={[styles.optionLabel, { color: colors.text }]} numberOfLines={1}>
+                    <AppText style={[styles.flag, { color: isSelected ? colors.onAccent : colors.text }]}>{c.flag}</AppText>
+                    <AppText style={[styles.optionLabel, { color: isSelected ? colors.onAccent : colors.text }]} numberOfLines={1}>
                       {c.name}
                     </AppText>
                   </View>
-                  <AppText style={[styles.optionCode, { color: colors.textMuted }]} numberOfLines={1}>
+                  <AppText style={[styles.optionCode, { color: isSelected ? colors.onAccent : colors.textMuted }]} numberOfLines={1}>
                     {c.callingCode || ''}
                   </AppText>
                 </TouchableOpacity>

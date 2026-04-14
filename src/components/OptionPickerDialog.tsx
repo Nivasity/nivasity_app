@@ -33,6 +33,7 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const selectedColor = isDark ? colors.accentMuted : colors.secondary;
   const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -87,15 +88,15 @@ const OptionPickerDialog: React.FC<OptionPickerDialogProps> = ({
         style={[
           styles.optionRow,
           {
-            borderColor: isSelected ? colors.secondary : colors.border,
-            backgroundColor: isSelected ? colors.secondary : colors.surface,
+            borderColor: isSelected ? selectedColor : colors.border,
+            backgroundColor: isSelected ? selectedColor : colors.surface,
           },
         ]}
       >
-        <AppText style={[styles.optionLabel, { color: isSelected ? colors.surface : colors.text }]} numberOfLines={1}>
+        <AppText style={[styles.optionLabel, { color: isSelected ? colors.onAccent : colors.text }]} numberOfLines={1}>
           {value}
         </AppText>
-        {isSelected ? <AppIcon name="checkmark" size={20} color={colors.surface} /> : null}
+        {isSelected ? <AppIcon name="checkmark" size={20} color={colors.onAccent} /> : null}
       </TouchableOpacity>
     );
   };
