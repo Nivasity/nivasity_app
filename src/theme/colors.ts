@@ -1,5 +1,6 @@
 export const brandColors = {
   accent: '#ff9100',
+  accentMuted: 'rgba(251, 142, 0, 0.9)',
   secondary: '#7a3b73',
   accentCard: '#FFF0DDFF',
 };
@@ -8,6 +9,7 @@ export type AppThemeMode = 'system' | 'light' | 'dark';
 
 export type AppColors = {
   accent: string;
+  accentMuted: string;
   secondary: string;
   background: string;
   surface: string;
@@ -26,6 +28,7 @@ export type AppColors = {
 
 export const lightColors: AppColors = {
   accent: brandColors.accent,
+  accentMuted: brandColors.accentMuted,
   secondary: brandColors.secondary,
   background: '#FFFBF6FF',
   surface: '#FFFFFF',
@@ -44,6 +47,7 @@ export const lightColors: AppColors = {
 
 export const darkColors: AppColors = {
   accent: brandColors.accent,
+  accentMuted: brandColors.accentMuted,
   secondary: brandColors.secondary,
   background: '#0C000BFF',
   surface: '#121A2E',

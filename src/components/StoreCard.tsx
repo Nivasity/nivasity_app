@@ -31,6 +31,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
   marked,
 }) => {
   const { colors, isDark } = useTheme();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   const addIsActive = Boolean(onAdd);
   const shareIsActive = Boolean(onShare);
   const pressIsActive = Boolean(onPress);
@@ -60,7 +61,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
             style={[
               styles.iconButton,
               {
-                backgroundColor: marked ? colors.secondary : colors.accentCard,
+                backgroundColor: marked ? (isDark ? colors.accentMuted : colors.secondary) : colors.accentCard,
               },
               !addIsActive && { opacity: 0.55 },
             ]}
@@ -74,7 +75,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
             <AppIcon
               name={marked ? 'checkmark' : 'add'}
               size={28}
-              color={marked ? colors.background : colors.secondary}
+              color={marked ? colors.onAccent : colors.secondary}
             />
           </TouchableOpacity>
         </View>
@@ -107,7 +108,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
             },
           ]}
         >
-          <Text style={[styles.price, { color: colors.secondary }]} numberOfLines={1}>
+          <Text style={[styles.price, { color: highlightColor }]} numberOfLines={1}>
             {price}
           </Text>
         </View>

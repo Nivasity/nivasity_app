@@ -732,7 +732,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                     accessibilityLabel="Edit profile information"
                     style={[styles.editButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
                   >
-                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                    <AppIcon name="create-outline" size={18} color={isDark ? colors.accentMuted : colors.secondary} />
                   </TouchableOpacity>
                 </View>
 
@@ -756,7 +756,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
                     accessibilityLabel="Edit academic info"
                     style={[styles.editButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
                   >
-                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                    <AppIcon name="create-outline" size={18} color={isDark ? colors.accentMuted : colors.secondary} />
                   </TouchableOpacity>
                 </View>
 
@@ -1156,8 +1156,8 @@ const SettingsRow = ({
   tone?: 'default' | 'danger';
   onPress: () => void;
 }) => {
-  const { colors } = useTheme();
-  const accentColor = tone === 'danger' ? colors.danger : colors.secondary;
+  const { colors, isDark } = useTheme();
+  const accentColor = tone === 'danger' ? colors.danger : isDark ? colors.accentMuted : colors.secondary;
   const labelColor = tone === 'danger' ? colors.danger : colors.text;
 
   return (

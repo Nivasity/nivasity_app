@@ -74,6 +74,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const appMessage = useAppMessage();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
 
   const [tickets, setTickets] = useState<SupportTicketListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,7 +210,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
         accessibilityLabel={`Open ticket ${item.code}`}
       >
         <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <Text style={[styles.avatarText, { color: colors.secondary }]}>{avatarLetter}</Text>
+          <Text style={[styles.avatarText, { color: highlightColor }]}>{avatarLetter}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.ticketTitle, { color: colors.text }]} numberOfLines={1}>

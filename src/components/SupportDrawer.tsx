@@ -29,7 +29,8 @@ const SupportOption = ({
   subtitle: string;
   onPress: () => void;
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -39,7 +40,7 @@ const SupportOption = ({
       accessibilityLabel={title}
     >
       <View style={[styles.optionIcon, { backgroundColor: colors.surfaceAlt }]}>
-        <AppIcon name={icon} size={20} color={colors.secondary} />
+        <AppIcon name={icon} size={20} color={highlightColor} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.optionTitle, { color: colors.text }]} numberOfLines={1}>

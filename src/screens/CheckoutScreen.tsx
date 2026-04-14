@@ -25,11 +25,13 @@ const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()
 
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { items: cartItemsFromContext, clear: clearCart } = useCart();
   const { summary, hasWallet, hasPin, refreshCreditsAndSummary } = useWallet();
   const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext ?? [];
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
+  const supportColor = isDark ? colors.accentMuted : colors.secondary;
   const [loading, setLoading] = useState(false);
   const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
@@ -322,7 +324,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               />
             </View>
             {!hasWallet ? (
-              <Text style={[styles.methodState, { color: colors.secondary }]}>Activate first</Text>
+              <Text style={[styles.methodState, { color: supportColor }]}>Activate first</Text>
             ) : !hasPin ? (
               <Text style={[styles.methodState, { color: colors.secondary }]}>Add PIN</Text>
             ) : !walletCanPay ? (
@@ -342,7 +344,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           >
             <View style={styles.methodHeader}>
               <View style={[styles.methodIcon, { backgroundColor: colors.surfaceAlt }]}>
-                <AppIcon name="cash-outline" size={18} color={colors.secondary} />
+                <AppIcon name="cash-outline" size={18} color={supportColor} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.methodTitle, { color: colors.text }]}>Gateway</Text>
@@ -376,7 +378,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               style={[styles.itemRow, { borderColor: colors.border }]}
             >
               <View style={[styles.itemIcon]}>
-                <AppIcon name="book-outline" size={20} color={colors.secondary} />
+                <AppIcon name="book-outline" size={20} color={highlightColor} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>

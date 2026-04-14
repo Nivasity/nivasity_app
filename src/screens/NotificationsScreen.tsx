@@ -47,6 +47,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const appMessage = useAppMessage();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   const {
     notifications,
     unreadCount,
@@ -119,7 +120,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
         <View style={[styles.pushCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.pushCardTop}>
             <View style={styles.pushCardIcon}>
-              <AppIcon name="notifications-outline" size={20} color={colors.secondary} />
+              <AppIcon name="notifications-outline" size={20} color={highlightColor} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.pushTitle, { color: colors.text }]}>Push notifications</Text>

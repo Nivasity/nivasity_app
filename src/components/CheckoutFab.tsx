@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
 
@@ -18,11 +18,12 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({
   autoHideMs = 5000,
   hiddenOffset = 90,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [hidden, setHidden] = useState(true);
   const translateY = useRef(new Animated.Value(hiddenOffset)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backgroundColor = isDark ? colors.accentMuted : colors.secondary;
 
   const show = useCallback(() => {
     setHidden(false);
@@ -87,12 +88,13 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({
     >
       <TouchableOpacity
         onPress={onPress}
-        style={[styles.button, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+        style={[styles.button, { backgroundColor, borderColor: colors.border }]}
         activeOpacity={0.9}
         accessibilityRole="button"
         accessibilityLabel="Go to checkout"
       >
-        <AppIcon name="wallet-outline" size={25} color={colors.onAccent} />
+        <AppIcon name="cart-outline" size={20} color={colors.onAccent} />
+        <Text style={[styles.label, { color: colors.onAccent }]}>Checkout Now</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -100,12 +102,18 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    width: 56,
-    height: 56,
-    borderRadius: 30,
+    minHeight: 56,
+    borderRadius: 999,
+    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
     borderWidth: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
 

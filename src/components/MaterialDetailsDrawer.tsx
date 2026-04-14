@@ -45,6 +45,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
 
   const title = product?.name ?? '';
   const subtitle = product?.description ?? '';
@@ -106,7 +107,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
                     {subtitle}
                   </Text>
                 </View>
-                <Text style={[styles.priceText, { color: colors.secondary }]} numberOfLines={1}>
+                <Text style={[styles.priceText, { color: highlightColor }]} numberOfLines={1}>
                   {price}
                 </Text>
               </View>

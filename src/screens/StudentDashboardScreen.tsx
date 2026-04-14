@@ -45,6 +45,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const detailsRequestIdRef = useRef(0);
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
 
   const computeStats = (orders: Order[]): DashboardStats => {
     const totalOrders = orders.length;
@@ -308,7 +309,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                 accessibilityLabel="See all materials"
                 activeOpacity={0.85}
               >
-                <Text style={[styles.viewAll, { color: colors.secondary }]}>See all</Text>
+                <Text style={[styles.viewAll, { color: highlightColor }]}>See all</Text>
               </TouchableOpacity>
             </View>
 
@@ -358,7 +359,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
               accessibilityLabel="View all orders"
               activeOpacity={0.85}
             >
-              <Text style={[styles.viewAll, { color: colors.secondary }]}>View all</Text>
+              <Text style={[styles.viewAll, { color: highlightColor }]}>View all</Text>
             </TouchableOpacity>
           </View>
 
@@ -454,7 +455,8 @@ const CourseCard = ({
   icon: React.ComponentProps<typeof AppIcon>['name'];
   onPress: () => void;
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -464,7 +466,7 @@ const CourseCard = ({
       accessibilityLabel={title}
     >
       <View style={[styles.courseIcon]}>
-        <AppIcon name={icon} size={22} color={colors.secondary} />
+        <AppIcon name={icon} size={22} color={highlightColor} />
       </View>
       <Text style={[styles.courseTitle, { color: colors.text }]} numberOfLines={1}>
         {title}

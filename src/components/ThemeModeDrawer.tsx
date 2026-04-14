@@ -24,7 +24,8 @@ const ThemeRow = ({
   selected: boolean;
   onPress: () => void;
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -41,11 +42,11 @@ const ThemeRow = ({
     >
       <View style={styles.optionLeft}>
         <View style={[styles.optionIcon, { backgroundColor: colors.surfaceAlt }]}>
-          <AppIcon name={value === 'dark' ? 'moon-outline' : value === 'light' ? 'sunny-outline' : 'phone-portrait-outline'} size={18} color={colors.secondary} />
+          <AppIcon name={value === 'dark' ? 'moon-outline' : value === 'light' ? 'sunny-outline' : 'phone-portrait-outline'} size={18} color={highlightColor} />
         </View>
         <Text style={[styles.optionLabel, { color: colors.text }]}>{label}</Text>
       </View>
-      {selected ? <AppIcon name="checkmark" size={20} color={colors.secondary} /> : null}
+      {selected ? <AppIcon name="checkmark" size={20} color={highlightColor} /> : null}
     </TouchableOpacity>
   );
 };

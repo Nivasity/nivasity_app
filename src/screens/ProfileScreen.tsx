@@ -473,7 +473,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   <ActivityIndicator color={colors.accent} />
                 ) : (
                   <View style={[styles.avatarEditPill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <AppIcon name="create-outline" size={18} color={colors.secondary} />
+                    <AppIcon name="create-outline" size={18} color={isDark ? colors.accentMuted : colors.secondary} />
                   </View>
                 )}
               </View>
@@ -609,8 +609,8 @@ const Row = ({
   tone?: 'default' | 'danger';
   onPress: () => void;
 }) => {
-  const { colors } = useTheme();
-  const accentColor = tone === 'danger' ? colors.danger : colors.secondary;
+  const { colors, isDark } = useTheme();
+  const accentColor = tone === 'danger' ? colors.danger : isDark ? colors.accentMuted : colors.secondary;
   const labelColor = tone === 'danger' ? colors.danger : colors.text;
   return (
     <TouchableOpacity

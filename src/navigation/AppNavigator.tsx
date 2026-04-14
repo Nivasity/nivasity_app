@@ -259,9 +259,8 @@ const AppNavigator = () => {
 
 const TabIcon = ({ focused, icon }: { focused: boolean; icon: AppIconName }) => {
   const { colors, isDark } = useTheme();
-  const color = focused ? colors.onAccent : 'rgba(255,255,255,0.65)';
   return (
-    <View style={[styles.tabPill, focused && { backgroundColor: colors.accent }]}>
+    <View style={[styles.tabPill, focused && { backgroundColor: isDark ? colors.accentMuted : colors.accent }]}>
       <AppIcon name={icon} size={22} color={focused ? colors.onAccent : colors.text} />
     </View>
   );
