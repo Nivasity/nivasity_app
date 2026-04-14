@@ -21,6 +21,7 @@ import ThemeModeDrawer from '../components/ThemeModeDrawer';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useWallet } from '../contexts/WalletContext';
 import { profileAPI, referenceAPI } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { DashboardStats } from '../types';
@@ -29,9 +30,16 @@ interface ProfileScreenProps {
   navigation: any;
 }
 
+const LEGAL_PAGE_URLS = {
+  privacy: 'https://nivasity.com/privacy',
+  terms: 'https://nivasity.com/terms',
+  about: 'https://nivasity.com/about',
+} as const;
+
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, logout, updateUser } = useAuth();
   const { colors, isDark, mode, setMode } = useTheme();
+  const { hasWallet, hasPin } = useWallet();
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
   const [themeVisible, setThemeVisible] = useState(false);
@@ -370,6 +378,25 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     });
   };
 
+  const openSitePage = useCallback(
+    async (page: keyof typeof LEGAL_PAGE_URLS) => {
+      try {
+        await WebBrowser.openBrowserAsync(LEGAL_PAGE_URLS[page], {
+          controlsColor: colors.accent,
+          dismissButtonStyle: 'close',
+          enableBarCollapsing: true,
+          showTitle: true,
+        });
+      } catch (error: any) {
+        appMessage.toast({
+          status: 'failed',
+          message: error?.message || 'Could not open page.',
+        });
+      }
+    },
+    [appMessage, colors.accent]
+  );
+
   return (
     <SafeAreaView
       edges={['top', 'bottom']}
@@ -477,6 +504,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             />
             <Divider />
             <Row
+              icon="lock-closed-outline"
+              label="Wallet PIN"
+              value={hasWallet ? (hasPin ? 'Manage PIN' : 'Create PIN') : 'Open wallet setup'}
+              onPress={() => navigation.navigate(hasWallet ? 'WalletPin' : 'WalletFund')}
+            />
+            <Divider />
+            <Row
               icon="shield-checkmark-outline"
               label="Security"
               onPress={() => navigation.navigate('ProfileSection', { section: 'security' })}
@@ -502,19 +536,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Row
               icon="shield-checkmark-outline"
               label="Privacy policy"
-              onPress={() => navigation.navigate('StaticPage', { page: 'privacy' })}
+              onPress={() => void openSitePage('privacy')}
             />
             <Divider />
             <Row
               icon="book-outline"
               label="Terms and conditions"
-              onPress={() => navigation.navigate('StaticPage', { page: 'terms' })}
+              onPress={() => void openSitePage('terms')}
             />
             <Divider />
             <Row
               icon="help-circle-outline"
               label="About"
-              onPress={() => navigation.navigate('StaticPage', { page: 'about' })}
+              onPress={() => void openSitePage('about')}
             />
           </View>
 

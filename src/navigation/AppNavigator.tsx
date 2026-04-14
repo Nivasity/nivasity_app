@@ -27,7 +27,6 @@ import StudentDashboardScreen from '../screens/StudentDashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import ProfileSectionScreen from '../screens/ProfileSectionScreen';
-import StaticPageScreen from '../screens/StaticPageScreen';
 import StoreScreen from '../screens/StoreScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
@@ -203,11 +202,6 @@ const AppNavigator = () => {
             <Stack.Screen
               name="ProfileSection"
               component={ProfileSectionScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="StaticPage"
-              component={StaticPageScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

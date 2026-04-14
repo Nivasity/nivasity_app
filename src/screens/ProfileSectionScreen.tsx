@@ -24,7 +24,6 @@ import { getAdmissionSessions } from '../config/options';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useWallet } from '../contexts/WalletContext';
 import { authAPI, profileAPI, referenceAPI } from '../services/api';
 import { User } from '../types';
 import { normalizePhone } from '../utils/phone';
@@ -73,13 +72,12 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { user, updateUser, logout } = useAuth();
-  const { hasWallet, hasPin } = useWallet();
   const section = (route?.params?.section as ProfileSection | undefined) ?? 'account';
   const title = useMemo(() => getSectionTitle(section), [section]);
 
   const [saving, setSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic'>(null);
+  const [editDialog, setEditDialog] = useState<null | 'profile' | 'academic' | 'password' | 'delete'>(null);
 
   const [accountData, setAccountData] = useState<Pick<User, 'firstName' | 'lastName' | 'email'>>(() => {
     const derived = (user?.name || '').trim().split(/\s+/).filter(Boolean);
@@ -449,6 +447,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     setEditDialog(null);
   };
 
+  const openPasswordDialog = () => {
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setEditDialog('password');
+  };
+
+  const openDeleteDialog = () => {
+    setDeletePassword('');
+    setEditDialog('delete');
+  };
+
   const saveAccountFromDialog = async () => {
     if (!validateAccount()) return;
     await handleSaveAccount();
@@ -710,101 +718,22 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           ) : null}
 
           {section === 'security' ? (
-            <>
-              <View style={[styles.card, { borderColor: colors.border }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Change password</Text>
-                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-                  Choose a strong password you don't use elsewhere.
-                </Text>
-                <View style={{ height: 12 }} />
-                <Input
-                  label="Current Password"
-                  placeholder="Enter current password"
-                  value={passwordData.currentPassword}
-                  onChangeText={(text) => setPasswordData((s) => ({ ...s, currentPassword: text }))}
-                  isPassword
-                  autoCapitalize="none"
-                  autoComplete="password"
-                />
-                <Input
-                  label="New Password"
-                  placeholder="Enter new password"
-                  value={passwordData.newPassword}
-                  onChangeText={(text) => setPasswordData((s) => ({ ...s, newPassword: text }))}
-                  isPassword
-                  autoCapitalize="none"
-                  autoComplete="password-new"
-                />
-                <Input
-                  label="Confirm Password"
-                  placeholder="Confirm new password"
-                  value={passwordData.confirmPassword}
-                  onChangeText={(text) => setPasswordData((s) => ({ ...s, confirmPassword: text }))}
-                  isPassword
-                  autoCapitalize="none"
-                />
-                <Button
-                  title={passwordLoading ? 'Updating...' : 'Change password'}
-                  onPress={handleChangePassword}
-                  disabled={passwordLoading}
-                />
-              </View>
-
-              <View style={{ height: 12 }} />
-
-              <View style={[styles.card, { borderColor: colors.border }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Wallet PIN</Text>
-                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-                  {hasWallet
-                    ? hasPin
-                      ? 'Update the PIN you use for wallet checkout.'
-                      : 'Create a PIN for wallet checkout.'
-                    : 'Activate your wallet first, then add a checkout PIN.'}
-                </Text>
-                <View style={{ height: 12 }} />
-                <Button
-                  title={hasWallet ? (hasPin ? 'Manage wallet PIN' : 'Create wallet PIN') : 'Open wallet setup'}
-                  onPress={() => navigation.navigate(hasWallet ? 'WalletPin' : 'WalletFund')}
-                />
-              </View>
-
-              <View style={{ height: 12 }} />
-
-              <View style={[styles.card, { borderColor: colors.border }]}>
-                <Text style={[styles.sectionTitle, { color: colors.danger }]}>Delete account</Text>
-                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-                  This will permanently delete your account. Enter your password to continue.
-                </Text>
-                <View style={{ height: 12 }} />
-                <Input
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={deletePassword}
-                  onChangeText={setDeletePassword}
-                  isPassword
-                  autoCapitalize="none"
-                  autoComplete="password"
-                />
-                <TouchableOpacity
-                  onPress={confirmDeleteAccount}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete account"
-                  style={[
-                    styles.dangerButton,
-                    { borderColor: colors.danger, backgroundColor: colors.surface },
-                    deleteLoading && { opacity: 0.75 },
-                  ]}
-                  disabled={deleteLoading}
-                >
-                  {deleteLoading ? (
-                    <ActivityIndicator color={colors.danger} />
-                  ) : (
-                    <Text style={[styles.dangerText, { color: colors.danger }]}>Delete account</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </>
+            <View style={[styles.settingsList, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <SettingsRow
+                icon="shield-checkmark-outline"
+                label="Change password"
+                hint="Update your password in a separate dialog."
+                onPress={openPasswordDialog}
+              />
+              <SettingsDivider />
+              <SettingsRow
+                icon="log-out-outline"
+                label="Delete account"
+                hint="Permanently remove your account after confirmation."
+                tone="danger"
+                onPress={openDeleteDialog}
+              />
+            </View>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -904,8 +833,204 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal visible={editDialog === 'password'} transparent animationType="slide" onRequestClose={closeEditDialog}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEditDialog}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              ]}
+            />
+          </Pressable>
+
+          <View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Change password</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
+              >
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.sectionHint, { color: colors.textMuted, marginBottom: 12 }]}>Choose a strong password you don't use elsewhere.</Text>
+              <Input
+                label="Current Password"
+                placeholder="Enter current password"
+                value={passwordData.currentPassword}
+                onChangeText={(text) => setPasswordData((s) => ({ ...s, currentPassword: text }))}
+                isPassword
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+              <Input
+                label="New Password"
+                placeholder="Enter new password"
+                value={passwordData.newPassword}
+                onChangeText={(text) => setPasswordData((s) => ({ ...s, newPassword: text }))}
+                isPassword
+                autoCapitalize="none"
+                autoComplete="password-new"
+              />
+              <Input
+                label="Confirm Password"
+                placeholder="Confirm new password"
+                value={passwordData.confirmPassword}
+                onChangeText={(text) => setPasswordData((s) => ({ ...s, confirmPassword: text }))}
+                isPassword
+                autoCapitalize="none"
+              />
+              <Button
+                title={passwordLoading ? 'Updating...' : 'Change password'}
+                onPress={handleChangePassword}
+                disabled={passwordLoading}
+              />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={editDialog === 'delete'} transparent animationType="slide" onRequestClose={closeEditDialog}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEditDialog}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
+              ]}
+            />
+          </Pressable>
+
+          <View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 16 + insets.bottom },
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.danger }]}>Delete account</Text>
+              <TouchableOpacity
+                onPress={closeEditDialog}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton]}
+              >
+                <AppIcon name="close-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.sectionHint, { color: colors.textMuted, marginBottom: 12 }]}>This will permanently delete your account. Enter your password to continue.</Text>
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                isPassword
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+              <TouchableOpacity
+                onPress={confirmDeleteAccount}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Delete account"
+                style={[
+                  styles.dangerButton,
+                  { borderColor: colors.danger, backgroundColor: colors.surface },
+                  deleteLoading && { opacity: 0.75 },
+                ]}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator color={colors.danger} />
+                ) : (
+                  <Text style={[styles.dangerText, { color: colors.danger }]}>Delete account</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
+};
+
+const SettingsRow = ({
+  icon,
+  label,
+  hint,
+  tone = 'default',
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  label: string;
+  hint?: string;
+  tone?: 'default' | 'danger';
+  onPress: () => void;
+}) => {
+  const { colors } = useTheme();
+  const accentColor = tone === 'danger' ? colors.danger : colors.secondary;
+  const labelColor = tone === 'danger' ? colors.danger : colors.text;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.settingsRow}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <View style={styles.settingsIconWrap}>
+        <AppIcon name={icon} size={18} color={accentColor} />
+      </View>
+      <View style={styles.settingsBody}>
+        <Text style={[styles.settingsLabel, { color: labelColor }]}>{label}</Text>
+        {hint ? <Text style={[styles.settingsHint, { color: colors.textMuted }]}>{hint}</Text> : null}
+      </View>
+      <AppIcon name="chevron-forward" size={18} color={tone === 'danger' ? colors.danger : colors.textMuted} />
+    </TouchableOpacity>
+  );
+};
+
+const SettingsDivider = () => {
+  const { colors } = useTheme();
+  return <View style={[styles.settingsDivider, { backgroundColor: colors.border }]} />;
 };
 
 const KeyValueRow = ({
@@ -965,6 +1090,40 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 14,
     paddingBottom: 30,
+  },
+  settingsList: {
+    borderWidth: 1,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  settingsIconWrap: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsBody: {
+    flex: 1,
+  },
+  settingsLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  settingsHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  settingsDivider: {
+    height: 1,
+    marginLeft: 54,
   },
   row: {
     flexDirection: 'row',
