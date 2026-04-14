@@ -25,7 +25,7 @@ interface StudentDashboardScreenProps {
 }
 
 const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
-const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
 
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
@@ -335,7 +335,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
                     name={item.name}
                     status={item.available === false ? 'Unavailable' : 'Available'}
                     level={item.level || '—'}
-                    price={`₦${item.price?.toLocaleString?.() ?? ''}`}
+                    price={`₦ ${item.price?.toLocaleString?.() ?? ''}`}
                     marked={has(item.id)}
                     onAdd={item.available === false ? undefined : () => toggle(item)}
                     onShare={() => shareMaterial(item)}

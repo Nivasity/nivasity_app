@@ -16,7 +16,7 @@ type WalletTransactionReceiptScreenProps = {
 };
 
 const sanitizeFilePart = (value: string) => value.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 80);
-const formatMoney = (value?: number) => `₦${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value?: number) => `₦ ${Number(value || 0).toLocaleString()}`;
 const formatDate = (value?: string) => {
   if (!value) return 'Unknown';
   const date = new Date(value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value);

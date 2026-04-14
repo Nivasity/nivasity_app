@@ -490,7 +490,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <View style={styles.statsRow}>
             <Stat value={String(stats?.totalOrders ?? 0)} label="Materials bought" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value={stats ? `₦${(stats.totalSpent ?? 0).toLocaleString()}` : '₦0'} label="Total spent" />
+            <Stat value={stats ? `₦ ${(stats.totalSpent ?? 0).toLocaleString()}` : '₦ 0'} label="Total spent" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <Stat value={user?.admissionYear ? (/^\d{4}$/.test(user.admissionYear) ? `${user.admissionYear}/${Number(user.admissionYear) + 1}` : user.admissionYear) : 'Not set'} label="Academic Year" />
           </View>

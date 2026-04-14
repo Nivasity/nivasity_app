@@ -220,7 +220,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         name={material.name}
         status={isAvailable ? 'Available' : 'Unavailable'}
         level={material.level || '—'}
-        price={`₦${material.price.toLocaleString()}`}
+        price={`₦ ${material.price.toLocaleString()}`}
         marked={inCart}
         onAdd={isAvailable ? () => toggle(material) : undefined}
         onShare={() => shareProduct(material)}

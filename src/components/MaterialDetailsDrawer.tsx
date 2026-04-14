@@ -57,7 +57,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
   }, [product?.faculty, product?.hostFacultyName]);
   const price = useMemo(() => {
     if (!product) return '';
-    return `₦${product.price.toLocaleString()}`;
+    return `₦ ${product.price.toLocaleString()}`;
   }, [product]);
 
   return (

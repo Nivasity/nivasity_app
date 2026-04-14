@@ -21,7 +21,7 @@ interface CheckoutScreenProps {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
 
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -385,18 +385,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
                   {item.courseCode || item.category || item.name}
                 </Text>
                 <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  Qty {item.quantity} · ₦{item.price.toLocaleString()}
+                  Qty {item.quantity} · ₦ {item.price.toLocaleString()}
                 </Text>
               </View>
               <Text style={[styles.itemTotal, { color: colors.text }]}>
-                ₦{(item.price * item.quantity).toLocaleString()}
+                ₦ {(item.price * item.quantity).toLocaleString()}
               </Text>
             </View>
           ))}
         </View>
 
         <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TotalRow label="Subtotal" value={`₦${subtotal.toLocaleString()}`} />
+          <TotalRow label="Subtotal" value={`₦ ${subtotal.toLocaleString()}`} />
           <TotalRow label={paymentMethod === 'wallet' ? 'Wallet fee' : 'Handling Fee'} value={paymentMethod === 'wallet' ? formatMoney(walletFee) : formatMoney(handlingFee)} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <TotalRow label="Total" value={paymentMethod === 'wallet' ? formatMoney(walletTotal || subtotal) : formatMoney(total)} bold />

@@ -14,7 +14,7 @@ type WalletFundScreenProps = {
   navigation: any;
 };
 
-const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
 
 const WalletFundScreen: React.FC<WalletFundScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();

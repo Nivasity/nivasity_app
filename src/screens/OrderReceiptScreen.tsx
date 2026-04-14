@@ -275,7 +275,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           <View style={styles.totalRow}>
             <AppText style={[styles.totalLabel, { color: colors.textMuted }]}>Total</AppText>
             <AppText style={[styles.totalValue, { color: colors.text }]}>
-              ₦{order.total.toLocaleString()}
+              ₦ {order.total.toLocaleString()}
             </AppText>
           </View>
 
@@ -351,11 +351,11 @@ const LineItem = ({ item }: { item: CartItem }) => {
           {item.courseCode || item.category || item.name}
         </AppText>
         <AppText style={[styles.lineSub, { color: colors.textMuted }]} numberOfLines={1}>
-          Qty {item.quantity} • ₦{item.price.toLocaleString()}
+          Qty {item.quantity} • ₦ {item.price.toLocaleString()}
         </AppText>
       </View>
       <AppText style={[styles.lineTotal, { color: colors.text }]} numberOfLines={1}>
-        ₦{lineTotal.toLocaleString()}
+        ₦ {lineTotal.toLocaleString()}
       </AppText>
     </View>
   );

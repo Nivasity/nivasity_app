@@ -45,7 +45,7 @@ const OrderListItem: React.FC<OrderListItemProps> = ({ order, onPress }) => {
       </View>
       <View>
         <Text style={[styles.orderAmount, { color: colors.text }]} numberOfLines={1}>
-          ₦{order.total.toLocaleString()}
+          ₦ {order.total.toLocaleString()}
         </Text>
       </View>
     </TouchableOpacity>

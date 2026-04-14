@@ -105,7 +105,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         </View>
         <View>
           <Text style={[styles.orderAmount, { color: colors.text }]} numberOfLines={1}>
-            ₦{item.total.toLocaleString()}
+            ₦ {item.total.toLocaleString()}
           </Text>
         </View>
       </TouchableOpacity>
