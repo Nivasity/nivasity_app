@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "310503296847-97hk6jnt3celij3of2mocmjremh8vct4.apps.googleusercontent.com",
+          "client_id": "310503296847-um9o3t18ekvcgmhccgn8r5lvk4v6u8oe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nivasity.app",
+            "certificate_hash": "1f0dbe3a996f928831ff7b752631ceaaa9a4465a"
+          }
+        },
+        {
+          "client_id": "310503296847-kscreve4b97j83ehmkcucsrpq2a4407e.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
