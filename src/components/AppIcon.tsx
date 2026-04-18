@@ -13,6 +13,7 @@ export type AppIconName =
   | 'arrow-up'
   | 'arrow-up-outline'
   | 'chevron-forward'
+  | 'chevron-down'
   | 'logo-google'
   | 'logo-whatsapp'
   | 'checkmark'
