@@ -23,7 +23,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nivasity.app"
+      "bundleIdentifier": "com.nivasity.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -106,7 +112,8 @@
         "expo-build-properties",
         {
           "android": {
-            "enableProguardInReleaseBuilds": true
+            "enableProguardInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
