@@ -298,8 +298,7 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     if (!accountData.lastName?.trim()) nextErrors.lastName = 'Last name is required';
 
     const phoneDigits = phoneData.phoneNumber.replace(/[^\d]/g, '');
-    if (!phoneDigits) nextErrors.phoneNumber = 'Phone number is required';
-    else if (phoneDigits.length < 7) nextErrors.phoneNumber = 'Phone number is too short';
+    if (phoneDigits && phoneDigits.length < 7) nextErrors.phoneNumber = 'Phone number is too short';
 
     setAccountErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -309,7 +308,8 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
     if (!validateAccount()) return;
     const firstName = (accountData.firstName || '').trim();
     const lastName = (accountData.lastName || '').trim();
-    const phone = normalizePhone(phoneData.callingCode, phoneData.phoneNumber);
+    const phoneDigits = phoneData.phoneNumber.replace(/[^\d]/g, '');
+    const phone = phoneDigits ? normalizePhone(phoneData.callingCode, phoneData.phoneNumber) : '';
     await saveProfilePatch(
       { firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone },
       'Account settings updated.'

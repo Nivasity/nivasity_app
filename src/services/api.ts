@@ -480,15 +480,16 @@ export const authAPI = {
   },
 
   register: async (credentials: RegisterCredentials): Promise<{ message: string; data?: RegisterSuccessData }> => {
-    const payload = {
+    const payload: Record<string, any> = {
       email: credentials.email,
       password: credentials.password,
       first_name: credentials.first_name,
       last_name: credentials.last_name,
-      phone: credentials.phone,
       gender: credentials.gender,
       school_id: credentials.school_id,
     };
+    const phone = String(credentials.phone ?? '').trim();
+    if (phone) payload.phone = phone;
     const response = await api.post<ApiResponse<RegisterSuccessData>>('/auth/register.php', payload, {
       skipAuth: true,
     } as any);

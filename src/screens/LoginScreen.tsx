@@ -25,12 +25,12 @@ interface LoginScreenProps {
 
 const GOOGLE_WEB_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as string | undefined);
 const GOOGLE_ANDROID_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string | undefined);
-const GOOGLE_IOS_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string | undefined) || '';
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, loginWithGoogle } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
+  const showGoogleLogin = Platform.OS === 'android';
   const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [schoolsOpen, setSchoolsOpen] = useState(false);
@@ -79,12 +79,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   }, [loadSchools, schools.length, schoolsOpen]);
 
   useEffect(() => {
+    if (!showGoogleLogin) return;
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
-      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
       profileImageSize: 120,
     });
-  }, []);
+  }, [showGoogleLogin]);
 
   const validate = (): boolean => {
     const newErrors: Partial<LoginCredentials> = {};
@@ -117,35 +117,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleGoogleLogin = async () => {
     try {
+      if (!showGoogleLogin) return;
       setPendingGoogleTokens(null);
       setSelectedSchool('');
-      if (Platform.OS === 'web') {
-        appMessage.alert({
-          title: 'Google Login',
-          message: 'Native Google sign-in popup is available on Android and iOS builds.',
-        });
-        return;
-      }
 
-      const expectedClientId = Platform.select({
-        android: GOOGLE_ANDROID_CLIENT_ID,
-        ios: GOOGLE_IOS_CLIENT_ID,
-        web: GOOGLE_WEB_CLIENT_ID,
-        default: GOOGLE_WEB_CLIENT_ID,
-      });
+      const expectedClientId = GOOGLE_ANDROID_CLIENT_ID;
 
       if (!expectedClientId) {
         appMessage.alert({
           title: 'Google Login Not Configured',
-          message: 'Missing Google client id. Set EXPO_PUBLIC_GOOGLE_*_CLIENT_ID env vars.',
-        });
-        return;
-      }
-
-      if (Platform.OS === 'ios' && !GOOGLE_IOS_CLIENT_ID) {
-        appMessage.alert({
-          title: 'Google Login Not Configured',
-          message: 'Missing iOS client id. Set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.',
+          message: 'Missing Android Google client id. Set EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID.',
         });
         return;
       }
@@ -256,25 +237,29 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   return (
     <>
       <AuthScaffold navigation={navigation} title="Welcome back!">
-        <TouchableOpacity
-          onPress={handleGoogleLogin}
-          disabled={loading || googleLoading}
-          style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with Google"
-          activeOpacity={0.9}
-        >
-          <Image source={require('../../assets/icons/google.png')} style={styles.googleIcon} resizeMode="contain" />
-          <AppText style={[styles.googleText, { color: colors.text }]}>
-            {googleLoading ? 'Signing in...' : 'Continue with Google'}
-          </AppText>
-        </TouchableOpacity>
+        {showGoogleLogin ? (
+          <>
+            <TouchableOpacity
+              onPress={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
+              activeOpacity={0.9}
+            >
+              <Image source={require('../../assets/icons/google.png')} style={styles.googleIcon} resizeMode="contain" />
+              <AppText style={[styles.googleText, { color: colors.text }]}>
+                {googleLoading ? 'Signing in...' : 'Continue with Google'}
+              </AppText>
+            </TouchableOpacity>
 
-        <View style={styles.dividerRow}>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        </View>
+            <View style={styles.dividerRow}>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <AppText style={[styles.dividerText, { color: colors.textMuted }]}>or continue with</AppText>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            </View>
+          </>
+        ) : null}
 
         <Input
           label="Email"

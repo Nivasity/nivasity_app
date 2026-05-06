@@ -23,8 +23,8 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   first_name: string;
   last_name: string;
-  phone: string;
-  gender?: 'female' | 'male';
+  phone?: string;
+  gender: 'female' | 'male';
   email: string;
   password: string;
   school_id: number;

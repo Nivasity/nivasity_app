@@ -99,8 +99,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     if (!form.schoolId) newErrors.school = 'School is required';
 
     const phoneDigits = form.phoneNumber.replace(/[^\d]/g, '');
-    if (!phoneDigits) newErrors.phoneNumber = 'Phone number is required';
-    else if (phoneDigits.length < 7) newErrors.phoneNumber = 'Phone number is too short';
+    if (phoneDigits && phoneDigits.length < 7) newErrors.phoneNumber = 'Phone number is too short';
 
     if (!form.gender) newErrors.gender = 'Select your gender';
 
@@ -121,15 +120,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
+      const phoneDigits = form.phoneNumber.replace(/[^\d]/g, '');
       const payload: RegisterCredentials = {
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
-        phone: normalizePhone(form.callingCode, form.phoneNumber),
-        gender: form.gender ?? undefined,
+        gender: form.gender as 'female' | 'male',
         email: form.email.trim(),
         password: form.password,
         school_id: form.schoolId as number,
       };
+      if (phoneDigits) {
+        payload.phone = normalizePhone(form.callingCode, form.phoneNumber);
+      }
       const res = await register(payload);
       appMessage.toast({
         status: 'success',
@@ -212,9 +214,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         }
         onChangePhoneNumber={(phoneNumber) => setForm((s) => ({ ...s, phoneNumber }))}
       />
+      <AppText style={[styles.optionalNote, { color: colors.textMuted }]}>Phone number is optional.</AppText>
 
       <View style={styles.genderWrap}>
         <View style={styles.genderHeader}>
+          <AppText style={[styles.genderLabel, { color: colors.textMuted }]}>Gender</AppText>
           {errors.gender ? (
             <AppText style={[styles.genderError, { color: colors.danger }]}>{errors.gender}</AppText>
           ) : null}
@@ -326,6 +330,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  optionalNote: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 12,
+  },
   genderWrap: {
     marginBottom: 12,
   },
@@ -333,14 +343,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+  genderLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   genderError: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   genderRow: {
