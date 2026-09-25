@@ -810,16 +810,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={closeEditDialog}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />
@@ -858,16 +858,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={closeEditDialog}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />
@@ -906,16 +906,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={closeEditDialog}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />
@@ -985,16 +985,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={closeEditDialog}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />
@@ -1060,16 +1060,16 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={closeEditDialog}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />

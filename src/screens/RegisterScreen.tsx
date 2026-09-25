@@ -6,6 +6,7 @@ import {
   HelperText,
   TextInput as PaperTextInput,
 } from 'react-native-paper';
+import * as WebBrowser from 'expo-web-browser';
 import AuthScaffold from '../components/auth/AuthScaffold';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
@@ -18,6 +19,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { RegisterCredentials } from '../types';
 import { normalizePhone } from '../utils/phone';
 import { referenceAPI } from '../services/api';
+
+const TERMS_URL = 'https://nivasity.com/terms';
 
 interface RegisterScreenProps {
   navigation: any;
@@ -285,7 +288,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           />
         </View>
         <AppText style={[styles.termsText, { color: colors.textMuted }]}>
-          I agree to the <AppText style={[styles.link, { color: colors.accent }]}>Terms and Conditions</AppText>
+          I agree to the{' '}
+          <AppText
+            style={[styles.link, { color: colors.accent }]}
+            onPress={() => void WebBrowser.openBrowserAsync(TERMS_URL, { controlsColor: colors.accent })}
+          >
+            Terms and Conditions
+          </AppText>
         </AppText>
       </TouchableOpacity>
       {errors.acceptedTerms ? (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useAppFonts } from './src/theme/useAppFonts';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,7 @@ import { AppMessageProvider } from './src/contexts/AppMessageContext';
 import { NotificationsProvider } from './src/contexts/NotificationsContext';
 import { WalletProvider } from './src/contexts/WalletContext';
 import AppUpdateGate from './src/components/AppUpdateGate';
+import { initOtaUpdateCheck } from './src/utils/otaUpdates';
 
 export default function App() {
   const [fontsLoaded] = useAppFonts();
@@ -39,6 +40,15 @@ export default function App() {
 
 const AppRoot = () => {
   const { isDark, colors } = useTheme();
+
+  // OTA (expo-updates) check - independent of auth state, unlike the
+  // store-version check in AppUpdateGate. See src/utils/otaUpdates.ts:
+  // checks + silently prefetches a newer JS bundle on cold start and on
+  // every foreground return, never reloads mid-session.
+  useEffect(() => {
+    return initOtaUpdateCheck();
+  }, []);
+
   const paperTheme = React.useMemo(() => {
     const base = isDark ? MD3DarkTheme : MD3LightTheme;
     return {

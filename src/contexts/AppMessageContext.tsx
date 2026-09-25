@@ -184,16 +184,16 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
       >
         <View style={styles.modalRoot}>
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={dialog.dismissable ? closeDialog : undefined}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />
@@ -245,7 +245,7 @@ export const AppMessageProvider = ({ children }: { children: ReactNode }) => {
       </Modal>
 
       {toast.visible ? (
-        <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
           <View
             style={[
               styles.toastWrap,

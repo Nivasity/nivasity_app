@@ -64,7 +64,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -72,12 +72,12 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
           <BlurView
             intensity={28}
             tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View
             pointerEvents="none"
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
             ]}
           />

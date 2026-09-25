@@ -5,21 +5,16 @@
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "jsEngine": "hermes",
     "scheme": [
       "nivasity",
       "com.googleusercontent.apps.310503296847-4j1g6dsfrhsmc04tm8pcmd5hi7hpugp2"
     ],
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+    "runtimeVersion": {
+      "policy": "fingerprint"
     },
-    "notification": {
-      "icon": "./assets/icon.png",
-      "color": "#ff9100"
+    "updates": {
+      "url": "https://u.expo.dev/ac24fe56-635d-4bc0-a199-1529415e980e"
     },
     "ios": {
       "supportsTablet": true,
@@ -88,7 +83,6 @@
           ]
         }
       ],
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
@@ -101,7 +95,13 @@
     },
     "plugins": [
       "expo-font",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ff9100"
+        }
+      ],
       "expo-web-browser",
       [
         "@react-native-google-signin/google-signin",
@@ -126,7 +126,17 @@
           }
         }
       ],
-      "@react-native-firebase/app"
+      "@react-native-firebase/app",
+      "expo-sharing",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"

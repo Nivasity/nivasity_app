@@ -135,12 +135,12 @@ const AcademicDetailsDialog = () => {
         onRequestClose={dismissAcademicPrompt}
       >
         <View style={styles.modalRoot}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={dismissAcademicPrompt}>
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={dismissAcademicPrompt}>
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />

@@ -46,7 +46,7 @@ export default function AuthScaffold({
         <View
           pointerEvents="none"
           style={[
-            StyleSheet.absoluteFillObject,
+            StyleSheet.absoluteFill,
             {
               backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'transparent',
             },

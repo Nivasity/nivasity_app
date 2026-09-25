@@ -324,16 +324,16 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
           keyboardVerticalOffset={0}
         >
           <Pressable
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onPress={() => setComposeVisible(false)}
             accessibilityRole="button"
             accessibilityLabel="Close new ticket"
           >
-            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)' },
               ]}
             />

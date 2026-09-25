@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

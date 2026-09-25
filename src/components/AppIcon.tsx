@@ -63,7 +63,8 @@ export type AppIconName =
   // Order status icons
   | 'checkmark-circle-outline'
   | 'close-circle-outline'
-  | 'refresh-circle-outline';
+  | 'refresh-circle-outline'
+  | 'ellipse-outline';
 
 export default function AppIcon({
   name,

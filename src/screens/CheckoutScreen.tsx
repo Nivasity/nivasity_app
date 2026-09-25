@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -35,6 +35,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
+  const [gatewayEnabled, setGatewayEnabled] = useState(true);
   const [handlingFee, setHandlingFee] = useState(0);
   const [walletFee, setWalletFee] = useState(0);
   const [walletTotal, setWalletTotal] = useState(0);
@@ -51,6 +52,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       .then((res) => {
         if (!mounted) return;
         setGateway((res.active || '').trim().toLowerCase() || null);
+        const enabled = res.gateway_enabled !== false;
+        setGatewayEnabled(enabled);
+        if (!enabled) {
+          setPaymentMethod((current) => (current === 'gateway' ? 'wallet' : current));
+        }
       })
       .catch(() => {
         if (!mounted) return;
@@ -227,6 +233,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       return;
     }
 
+    if (!gatewayEnabled) {
+      appMessage.alert({ title: 'Gateway unavailable', message: 'Gateway payments are currently paused. Please pay with wallet.' });
+      return;
+    }
+
     setLoading(true);
     setPaymentOverlay(true);
     try {
@@ -332,39 +343,41 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
             ) : null}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setPaymentMethod('gateway')}
-            activeOpacity={0.88}
-            style={[
-              styles.methodCard,
-              { backgroundColor: colors.surface, borderColor: paymentMethod === 'gateway' ? colors.accent : colors.border },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Pay with gateway"
-          >
-            <View style={styles.methodHeader}>
-              <View style={[styles.methodIcon, { backgroundColor: colors.surfaceAlt }]}>
-                <AppIcon name="cash-outline" size={18} color={supportColor} />
+          {gatewayEnabled ? (
+            <TouchableOpacity
+              onPress={() => setPaymentMethod('gateway')}
+              activeOpacity={0.88}
+              style={[
+                styles.methodCard,
+                { backgroundColor: colors.surface, borderColor: paymentMethod === 'gateway' ? colors.accent : colors.border },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Pay with gateway"
+            >
+              <View style={styles.methodHeader}>
+                <View style={[styles.methodIcon, { backgroundColor: colors.surfaceAlt }]}>
+                  <AppIcon name="cash-outline" size={18} color={supportColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.methodTitle, { color: colors.text }]}>Gateway</Text>
+                  <Text style={[styles.methodMeta, { color: colors.textMuted }]}>
+                    {gateway ? gateway.charAt(0).toUpperCase() + gateway.slice(1) : 'Online payment'}
+                  </Text>
+                </View>
+                <View style={styles.methodAmountWrap}>
+                  <Text style={[styles.methodAmountLabel, { color: colors.textMuted }]}>Total</Text>
+                  <Text style={[styles.methodAmountValue, { color: colors.text }]}>
+                    {formatMoney(total)}
+                  </Text>
+                </View>
+                <AppIcon
+                  name={paymentMethod === 'gateway' ? 'checkmark-circle-outline' : 'ellipse-outline'}
+                  size={20}
+                  color={paymentMethod === 'gateway' ? colors.accent : colors.textMuted}
+                />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.methodTitle, { color: colors.text }]}>Gateway</Text>
-                <Text style={[styles.methodMeta, { color: colors.textMuted }]}>
-                  {gateway ? gateway.charAt(0).toUpperCase() + gateway.slice(1) : 'Online payment'}
-                </Text>
-              </View>
-              <View style={styles.methodAmountWrap}>
-                <Text style={[styles.methodAmountLabel, { color: colors.textMuted }]}>Total</Text>
-                <Text style={[styles.methodAmountValue, { color: colors.text }]}>
-                  {formatMoney(total)}
-                </Text>
-              </View>
-              <AppIcon
-                name={paymentMethod === 'gateway' ? 'checkmark-circle-outline' : 'ellipse-outline'}
-                size={20}
-                color={paymentMethod === 'gateway' ? colors.accent : colors.textMuted}
-              />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={styles.sectionHeader}>
@@ -441,7 +454,10 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
       ) : null}
 
       {pinModalVisible ? (
-        <View style={[styles.pinSheetOverlay, { backgroundColor: 'rgba(0,0,0,0.32)' }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[styles.pinSheetOverlay, { backgroundColor: 'rgba(0,0,0,0.32)' }]}
+        >
           <View style={[styles.pinSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.pinSheetTitle, { color: colors.text }]}>Wallet PIN</Text>
             <Text style={[styles.pinSheetText, { color: colors.textMuted }]}>Confirm to pay {formatMoney(walletTotal || subtotal)}.</Text>
@@ -451,7 +467,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       ) : null}
     </SafeAreaView>
   );
@@ -670,7 +686,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   paymentOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
@@ -685,7 +701,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pinSheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'flex-end',
     padding: 16,

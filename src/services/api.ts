@@ -1642,8 +1642,8 @@ export const walletAPI = {
 
 // Payment APIs (Interswitch)
 export const paymentAPI = {
-  getGateway: async (): Promise<{ active: string; available: string[] }> => {
-    const response = await api.get<ApiResponse<{ active: string; available: string[] }>>('/payment/gateway.php');
+  getGateway: async (): Promise<{ active: string; available: string[]; gateway_enabled: boolean; wallet_enabled: boolean }> => {
+    const response = await api.get<ApiResponse<{ active: string; available: string[]; gateway_enabled: boolean; wallet_enabled: boolean }>>('/payment/gateway.php');
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Failed to load payment gateway');
     }
