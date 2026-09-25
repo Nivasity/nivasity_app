@@ -37,7 +37,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [paymentOverlay, setPaymentOverlay] = useState(false);
   const [gateway, setGateway] = useState<string | null>(null);
-  const [gatewayEnabled, setGatewayEnabled] = useState(true);
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
   const [handlingFee, setHandlingFee] = useState(0);
   const [walletFee, setWalletFee] = useState(0);
   const [walletTotal, setWalletTotal] = useState(0);
