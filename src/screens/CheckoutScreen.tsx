@@ -42,7 +42,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const [walletFee, setWalletFee] = useState(0);
   const [walletTotal, setWalletTotal] = useState(0);
   const [walletCanPay, setWalletCanPay] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentChannel>('gateway');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentChannel>('wallet');
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [walletPin, setWalletPin] = useState('');
   const [pricingReady, setPricingReady] = useState(false);

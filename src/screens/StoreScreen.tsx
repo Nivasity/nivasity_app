@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, FlatList, RefreshControl, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button as PaperButton, Dialog, Portal } from 'react-native-paper';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
 import { useTheme } from '../contexts/ThemeContext';
@@ -68,8 +67,31 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const detailsRequestIdRef = useRef(0);
+  const filterAnim = useRef(new Animated.Value(0)).current;
+  const [filterRendered, setFilterRendered] = useState(false);
 
   const showCardsShimmer = loading && !refreshing && !loadingMore;
+
+  useEffect(() => {
+    if (filtersOpen) {
+      setFilterRendered(true);
+      Animated.timing(filterAnim, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(filterAnim, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setFilterRendered(false);
+      });
+    }
+  }, [filterAnim, filtersOpen]);
 
   useEffect(() => {
     const handle = setTimeout(() => setSearch(query.trim()), 350);
@@ -267,15 +289,113 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           />
         </View>
         <TouchableOpacity
-          onPress={() => setFiltersOpen(true)}
-          style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setFiltersOpen((current) => !current)}
+          style={[
+            styles.filterButton,
+            {
+              backgroundColor: filtersOpen ? colors.accentCard : colors.surface,
+              borderColor: filtersOpen ? colors.accent : colors.border,
+            },
+          ]}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Open filters"
+          accessibilityLabel={filtersOpen ? 'Close filters' : 'Open filters'}
+          accessibilityState={{ expanded: filtersOpen }}
         >
-          <AppIcon name="options-outline" size={25} color={colors.textMuted} />
+          <AppIcon name="options-outline" size={25} color={filtersOpen ? colors.accent : colors.textMuted} />
         </TouchableOpacity>
       </View>
+
+      {filterRendered ? (
+        <Animated.View
+          style={[
+            styles.filterDropdown,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              opacity: filterAnim,
+              transform: [
+                {
+                  translateY: filterAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-8, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.filterSection}>
+            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
+            <View style={styles.filterChips}>
+              {SORT_FILTER_OPTIONS.map((option) => {
+                const selected = sortOption === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => setSortOption(option.value)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        borderColor: selected ? colors.accent : colors.border,
+                        backgroundColor: selected ? colors.accent : 'transparent',
+                      },
+                    ]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sort by ${option.label}`}
+                    accessibilityState={{ selected }}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: selected ? colors.background : colors.text },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={[styles.filterSection, { marginBottom: 4 }]}>
+            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Level</Text>
+            <View style={styles.filterChips}>
+              {LEVEL_FILTER_OPTIONS.map((option) => {
+                const selected = levelFilter === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => setLevelFilter(option.value)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        borderColor: selected ? colors.accent : colors.border,
+                        backgroundColor: selected ? colors.accent : 'transparent',
+                      },
+                    ]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter level ${option.label}`}
+                    accessibilityState={{ selected }}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: selected ? colors.background : colors.text },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </Animated.View>
+      ) : null}
 
       <FlatList<StoreListItem>
         data={(showCardsShimmer ? SHIMMER_ITEMS : materials) as StoreListItem[]}
@@ -332,102 +452,6 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           <CheckoutFab onPress={goToCheckout} count={cartCount} total={cartTotal} />
         </View>
       )}
-
-      <Portal>
-        <Dialog
-          visible={filtersOpen}
-          onDismiss={() => setFiltersOpen(false)}
-          style={[styles.filterDialog, { backgroundColor: colors.surface }]}
-        >
-          <Dialog.Title style={[styles.filterTitle, { color: colors.text }]}>Search & Filter</Dialog.Title>
-          <Dialog.Content>
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
-              <View style={styles.filterChips}>
-                {SORT_FILTER_OPTIONS.map((option) => {
-                  const selected = sortOption === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      onPress={() => setSortOption(option.value)}
-                      style={[
-                        styles.filterChip,
-                        {
-                          borderColor: selected ? colors.accent : colors.border,
-                          backgroundColor: selected ? colors.accent : 'transparent',
-                        },
-                      ]}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Sort by ${option.label}`}
-                      accessibilityState={{ selected }}
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          { color: selected ? colors.background : colors.text },
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Level</Text>
-              <View style={styles.filterChips}>
-                {LEVEL_FILTER_OPTIONS.map((option) => {
-                  const selected = levelFilter === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      onPress={() => setLevelFilter(option.value)}
-                      style={[
-                        styles.filterChip,
-                        {
-                          borderColor: selected ? colors.accent : colors.border,
-                          backgroundColor: selected ? colors.accent : 'transparent',
-                        },
-                      ]}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Filter level ${option.label}`}
-                      accessibilityState={{ selected }}
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          { color: selected ? colors.background : colors.text },
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </Dialog.Content>
-
-          <Dialog.Actions>
-            <PaperButton
-              onPress={() => {
-                setSortOption('recommended');
-                setLevelFilter('all');
-              }}
-              textColor={colors.textMuted}
-            >
-              Reset
-            </PaperButton>
-            <PaperButton onPress={() => setFiltersOpen(false)} textColor={colors.accent}>
-              Done
-            </PaperButton>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
 
       <MaterialDetailsDrawer
         visible={detailsOpen}
@@ -579,11 +603,13 @@ const styles = StyleSheet.create({
     bottom: 96,
     alignItems: 'center',
   },
-  filterDialog: {
-    borderRadius: 20,
-  },
-  filterTitle: {
-    fontWeight: '900',
+  filterDropdown: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
   },
   filterSectionTitle: {
     fontSize: 12,
