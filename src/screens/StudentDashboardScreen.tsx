@@ -31,7 +31,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
-  const { count: cartCount, lastActionAt, has, toggle } = useCart();
+  const { count: cartCount, total: cartTotal, has, toggle } = useCart();
   const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
   const { summary, hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
   const insets = useSafeAreaInsets();
@@ -383,7 +383,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
 
       {cartCount > 0 ? (
         <View style={[styles.checkoutFabWrap, { bottom: 85 + insets.bottom }]}>
-          <CheckoutFab onPress={() => navigation.navigate('Checkout')} trigger={lastActionAt} />
+          <CheckoutFab onPress={() => navigation.navigate('Checkout')} count={cartCount} total={cartTotal} />
         </View>
       ) : null}
 

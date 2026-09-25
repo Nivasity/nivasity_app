@@ -27,9 +27,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
-  const { items: cartItemsFromContext, clear: clearCart } = useCart();
+  const { items: cartItemsFromContext, remove: removeFromCart, clear: clearCart } = useCart();
   const { summary, hasWallet, hasPin, refreshCreditsAndSummary } = useWallet();
-  const cartItems = (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext ?? [];
+  const [cartItems, setCartItems] = useState<CartItem[]>(
+    () => (route?.params?.cartItems as CartItem[] | undefined) ?? cartItemsFromContext ?? []
+  );
   const highlightColor = isDark ? colors.accentMuted : colors.secondary;
   const supportColor = isDark ? colors.accentMuted : colors.secondary;
   const [loading, setLoading] = useState(false);
@@ -253,6 +255,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
     }
   };
 
+  const handleRemoveItem = (itemId: string) => {
+    setCartItems((current) => current.filter((item) => item.id !== itemId));
+    removeFromCart(itemId);
+  };
+
   const confirmWalletPayment = async () => {
     if (walletPin.trim().length !== 4) {
       appMessage.alert({ title: 'Enter your PIN', message: 'Use your 4-digit wallet PIN.' });
@@ -404,6 +411,15 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               <Text style={[styles.itemTotal, { color: colors.text }]}>
                 ₦ {(item.price * item.quantity).toLocaleString()}
               </Text>
+              <TouchableOpacity
+                onPress={() => handleRemoveItem(item.id)}
+                style={styles.itemRemoveBtn}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${item.name} from order`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <AppIcon name="close-outline" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -652,6 +668,13 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  itemRemoveBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   totalCard: {
     borderWidth: 1,

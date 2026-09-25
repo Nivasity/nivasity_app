@@ -47,7 +47,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const insets = useSafeAreaInsets();
-  const { items: cartItems, count: cartCount, lastActionAt, has, toggle } = useCart();
+  const { items: cartItems, count: cartCount, total: cartTotal, has, toggle } = useCart();
   const [materials, setMaterials] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<{
     total: number;
@@ -329,7 +329,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
 
       {cartCount > 0 && (
         <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 85 + insets.bottom }]}>
-          <CheckoutFab onPress={goToCheckout} trigger={lastActionAt} />
+          <CheckoutFab onPress={goToCheckout} count={cartCount} total={cartTotal} />
         </View>
       )}
 

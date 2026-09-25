@@ -1,83 +1,71 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
 
 type CheckoutFabProps = {
   onPress: () => void;
   style?: ViewStyle;
-  trigger?: number;
-  autoHideMs?: number;
+  count?: number;
+  total?: number;
   hiddenOffset?: number;
 };
 
-const CheckoutFab: React.FC<CheckoutFabProps> = ({
-  onPress,
-  style,
-  trigger,
-  autoHideMs = 5000,
-  hiddenOffset = 90,
-}) => {
+const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
+
+// A persistent docked bar, not a toast - it stays up for as long as the
+// cart has items and only slides away once it's empty, so it's always
+// there to tap rather than something you have to catch within a few
+// seconds of adding an item.
+const CheckoutFab: React.FC<CheckoutFabProps> = ({ onPress, style, count = 0, total = 0, hiddenOffset = 90 }) => {
   const { colors, isDark } = useTheme();
-  const [hidden, setHidden] = useState(true);
-  const translateY = useRef(new Animated.Value(hiddenOffset)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rendered, setRendered] = useState(count > 0);
+  const translateY = useRef(new Animated.Value(count > 0 ? 0 : hiddenOffset)).current;
+  const opacity = useRef(new Animated.Value(count > 0 ? 1 : 0)).current;
   const backgroundColor = isDark ? colors.accentMuted : colors.secondary;
 
-  const show = useCallback(() => {
-    setHidden(false);
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [opacity, translateY]);
-
-  const hide = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: hiddenOffset,
-        duration: 260,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished) setHidden(true);
-    });
-  }, [hiddenOffset, opacity, translateY]);
-
-  const scheduleHide = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(hide, autoHideMs);
-  }, [autoHideMs, hide]);
-
   useEffect(() => {
-    show();
-    scheduleHide();
-    return () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-    };
-  }, [scheduleHide, show, trigger]);
+    if (count > 0) {
+      setRendered(true);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: hiddenOffset,
+          duration: 220,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 180,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setRendered(false);
+      });
+    }
+  }, [count, hiddenOffset, opacity, translateY]);
+
+  if (!rendered) return null;
 
   return (
     <Animated.View
-      pointerEvents={hidden ? 'none' : 'auto'}
+      pointerEvents={count > 0 ? 'auto' : 'none'}
       style={[
         {
           transform: [{ translateY }],
@@ -88,30 +76,66 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({
     >
       <TouchableOpacity
         onPress={onPress}
-        style={[styles.button, { backgroundColor, borderColor: colors.border }]}
+        style={[styles.bar, { backgroundColor, borderColor: colors.border }]}
         activeOpacity={0.9}
         accessibilityRole="button"
-        accessibilityLabel="Go to checkout"
+        accessibilityLabel={`Go to checkout, ${count} item${count === 1 ? '' : 's'}`}
       >
-        <AppIcon name="cart-outline" size={20} color={colors.onAccent} />
-        <Text style={[styles.label, { color: colors.onAccent }]}>Checkout Now</Text>
+        <View style={styles.left}>
+          <View style={[styles.badge, { backgroundColor: colors.onAccent }]}>
+            <Text style={[styles.badgeText, { color: backgroundColor }]}>{count}</Text>
+          </View>
+          <Text style={[styles.label, { color: colors.onAccent }]}>
+            {count === 1 ? '1 item' : `${count} items`}
+          </Text>
+        </View>
+        <View style={styles.right}>
+          <Text style={[styles.total, { color: colors.onAccent }]}>{formatMoney(total)}</Text>
+          <AppIcon name="chevron-forward" size={16} color={colors.onAccent} />
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
+  bar: {
     minHeight: 56,
     borderRadius: 999,
     paddingHorizontal: 18,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     flexDirection: 'row',
     gap: 10,
     borderWidth: 1,
   },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
   label: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  total: {
     fontSize: 14,
     fontWeight: '800',
   },
