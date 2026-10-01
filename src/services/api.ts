@@ -1627,6 +1627,24 @@ export const walletAPI = {
     };
   },
 
+  // No email code: a first PIN is created directly; changing a PIN needs the current one.
+  // A forgotten PIN still uses sendPinCode -> verifyPinCode -> savePin (older app versions use that flow too).
+  setPinDirect: async (args: { pin: string; confirmPin: string; currentPin?: string }): Promise<{ status: string; hasPin: boolean }> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/pin.php', {
+      action: 'set_pin_direct',
+      pin: args.pin,
+      confirm_pin: args.confirmPin,
+      ...(args.currentPin ? { current_pin: args.currentPin } : {}),
+    });
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to save wallet PIN');
+    }
+    return {
+      status: String(response.data.data.status ?? 'saved'),
+      hasPin: Boolean(response.data.data.has_pin),
+    };
+  },
+
   refreshCredits: async (): Promise<{ status: string; processed: number; posted: number }> => {
     const response = await api.post<ApiResponse<any>>('/wallet/refresh-credits.php', {});
     if (response.data.status !== 'success' || !response.data.data) {

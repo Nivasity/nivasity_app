@@ -20,14 +20,18 @@ const WalletPinScreen: React.FC<WalletPinScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
   const appMessage = useAppMessage();
   const { hasWallet, hasPin, refreshSummary, createWallet } = useWallet();
-  const [step, setStep] = useState<'request' | 'verify' | 'save'>('request');
+  // 'direct': create a PIN (no email code) or change it with the current PIN.
+  // 'request' | 'verify' | 'save': forgot-PIN reset with an email code.
+  const [step, setStep] = useState<'direct' | 'request' | 'verify' | 'save'>('direct');
   const [code, setCode] = useState('');
   const [pinToken, setPinToken] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isResetFlow = step !== 'direct';
 
   useFocusEffect(
     useCallback(() => {
@@ -78,7 +82,26 @@ const WalletPinScreen: React.FC<WalletPinScreenProps> = ({ navigation }) => {
     }
   };
 
+  const startReset = () => {
+    setStep('request');
+    setCode('');
+    setPin('');
+    setConfirmPin('');
+  };
+
+  const cancelReset = () => {
+    setStep('direct');
+    setPinToken('');
+    setCurrentPin('');
+    setPin('');
+    setConfirmPin('');
+  };
+
   const handleSavePin = async () => {
+    if (step === 'direct' && hasPin && currentPin.length !== 4) {
+      appMessage.alert({ title: 'Enter your current PIN', message: 'Type your current 4-digit PIN to change it.' });
+      return;
+    }
     if (pin.length !== 4 || confirmPin.length !== 4) {
       appMessage.alert({ title: 'Enter a 4-digit PIN', message: 'Both fields must be 4 digits.' });
       return;
@@ -90,12 +113,18 @@ const WalletPinScreen: React.FC<WalletPinScreenProps> = ({ navigation }) => {
 
     setSaving(true);
     try {
-      await walletAPI.savePin({ pinToken, pin, confirmPin });
+      if (step === 'direct') {
+        await walletAPI.setPinDirect({ pin, confirmPin, currentPin: hasPin ? currentPin : undefined });
+      } else {
+        await walletAPI.savePin({ pinToken, pin, confirmPin });
+      }
       await refreshSummary();
       appMessage.toast({ status: 'success', message: hasPin ? 'PIN updated' : 'PIN saved' });
       navigation.goBack();
     } catch (error: any) {
+      // Covers wrong current PIN and the 30-minute lockout after repeated wrong PINs.
       appMessage.alert({ title: 'Could not save PIN', message: error?.message || 'Please try again.' });
+      setCurrentPin('');
     } finally {
       setSaving(false);
     }
@@ -126,7 +155,34 @@ const WalletPinScreen: React.FC<WalletPinScreenProps> = ({ navigation }) => {
           </View>
         ) : null}
 
-        {hasWallet ? (
+        {hasWallet && step === 'direct' ? (
+          <View style={[styles.stepCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.stepBody}>
+              <AppText style={[styles.stepTitle, { color: colors.text }]}>{hasPin ? 'Change your PIN' : 'Choose your PIN'}</AppText>
+              <AppText style={[styles.stepText, { color: colors.textMuted }]}>
+                {hasPin ? 'Enter your current PIN, then pick a new one.' : 'Keep it short, private, and easy to remember.'}
+              </AppText>
+              {hasPin ? (
+                <>
+                  <AppText style={[styles.pinLabel, { color: colors.textMuted }]}>Current PIN</AppText>
+                  <OtpInput value={currentPin} onChange={setCurrentPin} length={4} variant="pin" secureTextEntry autoFocus />
+                </>
+              ) : null}
+              <AppText style={[styles.pinLabel, { color: colors.textMuted }]}>New PIN</AppText>
+              <OtpInput value={pin} onChange={setPin} length={4} variant="pin" secureTextEntry autoFocus={!hasPin} />
+              <AppText style={[styles.pinLabel, { color: colors.textMuted }]}>Confirm PIN</AppText>
+              <OtpInput value={confirmPin} onChange={setConfirmPin} length={4} variant="pin" secureTextEntry />
+              <Button title={saving ? 'Saving...' : hasPin ? 'Update PIN' : 'Save PIN'} onPress={handleSavePin} disabled={saving} />
+              {hasPin ? (
+                <TouchableOpacity onPress={startReset} style={styles.linkButton} accessibilityRole="button">
+                  <AppText style={[styles.linkText, { color: colors.secondary }]}>Forgot your PIN? Reset with email code</AppText>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {hasWallet && isResetFlow ? (
           <View style={[styles.stepCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <StepChip label="1" title="Send code" active={step === 'request'} done={step !== 'request'} />
             <StepChip label="2" title="Verify" active={step === 'verify'} done={step === 'save'} />
@@ -134,9 +190,12 @@ const WalletPinScreen: React.FC<WalletPinScreenProps> = ({ navigation }) => {
 
             {step === 'request' ? (
               <View style={styles.stepBody}>
-                <AppText style={[styles.stepTitle, { color: colors.text }]}>Email verification</AppText>
+                <AppText style={[styles.stepTitle, { color: colors.text }]}>Reset with email code</AppText>
                 <AppText style={[styles.stepText, { color: colors.textMuted }]}>We’ll send a code to confirm it’s you.</AppText>
-                <Button title={sending ? 'Sending...' : hasPin ? 'Send update code' : 'Send code'} onPress={handleSendCode} disabled={sending} />
+                <Button title={sending ? 'Sending...' : 'Send code'} onPress={handleSendCode} disabled={sending} />
+                <TouchableOpacity onPress={cancelReset} style={styles.linkButton} accessibilityRole="button">
+                  <AppText style={[styles.linkText, { color: colors.secondary }]}>I remember my PIN</AppText>
+                </TouchableOpacity>
               </View>
             ) : null}
 
