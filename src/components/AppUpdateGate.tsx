@@ -48,9 +48,12 @@ const compareVersions = (left?: string | null, right?: string | null) => {
   return 0;
 };
 
+// The store build's own version comes first: after an OTA update, expoConfig.version reflects the
+// update's app.json, which can be newer than the installed binary and would skip a required update.
+// expoConfig is only a fallback where there is no native version (Expo Go / dev).
 const getInstalledVersion = () => {
   return normalizeVersion(
-    (Constants.expoConfig as any)?.version || (Constants as any)?.nativeAppVersion || (Constants as any)?.manifest2?.extra?.expoClient?.version
+    (Constants as any)?.nativeAppVersion || (Constants.expoConfig as any)?.version || (Constants as any)?.manifest2?.extra?.expoClient?.version
   );
 };
 
