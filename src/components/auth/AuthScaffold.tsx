@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import {
+  Image,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -67,7 +68,8 @@ export default function AuthScaffold({
           </TouchableOpacity>
 
           <View style={[styles.sheetWrap, { paddingBottom: 14 + insets.bottom }]}>
-            <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }, cardStyle]}>
+            <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, borderBottomColor: colors.cardLip }, cardStyle]}>
+              <Image source={require('../../../assets/image.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="Nivasity" />
               <AppText style={[styles.title, { color: colors.text }]}>{title}</AppText>
               {scrollable ? (
                 <ScrollView
@@ -115,16 +117,24 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    borderRadius: 30,
+    borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 30,
+    borderBottomWidth: 3,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 26,
+  },
+  logo: {
+    width: 120,
+    height: 34,
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 26,
+    fontWeight: '800',
     letterSpacing: -0.4,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
 });

@@ -242,7 +242,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               onPress={handleGoogleLogin}
               disabled={loading || googleLoading}
-              style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+              style={[styles.googleButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
               accessibilityRole="button"
               accessibilityLabel="Continue with Google"
               activeOpacity={0.9}
@@ -392,8 +392,8 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     width: '100%',
-    height: 52,
-    borderRadius: 20,
+    height: 50,
+    borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
