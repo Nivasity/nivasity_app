@@ -127,7 +127,17 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
                 {onPayForMates ? (
                   <Button title="Pay for Course Mates" icon="people-outline" onPress={onPayForMates} style={styles.actionButton} />
                 ) : null}
-                <Button title="Share" onPress={onShare} variant="outline" style={styles.actionButton} />
+                <Pressable
+                  onPress={onShare}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share material"
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    { borderColor: colors.border, backgroundColor: pressed ? colors.surfaceAlt : colors.surface },
+                  ]}
+                >
+                  <AppIcon name="share-social-outline" size={20} color={colors.text} />
+                </Pressable>
               </View>
             </>
           ) : null}
@@ -209,7 +219,16 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 14,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+  },
+  shareButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionButton: {
     flex: 1,
