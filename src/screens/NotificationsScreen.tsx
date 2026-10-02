@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
+import { IconButton } from '../components/ui';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -157,14 +158,16 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     const type = String(item.type || '').toLowerCase();
     const anyData: any = (item.data || {}) as any;
     const action = String(anyData.action || anyData.type || anyData.event || '').toLowerCase();
-    const icon =
-      action.includes('payment') || action.includes('order') || type.includes('payment') || type.includes('transaction')
-        ? 'receipt-outline'
-        : action.includes('support') || type.includes('support')
-          ? 'chatbubbles-outline'
-          : action.includes('material') || type.includes('material')
-            ? 'book-outline'
-            : 'notifications-outline';
+    const kind =
+      action.includes('wallet') || type.includes('wallet')
+        ? { icon: 'wallet-outline' as const, fg: colors.success, bg: colors.successSoft }
+        : action.includes('payment') || action.includes('order') || type.includes('payment') || type.includes('transaction')
+          ? { icon: 'receipt-outline' as const, fg: colors.info, bg: colors.infoSoft }
+          : action.includes('support') || type.includes('support')
+            ? { icon: 'chatbubbles-outline' as const, fg: colors.accent, bg: colors.accentSoft }
+            : action.includes('material') || type.includes('material')
+              ? { icon: 'book-outline' as const, fg: colors.secondary, bg: colors.secondary + '22' }
+              : { icon: 'notifications-outline' as const, fg: colors.textMuted, bg: colors.surfaceAlt };
 
     return (
       <TouchableOpacity
@@ -175,50 +178,30 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
         style={[
           styles.card,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: unread ? colors.accentSoft + '66' : colors.surface,
             borderColor: highlighted ? colors.accent : colors.border,
+            borderBottomColor: highlighted ? colors.accent : colors.cardLip,
           },
         ]}
       >
         <View style={styles.cardTop}>
-          <View
-            style={[
-              styles.cardIconWrap,
-              { backgroundColor: 'rgb(255, 255, 255)' },
-            ]}
-          >
-            <Image source={require('../../assets/logo.png')} style={styles.cardLogo} resizeMode="contain" />
-            {unread ? (
-              <View style={[styles.unreadDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />
-            ) : null}
+          <View style={[styles.cardIconWrap, { backgroundColor: kind.bg }]}>
+            <AppIcon name={kind.icon} size={18} color={kind.fg} />
           </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-              {item.title || 'Notification'}
-            </Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.cardTitle, { color: colors.text, fontWeight: unread ? '800' : '600' }]} numberOfLines={1}>
+                {item.title || 'Notification'}
+              </Text>
+              <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{timeLabel}</Text>
+            </View>
             {item.body ? (
-              <Text style={[styles.cardBody, { color: colors.textMuted }]} numberOfLines={2}>
+              <Text style={[styles.cardBody, { color: unread ? colors.text : colors.textMuted }]} numberOfLines={2}>
                 {item.body}
               </Text>
             ) : null}
           </View>
-        </View>
-
-        <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
-
-        <View style={styles.cardBottom}>
-          <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{timeLabel}</Text>
-          <TouchableOpacity
-            onPress={() => openNotification(item)}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="View notification"
-            style={styles.viewCta}
-          >
-            <Text style={[styles.viewCtaText, { color: colors.accent }]}>View</Text>
-            <AppIcon name="chevron-forward" size={16} color={colors.accent} />
-          </TouchableOpacity>
+          {unread ? <View style={[styles.unreadDotInline, { backgroundColor: colors.accent }]} /> : null}
         </View>
       </TouchableOpacity>
     );
@@ -227,30 +210,16 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.iconButton]}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          activeOpacity={0.85}
-        >
-          <AppIcon name="chevron-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1}>
-          Notifications
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            if (unreadCount < 1) return;
-            markAllAsRead();
-          }}
-          style={[styles.iconButton]}
-          accessibilityRole="button"
-          accessibilityLabel="Mark all as read"
-          activeOpacity={0.85}
-        >
-          <AppIcon name="checkmark" size={20} color={unreadCount > 0 ? colors.accent : colors.textMuted} />
-        </TouchableOpacity>
+        <IconButton icon="chevron-back" label="Back" onPress={() => navigation.goBack()} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1}>
+            Notifications
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+          </Text>
+        </View>
+        {unreadCount > 0 ? <Button title="Mark all read" size="sm" variant="outline" icon="checkmark-done" onPress={() => markAllAsRead()} /> : null}
       </View>
 
       <FlatList
@@ -275,13 +244,11 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
         }
         ListEmptyComponent={
           <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
-            <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <EmptyState
-                icon="notifications-outline"
-                title="No notifications yet"
-                subtitle="When something important happens, you’ll see it here."
-              />
-            </View>
+            <EmptyState
+              icon="notifications-outline"
+              title="No notifications yet"
+              subtitle="Receipts, wallet activity and support replies will show up here."
+            />
           </View>
         }
         onScrollToIndexFailed={() => undefined}
@@ -291,6 +258,17 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
 };
 
 const styles = StyleSheet.create({
+  unreadDotInline: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
   container: { flex: 1 },
   topBar: {
     paddingHorizontal: 16,
@@ -308,10 +286,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: -0.2,
+    fontSize: 22,
+    fontWeight: '800',
   },
   listContent: {
     paddingTop: 6,
@@ -348,13 +324,12 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 20,
     borderWidth: 1,
     borderBottomWidth: 3,
-    borderRadius: 24,
-    gap: 12,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   cardTop: {
     flexDirection: 'row',
@@ -362,9 +337,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -383,15 +358,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   cardTitle: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: -0.2,
   },
   cardBody: {
-    marginTop: 6,
     fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    lineHeight: 17,
+    marginTop: 2,
   },
   cardDivider: {
     height: StyleSheet.hairlineWidth,
@@ -405,7 +378,6 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     fontSize: 11,
-    fontWeight: '800',
   },
   viewCta: {
     flexDirection: 'row',
