@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   FlatList,
   RefreshControl,
+  ScrollView,
   Share,
   StyleSheet,
   TextInput,
@@ -12,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Text from '../components/AppText';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,6 +24,7 @@ import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
 import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
+import { Chip, IconButton, ScreenTitle } from '../components/ui';
 
 interface StoreScreenProps {
   navigation: any;
@@ -35,11 +35,6 @@ type SortOption = 'recommended' | 'low-high' | 'high-low';
 type LevelFilterOption = 'all' | '100' | '200' | '300' | '400' | '500';
 
 type StoreListItem = Product | { id: string; __shimmer: true };
-const SORT_FILTER_OPTIONS: Array<{ label: string; value: SortOption }> = [
-  { label: 'Recommended', value: 'recommended' },
-  { label: 'Low → High', value: 'low-high' },
-  { label: 'High → Low', value: 'high-low' },
-];
 const LEVEL_FILTER_OPTIONS: Array<{ label: string; value: LevelFilterOption }> = [
   { label: 'All levels', value: 'all' },
   { label: '100', value: '100' },
@@ -55,9 +50,8 @@ const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
 }));
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const appMessage = useAppMessage();
-  const insets = useSafeAreaInsets();
   const { items: cartItems, count: cartCount, total: cartTotal, has, toggle } = useCart();
   const [materials, setMaterials] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<{
@@ -73,37 +67,13 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const [isOffline, setIsOffline] = useState(false);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortOption, setSortOption] = useState<SortOption>('recommended');
+  // Price sorting was removed (same as the web store); the server's recommended order is used.
+  const sortOption: SortOption = 'recommended';
   const [levelFilter, setLevelFilter] = useState<LevelFilterOption>('all');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const detailsRequestIdRef = useRef(0);
-  const filterAnim = useRef(new Animated.Value(0)).current;
-  const [filterRendered, setFilterRendered] = useState(false);
-
   const showCardsShimmer = loading && !refreshing && !loadingMore;
-
-  useEffect(() => {
-    if (filtersOpen) {
-      setFilterRendered(true);
-      Animated.timing(filterAnim, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(filterAnim, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) setFilterRendered(false);
-      });
-    }
-  }, [filterAnim, filtersOpen]);
 
   useEffect(() => {
     const handle = setTimeout(() => setSearch(query.trim()), 350);
@@ -254,7 +224,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         name={material.name}
         status={isAvailable ? 'Available' : 'Unavailable'}
         level={material.level || '—'}
-        price={`₦ ${material.price.toLocaleString()}`}
+        price={`₦${material.price.toLocaleString()}`}
         marked={inCart}
         onAdd={isAvailable ? () => toggle(material) : undefined}
         onShare={() => shareProduct(material)}
@@ -267,153 +237,49 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView
-      edges={['top', 'bottom']}
+      edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Store</Text>
-        <TouchableOpacity
-          style={[styles.cartButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]}
-          onPress={goToCheckout}
-          accessibilityRole="button"
-          accessibilityLabel="Go to checkout"
-        >
-          <AppIcon name="cart-outline" size={25} color={colors.text} />
-          {cartCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.badgeText, { color: colors.background }]}>{cartCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchRow}>
+        <ScreenTitle
+          title="Store"
+          subtitle="Course materials for your department"
+          right={<IconButton icon="cart-outline" label="Go to checkout" badge={cartCount} onPress={goToCheckout} />}
+        />
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <AppIcon name="search-outline" size={18} color={colors.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search here..."
+            placeholder="Search materials"
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.text }]}
             returnKeyType="search"
             accessibilityLabel="Search store"
           />
+          {query ? (
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
+              <AppIcon name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
         </View>
-        <TouchableOpacity
-          onPress={() => setFiltersOpen((current) => !current)}
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: filtersOpen ? colors.accentCard : colors.surface,
-              borderColor: filtersOpen ? colors.accent : colors.border,
-            },
-          ]}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={filtersOpen ? 'Close filters' : 'Open filters'}
-          accessibilityState={{ expanded: filtersOpen }}
-        >
-          <AppIcon name="options-outline" size={25} color={filtersOpen ? colors.accent : colors.textMuted} />
-        </TouchableOpacity>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levels}>
+          {LEVEL_FILTER_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.value === 'all' ? option.label : `${option.label} level`}
+              active={levelFilter === option.value}
+              onPress={() => setLevelFilter(option.value)}
+            />
+          ))}
+        </ScrollView>
       </View>
-
-      {filterRendered ? (
-        <Animated.View
-          style={[
-            styles.filterDropdown,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              opacity: filterAnim,
-              transform: [
-                {
-                  translateY: filterAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-8, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.filterSection}>
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Sort by</Text>
-            <View style={styles.filterChips}>
-              {SORT_FILTER_OPTIONS.map((option) => {
-                const selected = sortOption === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => setSortOption(option.value)}
-                    style={[
-                      styles.filterChip,
-                      {
-                        borderColor: selected ? colors.accent : colors.border,
-                        backgroundColor: selected ? colors.accent : 'transparent',
-                      },
-                    ]}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Sort by ${option.label}`}
-                    accessibilityState={{ selected }}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        { color: selected ? colors.background : colors.text },
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.filterSection, { marginBottom: 4 }]}>
-            <Text style={[styles.filterSectionTitle, { color: colors.textMuted }]}>Level</Text>
-            <View style={styles.filterChips}>
-              {LEVEL_FILTER_OPTIONS.map((option) => {
-                const selected = levelFilter === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => setLevelFilter(option.value)}
-                    style={[
-                      styles.filterChip,
-                      {
-                        borderColor: selected ? colors.accent : colors.border,
-                        backgroundColor: selected ? colors.accent : 'transparent',
-                      },
-                    ]}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Filter level ${option.label}`}
-                    accessibilityState={{ selected }}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        { color: selected ? colors.background : colors.text },
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </Animated.View>
-      ) : null}
 
       <FlatList<StoreListItem>
         data={(showCardsShimmer ? SHIMMER_ITEMS : materials) as StoreListItem[]}
         renderItem={({ item }) => ('__shimmer' in item ? <StoreCardShimmer /> : renderProduct(item))}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 30 + insets.bottom }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: cartCount > 0 ? 100 : 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -460,7 +326,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
       />
 
       {cartCount > 0 && (
-        <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 85 + insets.bottom }]}>
+        <View style={[styles.footer, { backgroundColor: 'transparent', bottom: 12 }]}>
           <CheckoutFab onPress={goToCheckout} count={cartCount} total={cartTotal} />
         </View>
       )}
@@ -485,16 +351,12 @@ const StoreCardShimmer = () => {
   const { colors } = useTheme();
   return (
     <View style={[styles.cardShimmerWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-      <View style={styles.cardShimmerHeader}>
-        <ShimmerBlock height={18} width="68%" radius={10} />
-        <ShimmerBlock height={14} width="38%" radius={10} style={{ marginTop: 10 }} />
-      </View>
-      <View style={styles.cardShimmerMeta}>
-        <ShimmerBlock height={14} width="55%" radius={10} />
-      </View>
-      <View style={styles.cardShimmerBottomRow}>
-        <ShimmerBlock height={36} width={140} radius={999} />
-        <ShimmerBlock height={46} width={46} radius={23} />
+      <ShimmerBlock height={96} width={96} radius={18} />
+      <View style={{ flex: 1, gap: 8, paddingTop: 4 }}>
+        <ShimmerBlock height={16} width="80%" radius={8} />
+        <ShimmerBlock height={12} width="50%" radius={8} />
+        <View style={{ flex: 1 }} />
+        <ShimmerBlock height={18} width={80} radius={8} />
       </View>
     </View>
   );
@@ -506,51 +368,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-  },
-  cartButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  searchRow: {
-    paddingHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingTop: 12,
+    gap: 12,
   },
   searchBar: {
-    flex: 1,
-    height: 60,
-    borderRadius: 20,
+    height: 48,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -559,46 +382,25 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Geist-Regular',
     paddingVertical: 0,
   },
-  filterButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  levels: {
+    gap: 8,
+    paddingBottom: 4,
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 130,
+    paddingTop: 12,
   },
   cardShimmerWrap: {
-    width: '100%',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderRadius: 25,
-    padding: 18,
-    minHeight: 190,
-  },
-  cardShimmerHeader: {
-    paddingTop: 8,
-    marginBottom: 14,
-  },
-  cardShimmerMeta: {
-    marginTop: 2,
-  },
-  cardShimmerBottomRow: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    marginBottom: 12,
   },
   emptyContainer: {
     paddingVertical: 60,

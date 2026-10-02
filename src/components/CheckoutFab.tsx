@@ -19,18 +19,18 @@ type CheckoutFabProps = {
   hiddenOffset?: number;
 };
 
-const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
 
 // A persistent docked bar, not a toast - it stays up for as long as the
 // cart has items and only slides away once it's empty, so it's always
 // there to tap rather than something you have to catch within a few
 // seconds of adding an item.
 const CheckoutFab: React.FC<CheckoutFabProps> = ({ onPress, style, count = 0, total = 0, hiddenOffset = 90 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [rendered, setRendered] = useState(count > 0);
   const translateY = useRef(new Animated.Value(count > 0 ? 0 : hiddenOffset)).current;
   const opacity = useRef(new Animated.Value(count > 0 ? 1 : 0)).current;
-  const backgroundColor = isDark ? colors.accentMuted : colors.secondary;
+  const backgroundColor = colors.accent;
 
   useEffect(() => {
     if (count > 0) {
@@ -84,7 +84,7 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({ onPress, style, count = 0, to
     >
       <TouchableOpacity
         onPress={onPress}
-        style={[styles.bar, { backgroundColor, borderColor: colors.border }]}
+        style={[styles.bar, { backgroundColor, borderBottomColor: colors.accentLip }]}
         activeOpacity={0.9}
         accessibilityRole="button"
         accessibilityLabel={`Go to checkout, ${count} item${count === 1 ? '' : 's'}`}
@@ -93,9 +93,7 @@ const CheckoutFab: React.FC<CheckoutFabProps> = ({ onPress, style, count = 0, to
           <View style={[styles.badge, { backgroundColor: colors.onAccent }]}>
             <Text style={[styles.badgeText, { color: backgroundColor }]}>{count}</Text>
           </View>
-          <Text style={[styles.label, { color: colors.onAccent }]}>
-            {count === 1 ? '1 item' : `${count} items`}
-          </Text>
+          <Text style={[styles.label, { color: colors.onAccent }]}>View cart</Text>
         </View>
         <View style={styles.right}>
           <Text style={[styles.total, { color: colors.onAccent }]}>{formatMoney(total)}</Text>
@@ -115,7 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     flexDirection: 'row',
     gap: 10,
-    borderWidth: 1,
+    borderBottomWidth: 3,
   },
   left: {
     flexDirection: 'row',
@@ -137,7 +135,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   label: {
     fontSize: 14,

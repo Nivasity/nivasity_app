@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Text from './AppText';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
+import { courseColor } from './ui';
 
 interface StoreCardProps {
   code: string;
@@ -13,229 +14,124 @@ interface StoreCardProps {
   onPress?: () => void;
   onAdd?: () => void;
   onShare?: () => void;
+  /** In the cart: the + becomes a − that removes it. */
   marked?: boolean;
 }
 
-const TOP_ACTION_SIZE = 150;
-const CUTOUT_SIZE = TOP_ACTION_SIZE;
-const CUTOUT_RADIUS = CUTOUT_SIZE / 2;
-const BOTTOM_ACTION_SIZE = 46;
+/** Font size so course codes up to 15 characters still fit the cover. */
+const codeSize = (code: string) => (code.length <= 8 ? 18 : code.length <= 11 ? 15 : 13);
+/** Let long codes wrap after "/" or "&". */
+const breakable = (code: string) => code.replace(/([/&])/g, '$1​');
 
-export const StoreCard: React.FC<StoreCardProps> = ({
-  code,
-  name,
-  level,
-  price,
-  onPress,
-  onAdd,
-  onShare,
-  marked,
-}) => {
-  const { colors, isDark } = useTheme();
-  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
-  const addIsActive = Boolean(onAdd);
-  const shareIsActive = Boolean(onShare);
-  const pressIsActive = Boolean(onPress);
-  const CardContainer = pressIsActive ? TouchableOpacity : View;
+// Store item like the web portal: coloured course cover, title, level, price and a round
+// add/remove button with the raised lip. No shadows.
+export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level, price, onPress, onAdd, onShare, marked }) => {
+  const { colors } = useTheme();
+  const unavailable = status === 'Unavailable' || !onAdd;
+  const cover = courseColor(code);
 
   return (
-    <View style={styles.cardWrap}>
-      <CardContainer
-        style={[
-          styles.card,
-          {
-            backgroundColor: isDark ? colors.surface : colors.accent,
-          },
-        ]}
-        {...(pressIsActive
-          ? {
-            onPress,
-            activeOpacity: 0.9,
-            accessibilityRole: 'button' as const,
-            accessibilityLabel: `Open details for ${name}`,
-          }
-          : {})}
-      >
-        {/* Make the cutout itself the button */}
-        <View style={styles.cutoutButton}>
-          <TouchableOpacity
-            style={[
-              styles.iconButton,
-              {
-                backgroundColor: marked ? (isDark ? colors.accentMuted : colors.secondary) : colors.accentCard,
-              },
-              !addIsActive && { opacity: 0.55 },
-            ]}
-            onPress={onAdd}
-            disabled={!addIsActive}
-            activeOpacity={0.9}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={marked ? 'Remove from cart' : 'Add to cart'}
-          >
-            <AppIcon
-              name={marked ? 'checkmark' : 'add'}
-              size={28}
-              color={marked ? colors.onAccent : colors.secondary}
-            />
-          </TouchableOpacity>
-        </View>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Open details for ${name}`}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderColor: colors.border, borderBottomColor: colors.cardLip },
+      ]}
+    >
+      <View style={[styles.cover, { backgroundColor: cover }]}>
+        <View style={styles.coverBubble} />
+        <Text style={styles.coverLevel} numberOfLines={1}>
+          {level && level !== '—' ? `${level} LEVEL` : 'MATERIAL'}
+        </Text>
+        <Text style={[styles.coverCode, { fontSize: codeSize(code) }]} numberOfLines={3}>
+          {breakable(code || '—')}
+        </Text>
+      </View>
 
-        <View style={styles.header}>
-          <Text style={[styles.name, { color: colors.onCard }]} numberOfLines={1}>
-            {code}
-          </Text>
-          <Text style={[styles.code, { color: colors.onCard }]} numberOfLines={1}>
-            {name}
-          </Text>
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={[styles.metaItem, styles.metaItemRight]}>
-            <Text style={{ color: colors.onCard }}>
-              Level:</Text>
-            <Text style={[styles.metaText, { color: colors.onCard }]} numberOfLines={1}>
-              {level}
-            </Text>
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.pricePill,
-            {
-              backgroundColor: colors.background,
-              borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.22)',
-            },
-          ]}
-        >
-          <Text style={[styles.price, { color: highlightColor }]} numberOfLines={1}>
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {name}
+        </Text>
+        {unavailable && status === 'Unavailable' ? (
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>Not on sale right now</Text>
+        ) : null}
+        <View style={styles.bottomRow}>
+          <Text style={[styles.price, { color: colors.text }]} numberOfLines={1}>
             {price}
           </Text>
+          <View style={styles.actions}>
+            {onShare ? (
+              <Pressable onPress={onShare} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share item" style={styles.share}>
+                <AppIcon name="share-social-outline" size={18} color={colors.textMuted} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={onAdd}
+              disabled={unavailable}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={marked ? `Remove ${code} from cart` : `Add ${code} to cart`}
+              style={({ pressed }) => [
+                styles.add,
+                marked
+                  ? { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.accent }
+                  : {
+                      backgroundColor: colors.accent,
+                      borderBottomWidth: pressed ? 1 : 3,
+                      borderBottomColor: colors.accentLip,
+                      transform: [{ translateY: pressed ? 1 : 0 }],
+                    },
+                unavailable && { opacity: 0.4 },
+              ]}
+            >
+              <AppIcon name={marked ? 'remove' : 'add'} size={22} color={marked ? colors.accent : colors.onAccent} />
+            </Pressable>
+          </View>
         </View>
-
-        <TouchableOpacity
-          style={[
-            styles.shareAction,
-            { borderColor: 'transparent' },
-            !shareIsActive && { opacity: 0.55 },
-          ]}
-          onPress={onShare}
-          disabled={!shareIsActive}
-          activeOpacity={0.9}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Share item"
-        >
-          <AppIcon name="share-social-outline" size={25} color={colors.onCard} />
-        </TouchableOpacity>
-      </CardContainer>
-    </View>
+      </View>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  cardWrap: {
-    width: '100%',
-    marginBottom: 20,
-  },
   card: {
-    borderWidth: 0,
-    borderRadius: 25,
-    padding: 18,
-    paddingRight: 76,
-    position: 'relative',
-    minHeight: 190,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderBottomWidth: 3,
+    marginBottom: 12,
+  },
+  cover: {
+    width: 96,
+    minHeight: 96,
+    borderRadius: 18,
+    padding: 10,
+    justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  // Remove old cutout and topAction styles, replace with cutoutButton
-  cutoutButton: {
+  coverBubble: {
     position: 'absolute',
-    top: -CUTOUT_RADIUS,
-    right: -CUTOUT_RADIUS,
+    top: -22,
+    right: -22,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  iconButton: {
-    width: TOP_ACTION_SIZE,
-    height: TOP_ACTION_SIZE,
-    borderRadius: TOP_ACTION_SIZE / 2,
-    padding: 28,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    // No shadow, only subtle outline if needed
-  },
-  header: {
-    paddingTop: 8,
-    marginBottom: 14,
-    gap: 4,
-  },
-  name: {
-    fontSize: 20,
-    letterSpacing: -0.2,
-    fontWeight: '600',
-  },
-  code: {
-    letterSpacing: 0.2,
-    fontSize: 16,
-    opacity: 0.92,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 14,
-  },
-  metaCol: {
-    flexDirection: 'column',
-    justifyContent: 'flex-start',
-    gap: 10,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaItemRight: {
-    justifyContent: 'flex-end',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  metalLabel: {
-    fontSize: 14,
-  },
-  metaText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  shareAction: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: BOTTOM_ACTION_SIZE,
-    height: BOTTOM_ACTION_SIZE,
-    borderRadius: BOTTOM_ACTION_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  pricePill: {
-    position: 'absolute',
-    left: 16,
-    bottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    maxWidth: '78%',
-  },
-  price: {
-    fontWeight: '600',
-    fontSize: 18,
-  },
+  coverLevel: { color: 'rgba(255,255,255,0.92)', fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
+  coverCode: { color: '#FFFFFF', fontWeight: '800', letterSpacing: -0.3, lineHeight: undefined },
+  body: { flex: 1, minWidth: 0, paddingVertical: 2 },
+  title: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8 },
+  price: { fontSize: 16, fontWeight: '800', flexShrink: 1 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  share: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  add: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default StoreCard;
