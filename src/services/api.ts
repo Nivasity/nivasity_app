@@ -1730,3 +1730,111 @@ export const paymentAPI = {
 };
 
 export default api;
+
+// ─── Features that used to be website-only (same endpoints as the white-label portal) ───
+
+export interface BulkClaim {
+  id: number;
+  source: string;
+  manual_id: number;
+  title: string;
+  course_code: string;
+  student_name: string;
+  student_matric_no: string;
+  claim_status: string;
+  payer_name: string;
+  paid_at: string;
+}
+
+/** Materials a class rep (or admin) paid for on the student's behalf, waiting to be accepted. */
+export const claimsAPI = {
+  getPending: async (limit = 5): Promise<BulkClaim[]> => {
+    const response = await api.get<ApiResponse<{ claims: BulkClaim[] }>>(`/materials/claims/pending.php?limit=${limit}`);
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load claims');
+    return response.data.data?.claims ?? [];
+  },
+  resolve: async (claim: BulkClaim, action: 'confirm' | 'reject'): Promise<string> => {
+    const response = await api.post<ApiResponse<any>>('/materials/claims/resolve.php', {
+      student_row_id: claim.id,
+      action,
+      source: claim.source,
+    });
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not update this claim');
+    return response.data.message || '';
+  },
+};
+
+export interface TransferRecipient {
+  user_id: number;
+  name: string;
+  email: string;
+  matric_no: string;
+}
+
+export interface WalletTransferResult {
+  transfer: { amount: number; recipient: TransferRecipient; transfer_reference: string };
+  reference: string;
+  new_balance: number;
+}
+
+/** Wallet to wallet transfers between students of the same school. */
+export const transferAPI = {
+  lookup: async (identifier: string): Promise<TransferRecipient> => {
+    const response = await api.post<ApiResponse<{ recipient: TransferRecipient }>>('/wallet/transfer.php', {
+      action: 'lookup',
+      recipient_identifier: identifier,
+    });
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Student not found');
+    return response.data.data.recipient;
+  },
+  /** requestToken must be unique per attempt and reused on retry so money is never sent twice. */
+  send: async (args: {
+    recipientIdentifier: string;
+    amount: number;
+    pin: string;
+    requestToken: string;
+    description?: string;
+  }): Promise<WalletTransferResult> => {
+    const response = await api.post<ApiResponse<WalletTransferResult>>('/wallet/transfer.php', {
+      action: 'transfer',
+      recipient_identifier: args.recipientIdentifier,
+      amount: args.amount,
+      wallet_pin: args.pin,
+      request_token: args.requestToken,
+      description: args.description,
+    });
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Transfer failed');
+    return response.data.data;
+  },
+};
+
+export interface SystemAlert {
+  id: number;
+  title: string;
+  message: string;
+  color: 'red' | 'green' | 'info';
+}
+
+export interface ActiveSurvey {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  url: string;
+}
+
+export const noticesAPI = {
+  getAlerts: async (): Promise<SystemAlert[]> => {
+    const response = await api.get<ApiResponse<{ alerts: SystemAlert[] }>>('/reference/system-alerts.php');
+    if (response.data.status !== 'success') return [];
+    return response.data.data?.alerts ?? [];
+  },
+  getSurvey: async (): Promise<ActiveSurvey | null> => {
+    const response = await api.get<ApiResponse<{ survey: ActiveSurvey | null }>>('/surveys/active.php');
+    if (response.data.status !== 'success') return null;
+    return response.data.data?.survey ?? null;
+  },
+  dismissSurvey: async (surveyId: number): Promise<void> => {
+    await api.post<ApiResponse<any>>('/surveys/dismiss.php', { survey_id: surveyId });
+  },
+};

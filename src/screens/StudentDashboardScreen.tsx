@@ -1,20 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  RefreshControl,
-  ScrollView,
-  Share,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import Text from '../components/AppText';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlatList, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
-import AppText from '../components/AppText';
+import Text from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,26 +15,36 @@ import Loading from '../components/Loading';
 import { orderAPI, storeAPI } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
 import StoreCard from '../components/StoreCard';
-import OrderListItem from '../components/OrderListItem';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
 import EmptyState from '../components/EmptyState';
+import SendMoneySheet from '../components/SendMoneySheet';
+import { PendingClaimsSheet, SurveyCard, SystemAlerts } from '../components/Notices';
+import { Card, CourseTile, Divider, GradientCard, IconButton, IconCircle, RoundAction, SectionHeader } from '../components/ui';
 
 interface StudentDashboardScreenProps {
   navigation: any;
 }
 
 const NOTIFICATIONS_DAILY_PROMPT_KEY = 'notifications.dailyPrompt.v1';
-const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
+const BALANCE_HIDDEN_KEY = 'dashboard.balanceHidden';
+const money = (value: number, decimals = false) =>
+  `₦${Number(value || 0).toLocaleString(undefined, decimals ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : undefined)}`;
+
+const greeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
 
 const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const appMessage = useAppMessage();
   const { count: cartCount, total: cartTotal, has, toggle } = useCart();
   const { unreadCount, permissionStatus, requestPushPermission } = useNotifications();
-  const { summary, hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
-  const insets = useSafeAreaInsets();
+  const { summary, hasWallet, hasPin, refreshCreditsAndSummary, createWallet } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [topMaterials, setTopMaterials] = useState<Product[]>([]);
@@ -53,37 +53,34 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const [isOffline, setIsOffline] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeMaterial, setActiveMaterial] = useState<Product | null>(null);
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const [balanceHidden, setBalanceHidden] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [activating, setActivating] = useState(false);
   const detailsRequestIdRef = useRef(0);
-  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
 
   const computeStats = (orders: Order[]): DashboardStats => {
     const totalOrders = orders.length;
     const pendingOrders = orders.filter((o) => o.status === 'pending' || o.status === 'processing').length;
-    const totalSpent = orders.filter((o) => o.status !== 'cancelled' && o.status !== 'failed').reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSpent = orders
+      .filter((o) => o.status !== 'cancelled' && o.status !== 'failed')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
     return { totalOrders, pendingOrders, totalSpent };
   };
 
   const loadDashboard = useCallback(async () => {
     const [ordersRes, materialsRes] = await Promise.allSettled([
       orderAPI.getOrders({ page: 1, limit: 20 }),
-      storeAPI.getMaterials({ page: 1, limit: 3, sort: 'recommended' }),
+      storeAPI.getMaterials({ page: 1, limit: 6, sort: 'recommended' }),
       refreshCreditsAndSummary(),
     ]);
 
     const nextOrders = ordersRes.status === 'fulfilled' ? ordersRes.value || [] : [];
-    const nextMaterials =
-      materialsRes.status === 'fulfilled' ? materialsRes.value.materials || [] : [];
+    const nextMaterials = materialsRes.status === 'fulfilled' ? materialsRes.value.materials || [] : [];
 
-    setRecentOrders(nextOrders.slice(0, 5));
+    setRecentOrders(nextOrders.slice(0, 4));
     setStats(computeStats(nextOrders));
-    setTopMaterials(nextMaterials.slice(0, 3));
-
+    setTopMaterials(nextMaterials.slice(0, 6));
     setIsOffline(ordersRes.status === 'rejected' || materialsRes.status === 'rejected');
-    if (ordersRes.status === 'rejected' || materialsRes.status === 'rejected') {
-      console.warn('Dashboard offline: could not reach API');
-    }
-
     setLoading(false);
     setRefreshing(false);
   }, [refreshCreditsAndSummary]);
@@ -95,28 +92,32 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   );
 
   useEffect(() => {
+    AsyncStorage.getItem(BALANCE_HIDDEN_KEY)
+      .then((v) => setBalanceHidden(v === '1'))
+      .catch(() => undefined);
+  }, []);
+
+  const toggleBalance = () => {
+    setBalanceHidden((v) => {
+      AsyncStorage.setItem(BALANCE_HIDDEN_KEY, v ? '0' : '1').catch(() => undefined);
+      return !v;
+    });
+  };
+
+  // Ask for notification permission at most once a day
+  useEffect(() => {
     let canceled = false;
     const today = new Date().toISOString().slice(0, 10);
-
     (async () => {
       try {
         const last = String((await AsyncStorage.getItem(NOTIFICATIONS_DAILY_PROMPT_KEY)) || '').trim();
         if (last === today) return;
-
         await AsyncStorage.setItem(NOTIFICATIONS_DAILY_PROMPT_KEY, today);
-
-        if (permissionStatus === 'granted') return;
-
-        if (permissionStatus === 'undetermined') {
-          if (canceled) return;
-          await requestPushPermission();
-          return;
-        }
+        if (permissionStatus === 'undetermined' && !canceled) await requestPushPermission();
       } catch {
         // ignore
       }
     })();
-
     return () => {
       canceled = true;
     };
@@ -130,35 +131,19 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const openMaterialDetails = useCallback(async (material: Product) => {
     setActiveMaterial(material);
     setDetailsOpen(true);
-
     const requestId = ++detailsRequestIdRef.current;
     try {
       const fetched = await storeAPI.getProduct(material.id);
       if (detailsRequestIdRef.current !== requestId) return;
-      setActiveMaterial((current) => {
-        if (!current || current.id !== material.id) return current;
-        return { ...current, ...fetched };
-      });
+      setActiveMaterial((current) => (!current || current.id !== material.id ? current : { ...current, ...fetched }));
     } catch {
       // ignore
     }
   }, []);
 
-  if (loading) {
-    return <Loading message="Loading dashboard..." />;
-  }
-
-  function getGreeting(): string {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   const shareMaterial = async (product: Product) => {
     try {
-      const materialId = encodeURIComponent(String(product.id));
-      const webUrl = `https://nivasity.com/material/${materialId}`;
+      const webUrl = `https://nivasity.com/material/${encodeURIComponent(String(product.id))}`;
       await Share.share({
         message: `${product.name}\n${product.description}\nPrice: NGN ${product.price.toLocaleString()}\n\nGet the material here: ${webUrl}`,
       });
@@ -167,232 +152,198 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     }
   };
 
+  const activateWallet = async () => {
+    setActivating(true);
+    try {
+      await createWallet();
+      appMessage.toast({ status: 'success', message: 'Wallet ready' });
+    } catch (error: any) {
+      appMessage.alert({ title: 'Could not activate wallet', message: error?.message || 'Please try again.' });
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  if (loading) {
+    return <Loading message="Loading dashboard..." />;
+  }
+
+  const firstName = (user?.name || 'Student').trim().split(' ')[0];
+  const balance = summary?.wallet?.balance ?? 0;
+
   return (
-    <SafeAreaView
-      edges={['top', 'bottom']}
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.accent}
-            colors={[colors.accent]}
-          />
-        }
-        stickyHeaderIndices={[0]}
+        contentContainerStyle={[styles.content, { paddingBottom: cartCount > 0 ? 110 : 32 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} />}
       >
-        <View
-          style={[
-            styles.stickyHeader,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Open My Account"
-                style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.surface }]}
-              >
-                {user?.avatar ? (
-                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
-                ) : (
-                  <AppText style={[styles.avatarText, { color: colors.secondary }]}>
-                    {(user?.name || 'U').trim().charAt(0).toUpperCase()}
-                  </AppText>
-                )}
-              </TouchableOpacity>
-              <View>
-                <Text style={[styles.welcome, { color: colors.textMuted }]}>{getGreeting()},</Text>
-                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-                  {user?.name || 'Student'}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Notifications')}
-              style={[styles.iconButton]}
-              accessibilityRole="button"
-              accessibilityLabel="Open notifications"
-              activeOpacity={0.85}
-            >
-              <AppIcon name="notifications-outline" size={20} color={colors.text} />
-              {unreadCount > 0 ? (
-                <View style={[styles.notifBadge, { backgroundColor: colors.accent, borderColor: colors.surface }]}>
-                  <Text style={[styles.notifBadgeText, { color: colors.onAccent }]}>
-                    {unreadCount > 9 ? '9+' : String(unreadCount)}
-                  </Text>
-                </View>
-              ) : null}
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.headerSpacer} />
-
-        <View style={[styles.heroCard, { backgroundColor: colors.secondary }]}>
-          <View style={styles.heroHeader}>
-            <View style={styles.heroText}>
-              <Text style={[styles.heroEyebrow, { color: 'rgba(255,255,255,0.78)' }]}>Wallet</Text>
-              <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
-                {hasWallet ? (balanceVisible ? formatMoney(summary?.wallet?.balance ?? 0) : '••••••') : 'Activate my wallet'}
-              </Text>
-              <Text style={[styles.heroSubtitle, { color: '#FFFFFF' }]}>
-                {hasWallet
-                  ? summary?.wallet?.bankName || 'Dedicated account ready'
-                  : 'Get balance, funding account, and wallet checkout.'}
-              </Text>
-            </View>
-
-            {hasWallet ? (
-              <TouchableOpacity
-                onPress={() => setBalanceVisible((value) => !value)}
-                style={[styles.balanceToggle, { borderColor: 'rgba(255,255,255,0.18)' }]}
-                accessibilityRole="button"
-                accessibilityLabel={balanceVisible ? 'Hide wallet balance' : 'Show wallet balance'}
-                activeOpacity={0.85}
-              >
-                <AppIcon name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={18} color="#FFFFFF" />
-              </TouchableOpacity>
+        {/* Greeting */}
+        <View style={styles.headerRow}>
+          <Pressable
+            onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
+            accessibilityRole="button"
+            accessibilityLabel="Open My Account"
+            style={[styles.avatar, { backgroundColor: colors.secondary }]}
+          >
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.heroArt}>
-                <AppIcon name="wallet-outline" size={30} color="#FFFFFF" />
-              </View>
+              <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
             )}
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.greeting, { color: colors.textMuted }]}>{greeting()} 👋</Text>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+              {firstName}
+            </Text>
+          </View>
+          <IconButton icon="notifications-outline" label="Open notifications" badge={unreadCount} onPress={() => navigation.navigate('Notifications')} />
+        </View>
+
+        <SystemAlerts />
+
+        {/* Wallet */}
+        <GradientCard>
+          <View style={styles.walletTop}>
+            <View style={styles.walletChip}>
+              <Text style={styles.walletChipText}>{hasWallet ? summary?.wallet?.bankName || 'School wallet' : 'Nivasity wallet'}</Text>
+            </View>
+            {hasWallet ? <IconButton icon="refresh" tone="onGradient" label="Refresh balance" onPress={onRefresh} /> : null}
           </View>
 
           {hasWallet ? (
-            <View style={styles.heroActions}>
-              <HeroAction label="Fund wallet" icon="wallet-outline" onPress={() => navigation.navigate('WalletFund')} />
-              <HeroAction label="Transactions" icon="receipt-outline" onPress={() => navigation.navigate('WalletTransactions')} />
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  await createWallet();
-                  appMessage.toast({ status: 'success', message: 'Wallet ready' });
-                } catch (error: any) {
-                  appMessage.alert({ title: 'Could not activate wallet', message: error?.message || 'Please try again.' });
-                }
-              }}
-              style={[styles.heroButton, { backgroundColor: colors.surface }]}
-              accessibilityRole="button"
-              accessibilityLabel="Activate my wallet"
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.heroButtonText, { color: isDark ? '#FFFFFF' : colors.secondary }]}>Activate my wallet</Text>
-              <AppIcon name="arrow-forward" size={16} color={isDark ? '#FFFFFF' : colors.secondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.cardsGrid}>
-            <CourseCard
-              title="Nivasity Store"
-              subtitle="Browse essentials"
-              icon="grid-outline"
-              onPress={() => navigation.navigate('Store')}
-            />
-            <CourseCard
-              title="Order History"
-              subtitle="Track purchases"
-              icon="receipt-outline"
-              onPress={() => navigation.navigate('Orders')}
-            />
-          </View>
-        </View>
-
-        {topMaterials && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Materials</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Store')}
+            <>
+              <Pressable
+                onPress={toggleBalance}
+                style={styles.balanceLabelRow}
                 accessibilityRole="button"
-                accessibilityLabel="See all materials"
-                activeOpacity={0.85}
+                accessibilityLabel={balanceHidden ? 'Show balance' : 'Hide balance'}
               >
-                <Text style={[styles.viewAll, { color: highlightColor }]}>See all</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={topMaterials.slice(0, 3)}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 12, paddingRight: 8 }}
-              ListEmptyComponent={
-                <View style={{ width: 350, flexShrink: 0 }}>
-                  <EmptyState
-                    icon="bag-outline"
-                    title={isOffline ? 'Could not load materials' : 'No materials yet'}
-                    subtitle={isOffline ? 'Check your connection and pull to refresh.' : 'Browse the store to start buying.'}
-                  />
-                </View>
-              }
-              renderItem={({ item }) => (
-                <View style={{ width: 350, flexShrink: 0 }}>
-                  <StoreCard
-                    code={item.courseCode || item.materialCode || ''}
-                    name={item.name}
-                    status={item.available === false ? 'Unavailable' : 'Available'}
-                    level={item.level || '—'}
-                    price={`₦ ${item.price?.toLocaleString?.() ?? ''}`}
-                    marked={has(item.id)}
-                    onAdd={item.available === false ? undefined : () => toggle(item)}
-                    onShare={() => shareMaterial(item)}
-                    onPress={() => {
-                      void openMaterialDetails(item);
-                    }}
-                  />
-                </View>
-              )}
-              style={{ marginLeft: -4 }}
-            />
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Orders</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Orders')}
-              accessibilityRole="button"
-              accessibilityLabel="View all orders"
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.viewAll, { color: highlightColor }]}>View all</Text>
-            </TouchableOpacity>
-          </View>
-
-          {recentOrders.length > 0 ? (
-            recentOrders.map((order) => (
-              <OrderListItem
-                key={order.id}
-                order={order}
-                onPress={() => navigation.navigate('OrderReceipt', { order })}
-              />
-            ))
+                <Text style={styles.balanceLabel}>Available balance</Text>
+                <AppIcon name={balanceHidden ? 'eye-off-outline' : 'eye-outline'} size={16} color="rgba(255,255,255,0.8)" />
+              </Pressable>
+              <Text style={styles.balance}>{balanceHidden ? '₦ ••••••' : money(balance, true)}</Text>
+              {!hasPin ? (
+                <Pressable onPress={() => navigation.navigate('WalletPin')}>
+                  <Text style={styles.walletHint}>
+                    Create a Wallet PIN to pay and send. <Text style={styles.walletHintLink}>Create PIN</Text>
+                  </Text>
+                </Pressable>
+              ) : null}
+              <View style={styles.walletActions}>
+                <WalletButton label="Add money" icon="add" primary onPress={() => navigation.navigate('WalletFund')} />
+                <WalletButton label="Send" icon="paper-plane-outline" onPress={() => setSendOpen(true)} />
+              </View>
+            </>
           ) : (
-            <EmptyState
-              icon="receipt-outline"
-              title="No orders yet"
-              subtitle="Start buying materials to see orders here."
-            />
+            <>
+              <Text style={[styles.balance, { fontSize: 26, marginTop: 16 }]}>Activate your wallet</Text>
+              <Text style={styles.walletHint}>Get your own account number, pay in seconds and send money to course mates.</Text>
+              <View style={styles.walletActions}>
+                <WalletButton label={activating ? 'Activating…' : 'Activate wallet'} icon="flash-outline" primary onPress={activateWallet} />
+              </View>
+            </>
+          )}
+        </GradientCard>
+
+        {/* Quick actions */}
+        <Card style={styles.actionsCard}>
+          <RoundAction icon="storefront" label="Store" color="#F97316" onPress={() => navigation.navigate('Store')} />
+          <RoundAction icon="receipt" label="Orders" color="#7A3B73" onPress={() => navigation.navigate('Orders')} />
+          <RoundAction icon="wallet" label="Wallet" color="#2563EB" onPress={() => navigation.navigate('WalletTransactions')} />
+          <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
+        </Card>
+
+        {/* Semester summary */}
+        <Card>
+          <SectionHeader title="Your semester" action="View orders" onAction={() => navigation.navigate('Orders')} />
+          <View style={styles.metrics}>
+            <Metric icon="trending-up" color="#EA580C" label="Spent" value={money(stats?.totalSpent ?? 0)} />
+            <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
+            <Metric icon="book-outline" color="#2563EB" label="Orders" value={String(stats?.totalOrders ?? 0)} />
+            <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
+            <Metric icon="time-outline" color="#A21CAF" label="Pending" value={String(stats?.pendingOrders ?? 0)} />
+          </View>
+        </Card>
+
+        <SurveyCard />
+
+        {/* Store picks */}
+        <View>
+          <SectionHeader title="In the store" action="See all" onAction={() => navigation.navigate('Store')} />
+          <FlatList
+            data={topMaterials}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 12 }}
+            ListEmptyComponent={
+              <View style={{ width: 320 }}>
+                <EmptyState
+                  icon="bag-outline"
+                  title={isOffline ? 'Could not load materials' : 'No materials yet'}
+                  subtitle={isOffline ? 'Check your connection and pull to refresh.' : 'Materials for this semester will appear here.'}
+                />
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={{ width: 300 }}>
+                <StoreCard
+                  code={item.courseCode || item.materialCode || ''}
+                  name={item.name}
+                  status={item.available === false ? 'Unavailable' : 'Available'}
+                  level={item.level || '—'}
+                  price={`₦${item.price?.toLocaleString?.() ?? ''}`}
+                  marked={has(item.id)}
+                  onAdd={item.available === false ? undefined : () => toggle(item)}
+                  onShare={() => shareMaterial(item)}
+                  onPress={() => void openMaterialDetails(item)}
+                />
+              </View>
+            )}
+          />
+        </View>
+
+        {/* Recent orders */}
+        <View>
+          <SectionHeader title="Recent orders" action="See all" onAction={() => navigation.navigate('Orders')} />
+          {recentOrders.length > 0 ? (
+            <Card padded={false}>
+              {recentOrders.map((order, i) => {
+                const first = order.items?.[0];
+                const code = first?.courseCode || first?.materialCode || '';
+                const more = (order.items?.length || 0) - 1;
+                return (
+                  <View key={order.id}>
+                    {i > 0 ? <Divider /> : null}
+                    <Pressable
+                      onPress={() => navigation.navigate('OrderReceipt', { order })}
+                      style={({ pressed }) => [styles.orderRow, pressed && { backgroundColor: colors.surfaceAlt }]}
+                    >
+                      {code ? <CourseTile code={code} size={40} /> : <IconCircle icon="receipt-outline" size={40} />}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={1} style={[styles.orderTitle, { color: colors.text }]}>
+                          {first?.name || `Order ${order.id}`}
+                          {more > 0 ? ` +${more}` : ''}
+                        </Text>
+                        <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 12 }}>
+                          {new Date(order.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </Text>
+                      </View>
+                      <Text style={[styles.orderAmount, { color: colors.text }]}>{money(order.total)}</Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </Card>
+          ) : (
+            <EmptyState icon="receipt-outline" title="No orders yet" subtitle="Materials you buy will show up here." />
           )}
         </View>
       </ScrollView>
 
       {cartCount > 0 ? (
-        <View style={[styles.checkoutFabWrap, { bottom: 85 + insets.bottom }]}>
+        <View style={styles.checkoutFabWrap}>
           <CheckoutFab onPress={() => navigation.navigate('Checkout')} count={cartCount} total={cartTotal} />
         </View>
       ) : null}
@@ -409,475 +360,92 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           if (activeMaterial) shareMaterial(activeMaterial);
         }}
       />
+      <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} />
+      <PendingClaimsSheet onResolved={loadDashboard} />
     </SafeAreaView>
   );
 };
 
-const Chip = ({ label, active = false }: { label: string; active?: boolean }) => {
-  const { colors } = useTheme();
-  return (
-    <View
-      style={[
-        styles.chip,
-        {
-          backgroundColor: active ? colors.surfaceAlt : colors.surface,
-          borderColor: colors.border,
-        },
-      ]}
-    >
-      <Text style={[styles.chipText, { color: active ? colors.text : colors.textMuted }]}>{label}</Text>
-    </View>
-  );
-};
-
-const HeroAction = ({
+const WalletButton = ({
   label,
   icon,
+  primary,
   onPress,
 }: {
   label: string;
   icon: React.ComponentProps<typeof AppIcon>['name'];
+  primary?: boolean;
   onPress: () => void;
-}) => {
-  const { colors } = useTheme();
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.heroAction, { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.14)' }]}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <AppIcon name={icon} size={18} color={colors.onAccent} />
-      <AppText style={[styles.heroActionText, { color: colors.onAccent }]}>{label}</AppText>
-    </TouchableOpacity>
-  );
-};
+}) => (
+  <Pressable
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    style={({ pressed }) => [
+      styles.walletButton,
+      primary
+        ? { backgroundColor: '#FFFFFF', borderBottomWidth: pressed ? 1 : 3, borderBottomColor: 'rgba(0,0,0,0.18)' }
+        : { backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.16)' },
+      { transform: [{ translateY: pressed ? 1 : 0 }] },
+    ]}
+  >
+    <AppIcon name={icon} size={18} color={primary ? '#4E2149' : '#FFFFFF'} />
+    <Text style={[styles.walletButtonText, { color: primary ? '#4E2149' : '#FFFFFF' }]}>{label}</Text>
+  </Pressable>
+);
 
-const CourseCard = ({
-  title,
-  subtitle,
+const Metric = ({
   icon,
-  onPress,
+  color,
+  label,
+  value,
 }: {
-  title: string;
-  subtitle: string;
   icon: React.ComponentProps<typeof AppIcon>['name'];
-  onPress: () => void;
+  color: string;
+  label: string;
+  value: string;
 }) => {
-  const { colors, isDark } = useTheme();
-  const highlightColor = isDark ? colors.accentMuted : colors.secondary;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.courseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-    >
-      <View style={[styles.courseIcon]}>
-        <AppIcon name={icon} size={22} color={highlightColor} />
-      </View>
-      <Text style={[styles.courseTitle, { color: colors.text }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.courseSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
-        {subtitle}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
-const StatusBadge = ({ status }: { status: Order['status'] }) => {
   const { colors } = useTheme();
-  const style = (() => {
-    switch (status) {
-      case 'completed':
-        return { backgroundColor: `${colors.success}22`, color: colors.success };
-      case 'processing':
-        return { backgroundColor: `${colors.secondary}22`, color: colors.secondary };
-      case 'cancelled':
-        return { backgroundColor: `${colors.danger}22`, color: colors.danger };
-      default:
-        return { backgroundColor: `${colors.warning}22`, color: colors.warning };
-    }
-  })();
-
   return (
-    <View style={[styles.badge, { backgroundColor: style.backgroundColor }]}>
-      <Text style={[styles.badgeText, { color: style.color }]}>{status}</Text>
+    <View style={styles.metric}>
+      <IconCircle icon={icon} size={34} color={color} background={color + '1F'} />
+      <Text style={[styles.metricValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+      <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600' }}>{label}</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 110,
-  },
-  stickyHeader: {
-    zIndex: 10,
-    position: 'relative',
-  },
-  headerRow: {
-    paddingTop: 20,
-    paddingBottom: 10,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerSpacer: {
-    height: 14,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 50,
-    height: 50,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  welcome: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '800',
-    maxWidth: 220,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notifBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  notifBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-  },
-  heroCard: {
-    marginHorizontal: 16,
-    borderRadius: 22,
-    padding: 16,
-    gap: 14,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  heroText: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  heroEyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    lineHeight: 30,
-    marginBottom: 6,
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  heroButton: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  heroButtonText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  heroArt: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  balanceToggle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  heroAction: {
-    flex: 1,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  heroActionText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  statRow: {
-    marginTop: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statPill: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statPillValue: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  statPillLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  viewAll: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  cardsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  courseCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-  },
-  courseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginBottom: 10,
-  },
-  courseTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  courseSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  orderCard: {
-    padding: 14,
-    borderRadius: 18,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  orderInfo: {
-    flex: 1,
-  },
-  orderNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  orderDetails: {
-    alignItems: 'flex-end',
-  },
-  orderAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  badge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'capitalize',
-  },
-  materialList: {
-    gap: 12,
-  },
-  materialCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  materialIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  materialTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    marginBottom: 3,
-  },
-  materialSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  materialMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  materialDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  materialMetaText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  materialRight: {
-    alignItems: 'flex-end',
-  },
-  materialPrice: {
-    fontSize: 13,
-    fontWeight: '900',
-    marginBottom: 10,
-  },
-  materialCta: {
-    height: 34,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  materialCtaText: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  emptyCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  checkoutFabWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 20,
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  content: { padding: 16, gap: 18 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  avatar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: 46, height: 46 },
+  avatarText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  greeting: { fontSize: 13, fontWeight: '600' },
+  name: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  walletTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  walletChip: { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  walletChipText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  balanceLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18 },
+  balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
+  balance: { color: '#FFFFFF', fontSize: 36, fontWeight: '800', letterSpacing: -1, marginTop: 4 },
+  walletHint: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 6, lineHeight: 18 },
+  walletHintLink: { color: '#FFFFFF', fontWeight: '700', textDecorationLine: 'underline' },
+  walletActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  walletButton: { flex: 1, height: 48, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  walletButtonText: { fontSize: 14, fontWeight: '700' },
+  actionsCard: { flexDirection: 'row', paddingVertical: 18 },
+  metrics: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  metric: { flex: 1, alignItems: 'center', gap: 4 },
+  metricValue: { fontSize: 17, fontWeight: '800' },
+  metricDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  orderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  orderTitle: { fontSize: 14, fontWeight: '600' },
+  orderAmount: { fontSize: 14, fontWeight: '700' },
+  checkoutFabWrap: { position: 'absolute', left: 16, right: 16, bottom: 12, zIndex: 20, alignItems: 'center' },
 });
 
 export default StudentDashboardScreen;

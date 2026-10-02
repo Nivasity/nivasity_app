@@ -31,13 +31,13 @@ const Input: React.FC<InputProps> = ({
         {...props}
         secureTextEntry={secureTextEntry}
         outlineStyle={styles.outline}
-        style={[styles.input, { backgroundColor: colors.background }, props.style]}
+        style={[styles.input, { backgroundColor: colors.surface }, props.style]}
         textColor={colors.text}
         placeholderTextColor={colors.textMuted}
         outlineColor={colors.border}
-        activeOutlineColor={colors.secondary}
-        selectionColor={colors.secondary}
-        cursorColor={colors.secondary}
+        activeOutlineColor={colors.accent}
+        selectionColor={colors.accent}
+        cursorColor={colors.accent}
         error={Boolean(errorText)}
         right={
           isPassword ? (
@@ -66,10 +66,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   input: {
-    minHeight: 60,
+    minHeight: 56,
+    fontFamily: 'Geist-Regular',
   },
   outline: {
-    borderRadius: 20,
+    borderRadius: 16,
   },
   helper: {
     marginTop: -2,
