@@ -25,6 +25,7 @@ import { useWallet } from '../contexts/WalletContext';
 import { profileAPI, referenceAPI } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { DashboardStats } from '../types';
+import { GradientCard } from '../components/ui';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -415,6 +416,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         }
       >
         <View style={[styles.header, { backgroundColor: colors.secondary }]}>
+          <GradientCard style={styles.headerGradient}>
+            <View />
+          </GradientCard>
           <View
             style={styles.fireworks}
             onLayout={(e) => {
@@ -490,15 +494,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <View style={styles.statsRow}>
             <Stat value={String(stats?.totalOrders ?? 0)} label="Materials bought" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value={stats ? `₦ ${(stats.totalSpent ?? 0).toLocaleString()}` : '₦ 0'} label="Total spent" />
+            <Stat value={stats ? `₦${(stats.totalSpent ?? 0).toLocaleString()}` : '₦0'} label="Total spent" />
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <Stat value={user?.admissionYear ? (/^\d{4}$/.test(user.admissionYear) ? `${user.admissionYear}/${Number(user.admissionYear) + 1}` : user.admissionYear) : 'Not set'} label="Academic Year" />
+            <Stat value={user?.admissionYear ? (/^\d{4}$/.test(user.admissionYear) ? `${user.admissionYear}/${Number(user.admissionYear) + 1}` : user.admissionYear) : 'Not set'} label="Academic year" />
           </View>
 
-          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[styles.list, { borderColor: colors.border, borderBottomColor: colors.cardLip, backgroundColor: colors.surface }]}>
             <Row
               icon="person-outline"
-              label="My Account"
+              label="My account"
               value={resolvedSchoolName || 'Not set'}
               onPress={() => navigation.navigate('ProfileSection', { section: 'myAccount' })}
             />
@@ -521,7 +525,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
           <View style={{ height: 14 }} />
 
-          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[styles.list, { borderColor: colors.border, borderBottomColor: colors.cardLip, backgroundColor: colors.surface }]}>
             <Row
               icon="sunny-outline"
               label="Theme"
@@ -532,7 +536,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
           <View style={{ height: 14 }} />
 
-          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[styles.list, { borderColor: colors.border, borderBottomColor: colors.cardLip, backgroundColor: colors.surface }]}>
             <Row
               icon="shield-checkmark-outline"
               label="Privacy policy"
@@ -554,8 +558,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
           <View style={{ height: 14 }} />
 
-          <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <Row icon="log-out-outline" label="Logout" tone="danger" onPress={confirmLogout} />
+          <View style={[styles.list, { borderColor: colors.border, borderBottomColor: colors.cardLip, backgroundColor: colors.surface }]}>
+            <Row icon="log-out-outline" label="Log out" tone="danger" onPress={confirmLogout} />
           </View>
         </View>
       </ScrollView>
@@ -609,8 +613,7 @@ const Row = ({
   tone?: 'default' | 'danger';
   onPress: () => void;
 }) => {
-  const { colors, isDark } = useTheme();
-  const accentColor = tone === 'danger' ? colors.danger : isDark ? colors.accentMuted : colors.secondary;
+  const { colors } = useTheme();
   const labelColor = tone === 'danger' ? colors.danger : colors.text;
   return (
     <TouchableOpacity
@@ -620,8 +623,8 @@ const Row = ({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <View style={[styles.rowIcon]}>
-        <AppIcon name={icon} size={18} color={accentColor} />
+      <View style={[styles.rowIcon, { backgroundColor: tone === 'danger' ? colors.dangerSoft : colors.surfaceAlt }]}>
+        <AppIcon name={icon} size={18} color={tone === 'danger' ? colors.danger : colors.text} />
       </View>
       <View style={styles.rowBody}>
         <AppText style={[styles.rowLabel, { color: labelColor }]}>{label}</AppText>
@@ -649,9 +652,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    height: 250,
+    height: 230,
     paddingHorizontal: 16,
     paddingTop: 10,
+    overflow: 'hidden',
+  },
+  headerGradient: {
+    ...(StyleSheet.absoluteFill as object),
+    borderRadius: 0,
+    borderBottomWidth: 0,
+    padding: 0,
   },
   fireworks: {
     flex: 1,
@@ -690,7 +700,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 34,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: -0.4,
   },
   avatarOverlay: {
@@ -708,15 +718,15 @@ const styles = StyleSheet.create({
   },
   name: {
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     letterSpacing: -0.3,
     marginBottom: 4,
   },
   email: {
     textAlign: 'center',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
     marginBottom: 16,
   },
   statsRow: {
@@ -734,7 +744,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
     marginBottom: 2,
   },
   statLabel: {
@@ -780,7 +790,8 @@ const styles = StyleSheet.create({
   },
   list: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderBottomWidth: 3,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   row: {
@@ -801,16 +812,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
-    fontSize: 13,
-    fontWeight: '900',
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 1,
   },
   rowValue: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
   },
 });
 
