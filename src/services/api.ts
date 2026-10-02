@@ -307,6 +307,21 @@ api.interceptors.response.use(
   }
 );
 
+// Show the API's own message instead of axios's generic "Request failed with status code ...".
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const data = error?.response?.data;
+    const serverMessage = data && typeof data === 'object' ? (data as any).message || (data as any).msg : undefined;
+    if (typeof serverMessage === 'string' && serverMessage.trim()) {
+      error.message = serverMessage.trim();
+    } else if (!error?.response) {
+      error.message = 'Could not reach the server. Check your connection and try again.';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Authentication APIs
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
