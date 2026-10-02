@@ -1,12 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
-import OptionPickerDialog from '../components/OptionPickerDialog';
+import SendMoneySheet from '../components/SendMoneySheet';
+import { Card, Chip, Divider, GradientCard, IconButton, IconCircle } from '../components/ui';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
@@ -17,399 +19,344 @@ type WalletTransactionsScreenProps = {
   navigation: any;
 };
 
-const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
-const ANY_MONTH = 'Any month';
+type Filter = 'all' | 'in' | 'out';
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'in', label: 'Money in' },
+  { value: 'out', label: 'Money out' },
+];
 
-const toDate = (value?: string) => {
-  if (!value) return null;
-  const normalized = value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value;
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date;
+const money = (value: number, decimals = false) =>
+  `₦${Number(value || 0).toLocaleString(undefined, decimals ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : undefined)}`;
+
+const shortDate = (item: WalletTransaction) => {
+  if (item.displayDate) return item.displayDate;
+  const d = new Date((item.createdAt || '').replace(' ', 'T'));
+  return Number.isNaN(d.getTime()) ? item.createdAt : d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 };
 
-const getMonthKey = (value?: string) => {
-  const date = toDate(value);
-  if (!date) return null;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-};
-
-const formatMonthLabel = (key: string) => {
-  const [year, month] = key.split('-');
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-};
-
+// Wallet: balance card (Add money, Send, PIN), funding account and the history with
+// in/out filter, search and paging. Same layout as the web portal.
 const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
   const appMessage = useAppMessage();
-  const { hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
+  const { summary, hasWallet, hasPin, refreshCreditsAndSummary, createWallet } = useWallet();
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [startMonthValue, setStartMonthValue] = useState<string>(ANY_MONTH);
-  const [endMonthValue, setEndMonthValue] = useState<string>(ANY_MONTH);
-  const [monthPickerTarget, setMonthPickerTarget] = useState<'start' | 'end' | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [sendOpen, setSendOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [activating, setActivating] = useState(false);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    try {
-      await refreshCreditsAndSummary();
-      const response = await walletAPI.getTransactions({ page: 1 });
-      setTransactions(response.transactions);
-    } catch (error: any) {
-      setTransactions([]);
-      if (!opts?.silent) {
-        appMessage.alert({ title: 'Could not load wallet transactions', message: error?.message || 'Please try again.' });
+  const fetchPage = useCallback(
+    async (nextPage: number, append: boolean) => {
+      const res = await walletAPI.getTransactions({
+        page: nextPage,
+        type: filter === 'all' ? undefined : filter,
+        search: search || undefined,
+      });
+      setTransactions((current) => (append ? [...current, ...res.transactions] : res.transactions));
+      setPage(res.pagination?.page ?? nextPage);
+      setTotalPages(res.pagination?.total_pages ?? 1);
+      setTotal(res.pagination?.total ?? res.transactions.length);
+    },
+    [filter, search]
+  );
+
+  const load = useCallback(
+    async (opts?: { silent?: boolean; withCredits?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      try {
+        if (opts?.withCredits) await refreshCreditsAndSummary();
+        await fetchPage(1, false);
+      } catch (error: any) {
+        setTransactions([]);
+        if (!opts?.silent) appMessage.toast({ status: 'failed', message: error?.message || 'Could not load wallet history' });
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [appMessage, refreshCreditsAndSummary]);
+    },
+    [appMessage, fetchPage, refreshCreditsAndSummary]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load])
+      void load({ withCredits: true });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
   );
 
-  const monthKeys = useMemo(() => {
-    const keys = new Set<string>();
-    transactions.forEach((item) => {
-      const key = getMonthKey(item.createdAt);
-      if (key) keys.add(key);
-    });
-    return Array.from(keys).sort((left, right) => right.localeCompare(left));
-  }, [transactions]);
-
-  const monthLabelToValue = useMemo(() => {
-    const entries = monthKeys.map((key) => [formatMonthLabel(key), key] as const);
-    return Object.fromEntries(entries);
-  }, [monthKeys]);
-
-  const monthOptions = useMemo(() => [ANY_MONTH, ...monthKeys.map(formatMonthLabel)], [monthKeys]);
+  // Filter / search changes reload the first page
+  useEffect(() => {
+    void load({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, search]);
 
   useEffect(() => {
-    if (startMonthValue !== ANY_MONTH && !monthKeys.includes(startMonthValue)) {
-      setStartMonthValue(ANY_MONTH);
+    const t = setTimeout(() => setSearch(query.trim()), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const loadMore = async () => {
+    if (loadingMore || page >= totalPages) return;
+    setLoadingMore(true);
+    try {
+      await fetchPage(page + 1, true);
+    } catch {
+      // keep what we have
+    } finally {
+      setLoadingMore(false);
     }
-    if (endMonthValue !== ANY_MONTH && !monthKeys.includes(endMonthValue)) {
-      setEndMonthValue(ANY_MONTH);
-    }
-  }, [endMonthValue, monthKeys, startMonthValue]);
-
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((item) => {
-      const key = getMonthKey(item.createdAt);
-      if (!key) return startMonthValue === ANY_MONTH && endMonthValue === ANY_MONTH;
-      if (startMonthValue !== ANY_MONTH && key < startMonthValue) return false;
-      if (endMonthValue !== ANY_MONTH && key > endMonthValue) return false;
-      return true;
-    });
-  }, [endMonthValue, startMonthValue, transactions]);
-
-  const rangeText = useMemo(() => {
-    if (startMonthValue === ANY_MONTH && endMonthValue === ANY_MONTH) return 'Showing all loaded months';
-    if (startMonthValue === ANY_MONTH) return `Up to ${formatMonthLabel(endMonthValue)}`;
-    if (endMonthValue === ANY_MONTH) return `From ${formatMonthLabel(startMonthValue)}`;
-    if (startMonthValue === endMonthValue) return formatMonthLabel(startMonthValue);
-    return `${formatMonthLabel(startMonthValue)} to ${formatMonthLabel(endMonthValue)}`;
-  }, [endMonthValue, startMonthValue]);
-
-  const selectMonth = (label: string) => {
-    const nextValue = label === ANY_MONTH ? ANY_MONTH : (monthLabelToValue[label] ?? ANY_MONTH);
-
-    if (monthPickerTarget === 'start') {
-      setStartMonthValue((currentStart) => {
-        if (nextValue !== ANY_MONTH && endMonthValue !== ANY_MONTH && nextValue > endMonthValue) {
-          setEndMonthValue(nextValue);
-        }
-        return nextValue;
-      });
-    }
-
-    if (monthPickerTarget === 'end') {
-      setEndMonthValue((currentEnd) => {
-        if (nextValue !== ANY_MONTH && startMonthValue !== ANY_MONTH && nextValue < startMonthValue) {
-          setStartMonthValue(nextValue);
-        }
-        return nextValue;
-      });
-    }
-
-    setMonthPickerTarget(null);
   };
 
-  const startMonthLabel = startMonthValue === ANY_MONTH ? ANY_MONTH : formatMonthLabel(startMonthValue);
-  const endMonthLabel = endMonthValue === ANY_MONTH ? ANY_MONTH : formatMonthLabel(endMonthValue);
+  const copyAccount = async () => {
+    const number = summary?.wallet?.accountNumber;
+    if (!number) return;
+    await Clipboard.setStringAsync(number);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  const handleCreateWallet = async () => {
+  const activate = async () => {
+    setActivating(true);
     try {
       await createWallet();
       await load({ silent: true });
       appMessage.toast({ status: 'success', message: 'Wallet ready' });
     } catch (error: any) {
       appMessage.alert({ title: 'Could not activate wallet', message: error?.message || 'Please try again.' });
+    } finally {
+      setActivating(false);
     }
   };
+
+  const wallet = summary?.wallet;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <ScrollView
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              void load({ silent: true });
+              void load({ silent: true, withCredits: true });
             }}
             tintColor={colors.accent}
             colors={[colors.accent]}
           />
         }
-        showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton} accessibilityRole="button">
-            <AppIcon name="chevron-back" size={20} color={colors.text} />
-          </TouchableOpacity>
-          <AppText style={[styles.title, { color: colors.text }]}>Transactions</AppText>
-          <View style={styles.iconButton} />
+          <IconButton icon="chevron-back" label="Back" onPress={() => navigation.goBack()} />
+          <AppText style={[styles.topTitle, { color: colors.text }]}>Wallet</AppText>
+          <View style={{ width: 42 }} />
         </View>
 
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={colors.accent} />
-          </View>
+        {loading && !hasWallet ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 60 }} />
         ) : !hasWallet ? (
-          <View style={{ marginTop: 18 }}>
-            <EmptyState icon="wallet-outline" title="No wallet yet" subtitle="Create one to see credits and debits." />
-            <View style={{ height: 14 }} />
-            <Button title="Activate my wallet" onPress={handleCreateWallet} />
-          </View>
-        ) : transactions.length === 0 ? (
-          <View style={{ marginTop: 18 }}>
-            <EmptyState icon="receipt-outline" title="No wallet transactions" subtitle="Your credits and debits will show here." />
-          </View>
+          <Card style={{ alignItems: 'center', gap: 10, padding: 24 }}>
+            <IconCircle icon="wallet" size={60} color="#FFFFFF" background={colors.secondary} />
+            <AppText style={[styles.bigTitle, { color: colors.text }]}>Activate your wallet</AppText>
+            <AppText style={{ color: colors.textMuted, textAlign: 'center' }}>
+              Your own account number to fund by bank transfer, send money to course mates and pay in seconds.
+            </AppText>
+            <Button title="Create my wallet" onPress={activate} loading={activating} style={{ alignSelf: 'stretch', marginTop: 8 }} />
+          </Card>
         ) : (
           <>
-            <View style={[styles.filterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.filterHeader}>
-                <AppText style={[styles.filterTitle, { color: colors.text }]}>Filter</AppText>
-                <AppText style={[styles.filterMeta, { color: colors.textMuted }]}>{rangeText}</AppText>
+            {/* Balance */}
+            <GradientCard>
+              <AppText style={styles.balanceLabel}>Available balance</AppText>
+              <AppText style={styles.balance}>{money(wallet?.balance ?? 0, true)}</AppText>
+              {!hasPin ? (
+                <Pressable onPress={() => navigation.navigate('WalletPin')}>
+                  <AppText style={styles.hint}>
+                    Create a Wallet PIN to pay and send. <AppText style={styles.hintLink}>Create PIN</AppText>
+                  </AppText>
+                </Pressable>
+              ) : null}
+              <View style={styles.heroActions}>
+                <HeroButton label="Add" icon="add" primary onPress={() => navigation.navigate('WalletFund')} />
+                <HeroButton label="Send" icon="paper-plane-outline" onPress={() => setSendOpen(true)} />
+                <HeroButton label="PIN" icon="key-outline" onPress={() => navigation.navigate('WalletPin')} />
               </View>
+            </GradientCard>
 
-              <View style={styles.filterRow}>
-                <TouchableOpacity
-                  onPress={() => setMonthPickerTarget('start')}
-                  style={[styles.filterButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Choose start month"
-                >
-                  <AppText style={[styles.filterLabel, { color: colors.textMuted }]}>From</AppText>
-                  <View style={styles.filterValueRow}>
-                    <AppText style={[styles.filterValue, { color: colors.text }]} numberOfLines={1}>
-                      {startMonthLabel}
+            {/* Funding account */}
+            {wallet?.accountNumber ? (
+              <Card style={{ gap: 10 }}>
+                <AppText style={[styles.cardTitle, { color: colors.text }]}>Add money by bank transfer</AppText>
+                <View style={[styles.account, { backgroundColor: colors.surfaceAlt }]}>
+                  <View style={{ flex: 1 }}>
+                    <AppText style={{ color: colors.textMuted, fontSize: 12 }}>{wallet.bankName}</AppText>
+                    <AppText style={[styles.accountNumber, { color: colors.text }]}>{wallet.accountNumber}</AppText>
+                    <AppText numberOfLines={1} style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>
+                      {wallet.accountName}
                     </AppText>
-                    <AppIcon name="chevron-forward" size={16} color={colors.textMuted} style={styles.filterChevron} />
                   </View>
-                </TouchableOpacity>
+                  <Button title={copied ? 'Copied' : 'Copy'} icon={copied ? 'checkmark' : 'copy-outline'} size="sm" variant={copied ? 'outline' : 'primary'} onPress={copyAccount} />
+                </View>
+              </Card>
+            ) : null}
 
-                <TouchableOpacity
-                  onPress={() => setMonthPickerTarget('end')}
-                  style={[styles.filterButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Choose end month"
-                >
-                  <AppText style={[styles.filterLabel, { color: colors.textMuted }]}>To</AppText>
-                  <View style={styles.filterValueRow}>
-                    <AppText style={[styles.filterValue, { color: colors.text }]} numberOfLines={1}>
-                      {endMonthLabel}
-                    </AppText>
-                    <AppIcon name="chevron-forward" size={16} color={colors.textMuted} style={styles.filterChevron} />
-                  </View>
-                </TouchableOpacity>
+            {/* History */}
+            <Card padded={false}>
+              <View style={styles.historyHead}>
+                <View style={styles.historyTitleRow}>
+                  <AppText style={[styles.cardTitle, { color: colors.text }]}>Transaction history</AppText>
+                  <AppText style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600' }}>
+                    {total} transaction{total === 1 ? '' : 's'}
+                  </AppText>
+                </View>
+                <View style={styles.chips}>
+                  {FILTERS.map((f) => (
+                    <Chip key={f.value} label={f.label} active={filter === f.value} onPress={() => setFilter(f.value)} />
+                  ))}
+                </View>
+                <View style={[styles.search, { backgroundColor: colors.surfaceAlt }]}>
+                  <AppIcon name="search-outline" size={16} color={colors.textMuted} />
+                  <TextInput
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Search history"
+                    placeholderTextColor={colors.textMuted}
+                    style={[styles.searchInput, { color: colors.text }]}
+                    returnKeyType="search"
+                  />
+                </View>
               </View>
-            </View>
-
-            {filteredTransactions.length === 0 ? (
-              <View style={{ marginTop: 18 }}>
-                <EmptyState
-                  icon="time-outline"
-                  title="No transactions in range"
-                  subtitle="Try a different month range to see more wallet activity."
-                />
-              </View>
-            ) : (
-              <View style={styles.list}>
-                {filteredTransactions.map((item) => {
-                  const positive = item.direction === 'credit';
-                  const amountColor = positive ? colors.success : item.direction === 'debit' ? colors.accent : colors.text;
+              <Divider />
+              {loading ? (
+                <ActivityIndicator color={colors.accent} style={{ paddingVertical: 30 }} />
+              ) : transactions.length === 0 ? (
+                <View style={{ padding: 16 }}>
+                  <EmptyState
+                    icon="receipt-outline"
+                    title={search || filter !== 'all' ? 'No transactions match' : 'No wallet activity yet'}
+                    subtitle={search || filter !== 'all' ? 'Try another filter or search.' : 'Money in and out of your wallet will show here.'}
+                  />
+                </View>
+              ) : (
+                transactions.map((item, i) => {
+                  const credit = item.direction === 'credit';
                   return (
-                    <TouchableOpacity
-                      key={item.id}
-                      onPress={() => navigation.navigate('WalletTransactionReceipt', { transaction: item })}
-                      style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                      activeOpacity={0.86}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open wallet transaction ${item.displayReference || item.reference}`}
-                    >
-                      <View style={[styles.itemIcon, { backgroundColor: positive ? 'rgba(34,197,94,0.12)' : colors.accentCard }]}>
-                        <AppIcon name={positive ? 'arrow-up-outline' : 'arrow-back'} size={18} color={amountColor} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <AppText style={[styles.itemTitle, { color: colors.text }]}>{item.description}</AppText>
-                        <AppText style={[styles.itemMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                          {item.displayDate || item.createdAt}
+                    <View key={`${item.id}-${i}`}>
+                      {i > 0 ? <Divider /> : null}
+                      <Pressable
+                        onPress={() => navigation.navigate('WalletTransactionReceipt', { transaction: item })}
+                        style={({ pressed }) => [styles.txRow, pressed && { backgroundColor: colors.surfaceAlt }]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Open wallet transaction ${item.displayReference || item.reference}`}
+                      >
+                        <IconCircle
+                          icon={credit ? 'arrow-down' : 'arrow-up'}
+                          size={32}
+                          color={credit ? colors.success : colors.accent}
+                          background={credit ? colors.successSoft : colors.accentSoft}
+                        />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <AppText numberOfLines={1} style={[styles.txTitle, { color: colors.text }]}>
+                            {item.description || (credit ? 'Money in' : 'Payment')}
+                          </AppText>
+                          <AppText numberOfLines={1} style={{ color: colors.textMuted, fontSize: 11 }}>
+                            {shortDate(item)}
+                          </AppText>
+                        </View>
+                        <AppText style={[styles.txAmount, { color: credit ? colors.success : colors.text }]}>
+                          {credit ? '+' : '−'}
+                          {money(item.amount)}
                         </AppText>
-                        <AppText style={[styles.itemMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                          {item.displayReference || item.reference}
-                        </AppText>
-                      </View>
-                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        <AppText style={[styles.itemAmount, { color: amountColor }]}>
-                          {positive ? '+' : item.direction === 'debit' ? '-' : ''}
-                          {formatMoney(Math.abs(item.signedAmount || item.amount))}
-                        </AppText>
-                        <AppText style={[styles.itemMeta, { color: colors.textMuted }]}>{item.status}</AppText>
-                      </View>
-                    </TouchableOpacity>
+                      </Pressable>
+                    </View>
                   );
-                })}
-              </View>
-            )}
+                })
+              )}
+              {page < totalPages && transactions.length > 0 ? (
+                <>
+                  <Divider />
+                  <Pressable onPress={loadMore} style={styles.more} accessibilityRole="button">
+                    {loadingMore ? (
+                      <ActivityIndicator color={colors.accent} />
+                    ) : (
+                      <AppText style={{ color: colors.accent, fontWeight: '700' }}>
+                        Load more · page {page} of {totalPages}
+                      </AppText>
+                    )}
+                  </Pressable>
+                </>
+              ) : null}
+            </Card>
           </>
         )}
       </ScrollView>
-
-      <OptionPickerDialog
-        visible={monthPickerTarget !== null}
-        title={monthPickerTarget === 'start' ? 'Select start month' : 'Select end month'}
-        options={monthOptions}
-        selected={monthPickerTarget === 'start' ? startMonthLabel : endMonthLabel}
-        onClose={() => setMonthPickerTarget(null)}
-        onSelect={selectMonth}
-      />
+      <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} onSent={() => load({ silent: true })} />
     </SafeAreaView>
   );
 };
 
+const HeroButton = ({
+  label,
+  icon,
+  primary,
+  onPress,
+}: {
+  label: string;
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  primary?: boolean;
+  onPress: () => void;
+}) => (
+  <Pressable
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    style={({ pressed }) => [
+      styles.heroButton,
+      primary
+        ? { backgroundColor: '#FFFFFF', borderBottomWidth: pressed ? 1 : 3, borderBottomColor: 'rgba(0,0,0,0.18)' }
+        : { backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.16)' },
+    ]}
+  >
+    <AppIcon name={icon} size={17} color={primary ? '#4E2149' : '#FFFFFF'} />
+    <AppText style={{ color: primary ? '#4E2149' : '#FFFFFF', fontWeight: '700', fontSize: 14 }}>{label}</AppText>
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 28,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  filterCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 18,
-  },
-  filterHeader: {
-    gap: 4,
-  },
-  filterTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  filterMeta: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  filterButton: {
-    flex: 1,
-    minWidth: 0,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  filterLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  filterValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  filterChevron: {
-    transform: [{ rotate: '90deg' }],
-  },
-  filterValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  loadingWrap: {
-    paddingTop: 40,
-    alignItems: 'center',
-  },
-  list: {
-    marginTop: 14,
-    gap: 12,
-  },
-  itemCard: {
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 14,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  itemIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  itemMeta: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  itemAmount: {
-    fontSize: 15,
-    fontWeight: '900',
-  },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topTitle: { fontSize: 17, fontWeight: '700' },
+  bigTitle: { fontSize: 22, fontWeight: '800' },
+  balanceLabel: { color: 'rgba(255,255,255,0.82)', fontSize: 13, fontWeight: '600' },
+  balance: { color: '#FFFFFF', fontSize: 36, fontWeight: '800', letterSpacing: -1, marginTop: 4 },
+  hint: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 6 },
+  hintLink: { color: '#FFFFFF', fontWeight: '700', textDecorationLine: 'underline' },
+  heroActions: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  heroButton: { flex: 1, height: 46, borderRadius: 999, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  account: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14 },
+  accountNumber: { fontSize: 22, fontWeight: '700', letterSpacing: 1.5, marginVertical: 2 },
+  historyHead: { padding: 16, gap: 10 },
+  historyTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chips: { flexDirection: 'row', gap: 8 },
+  search: { height: 40, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Geist-Regular', paddingVertical: 0 },
+  txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  txTitle: { fontSize: 14, fontWeight: '600' },
+  txAmount: { fontSize: 14, fontWeight: '700' },
+  more: { paddingVertical: 14, alignItems: 'center' },
 });
 
 export default WalletTransactionsScreen;

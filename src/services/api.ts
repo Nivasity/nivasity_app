@@ -1566,13 +1566,16 @@ export const walletAPI = {
     return mapWalletSummary(response.data.data);
   },
 
-  getTransactions: async (args?: { page?: number }): Promise<{
+  /** type: 'in' (credits/refunds) or 'out' (debits/fees); search matches description or reference. */
+  getTransactions: async (args?: { page?: number; type?: 'in' | 'out'; search?: string }): Promise<{
     summary: WalletSummary;
     transactions: WalletTransaction[];
     pagination?: ReferencePagination;
   }> => {
-    const page = args?.page ?? 1;
-    const response = await api.get<ApiResponse<any>>(`/wallet/transactions.php?page=${page}`);
+    const params = new URLSearchParams({ page: String(args?.page ?? 1) });
+    if (args?.type) params.set('type', args.type);
+    if (args?.search) params.set('search', args.search);
+    const response = await api.get<ApiResponse<any>>(`/wallet/transactions.php?${params.toString()}`);
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Failed to load wallet transactions');
     }
