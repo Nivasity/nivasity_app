@@ -123,7 +123,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
       </View>
 
       {tab === 'bulk' ? (
-        <BulkPaymentsList />
+        <BulkPaymentsList onPayForMates={() => navigation.navigate('BulkPayment')} />
       ) : (
       <>
       <View style={styles.searchRow}>

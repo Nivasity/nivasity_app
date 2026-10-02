@@ -520,6 +520,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate('ProfileSection', { section: 'security' })}
             />
             <Divider />
+            <Row icon="people-outline" label="Bulk payment" value="Pay for course mates' copies" onPress={() => navigation.navigate('BulkPayment')} />
+            <Divider />
             <Row icon="megaphone-outline" label="Material requests" value="Ask for a material that isn't in the store" onPress={() => navigation.navigate('MaterialRequests')} />
             <Divider />
             <Row icon="help-circle-outline" label="Help & Support" onPress={() => setSupportVisible(true)} />

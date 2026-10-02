@@ -254,7 +254,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         {/* Quick actions */}
         <Card style={styles.actionsCard}>
           <RoundAction icon="storefront" label="Store" color="#F97316" onPress={() => navigation.navigate('Store')} />
-          <RoundAction icon="receipt" label="Orders" color="#7A3B73" onPress={() => navigation.navigate('Orders')} />
+          <RoundAction icon="people" label="Bulk pay" color="#7A3B73" onPress={() => navigation.navigate('BulkPayment')} />
           <RoundAction icon="megaphone" label="Requests" color="#2563EB" onPress={() => navigation.navigate('MaterialRequests')} />
           <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
         </Card>

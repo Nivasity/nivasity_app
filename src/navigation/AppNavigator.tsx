@@ -39,6 +39,7 @@ import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import MaterialRequestsScreen from '../screens/MaterialRequestsScreen';
+import BulkPaymentScreen from '../screens/BulkPaymentScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -222,6 +223,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="MaterialRequests"
               component={MaterialRequestsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BulkPayment"
+              component={BulkPaymentScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

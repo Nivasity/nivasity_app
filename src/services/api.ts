@@ -1931,3 +1931,82 @@ export const materialRequestsAPI = {
     return response.data.message || '';
   },
 };
+
+// ─── Bulk payment: pay for course mates' copies from the wallet ───
+
+export interface BulkMaterial {
+  id: number;
+  title: string;
+  course_code: string;
+  price: number;
+}
+
+export interface BulkPreviewRow {
+  line_number: number;
+  first_name: string;
+  last_name: string;
+  matric_no: string;
+  status: 'valid' | 'error';
+  message: string;
+}
+
+/** Sent back unchanged to pay.php */
+export type BulkPaymentRow = Record<string, string | number>;
+
+export interface BulkPreview {
+  manual: { id: number; title: string; course_code: string; price: number };
+  rows: BulkPreviewRow[];
+  valid_count: number;
+  invalid_count: number;
+  breakdown: { subtotal: number; fee_percent: number; fee_amount: number; total_amount: number };
+  wallet: { ready: boolean; balance: number; has_enough_balance: boolean };
+  warnings: string[];
+  can_submit_payment: boolean;
+  payment_rows: BulkPaymentRow[];
+}
+
+export interface BulkPayResult {
+  ref_id: string;
+  batch_id: number;
+  student_count: number;
+  subtotal: number;
+  fee_amount: number;
+  total_amount: number;
+  wallet_balance_after: number;
+}
+
+export const bulkAPI = {
+  manuals: async (): Promise<{ materials: BulkMaterial[]; fee_percent: number; wallet: { ready: boolean; warnings?: string[] } }> => {
+    const response = await api.get<ApiResponse<any>>('/materials/bulk/manuals.php');
+    if (response.data.status !== 'success' || !response.data.data) {
+      throw new Error(response.data.message || 'Bulk payment is not available right now');
+    }
+    const d = response.data.data;
+    return {
+      materials: (d.materials || []).map((m: any) => ({ ...m, id: Number(m.id), price: Number(m.price) })),
+      fee_percent: Number(d.fee_percent ?? 5),
+      wallet: d.wallet || { ready: false },
+    };
+  },
+  /** records: one "first name, last name, matric no" per line */
+  previewText: async (manualId: number, records: string): Promise<BulkPreview> => {
+    const response = await api.post<ApiResponse<BulkPreview>>('/materials/bulk/preview.php', { manual_id: manualId, records });
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Could not check the list');
+    return response.data.data;
+  },
+  previewFile: async (manualId: number, file: { uri: string; name: string; type: string }): Promise<BulkPreview> => {
+    const formData = new FormData();
+    formData.append('manual_id', String(manualId));
+    formData.append('bulk_csv', file as any);
+    const response = await api.post<ApiResponse<BulkPreview>>('/materials/bulk/preview.php', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Could not read the CSV');
+    return response.data.data;
+  },
+  pay: async (manualId: number, rows: BulkPaymentRow[], pin: string): Promise<BulkPayResult> => {
+    const response = await api.post<ApiResponse<BulkPayResult>>('/materials/bulk/pay.php', { manual_id: manualId, rows, wallet_pin: pin });
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Payment failed');
+    return response.data.data;
+  },
+};
