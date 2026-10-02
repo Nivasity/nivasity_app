@@ -22,7 +22,7 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
-import { profileAPI, referenceAPI } from '../services/api';
+import { profileAPI, referenceAPI, isDefaultAvatar } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { DashboardStats } from '../types';
 import { GradientCard } from '../components/ui';
@@ -459,7 +459,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               { borderColor: colors.surface, backgroundColor: colors.surface },
             ]}
           >
-            {user?.avatar ? (
+            {user?.avatar && !isDefaultAvatar(user.avatar) ? (
               <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
             ) : (
               <AppText style={[styles.avatarText, { color: colors.secondary }]}>{initials}</AppText>

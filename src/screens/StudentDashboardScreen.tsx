@@ -12,7 +12,7 @@ import { useCart } from '../contexts/CartContext';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { useWallet } from '../contexts/WalletContext';
 import Loading from '../components/Loading';
-import { orderAPI, storeAPI } from '../services/api';
+import { orderAPI, storeAPI, isDefaultAvatar } from '../services/api';
 import { DashboardStats, Order, Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
@@ -185,7 +185,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             accessibilityLabel="Open My Account"
             style={[styles.avatar, { backgroundColor: colors.secondary }]}
           >
-            {user?.avatar ? (
+            {user?.avatar && !isDefaultAvatar(user.avatar) ? (
               <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>

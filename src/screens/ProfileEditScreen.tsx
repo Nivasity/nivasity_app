@@ -16,7 +16,7 @@ import AppIcon from '../components/AppIcon';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { profileAPI } from '../services/api';
+import { profileAPI, isDefaultAvatar } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { User } from '../types';
 
@@ -103,7 +103,7 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = () => {
           <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.profileRow}>
               <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt }]}>
-                {user?.avatar ? (
+                {user?.avatar && !isDefaultAvatar(user.avatar) ? (
                   <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                 ) : (
                   <Text style={[styles.avatarText, { color: colors.secondary }]}>{initials}</Text>

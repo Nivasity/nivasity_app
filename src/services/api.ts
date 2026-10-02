@@ -154,9 +154,15 @@ const api = axios.create({
   timeout: 15000,
 });
 
+/** Stock "no photo" images (users/user.jpg): a black silhouette that vanishes in dark mode. */
+export const isDefaultAvatar = (src?: string | null) => {
+  const v = (src || '').trim().toLowerCase().split('?')[0];
+  return !v || /(^|\/)(user|default|avatar|profile)\.(jpe?g|png|webp|svg)$/.test(v);
+};
+
 const toUserProfilePicUrl = (profilePic?: string | null) => {
   const value = (profilePic || '').trim();
-  if (!value) return undefined;
+  if (!value || isDefaultAvatar(value)) return undefined;
   if (/^https?:\/\//i.test(value)) return value;
   return `${RESOLVED_ASSETS_BASE_URL}/users/${value.replace(/^\/+/, '')}`;
 };
