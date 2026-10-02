@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
+import Text from './AppText';
 import { useTheme } from '../contexts/ThemeContext';
 import AppIcon from './AppIcon';
 

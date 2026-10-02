@@ -7,7 +7,7 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { CartProvider } from './src/contexts/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider, configureFonts } from 'react-native-paper';
 import { AppMessageProvider } from './src/contexts/AppMessageContext';
 import { NotificationsProvider } from './src/contexts/NotificationsContext';
 import { WalletProvider } from './src/contexts/WalletContext';
@@ -51,8 +51,31 @@ const AppRoot = () => {
 
   const paperTheme = React.useMemo(() => {
     const base = isDark ? MD3DarkTheme : MD3LightTheme;
+    // Paper inputs, dialogs and menus use Geist too
+    const fonts = configureFonts({
+      config: {
+        displayLarge: { fontFamily: 'Geist-ExtraBold' },
+        displayMedium: { fontFamily: 'Geist-ExtraBold' },
+        displaySmall: { fontFamily: 'Geist-ExtraBold' },
+        headlineLarge: { fontFamily: 'Geist-ExtraBold' },
+        headlineMedium: { fontFamily: 'Geist-ExtraBold' },
+        headlineSmall: { fontFamily: 'Geist-Bold' },
+        titleLarge: { fontFamily: 'Geist-Bold' },
+        titleMedium: { fontFamily: 'Geist-SemiBold' },
+        titleSmall: { fontFamily: 'Geist-SemiBold' },
+        labelLarge: { fontFamily: 'Geist-SemiBold' },
+        labelMedium: { fontFamily: 'Geist-Medium' },
+        labelSmall: { fontFamily: 'Geist-Medium' },
+        bodyLarge: { fontFamily: 'Geist-Regular' },
+        bodyMedium: { fontFamily: 'Geist-Regular' },
+        bodySmall: { fontFamily: 'Geist-Regular' },
+        default: { fontFamily: 'Geist-Regular' },
+      } as any,
+    });
     return {
       ...base,
+      fonts,
+      roundness: 4,
       colors: {
         ...base.colors,
         primary: colors.accent,

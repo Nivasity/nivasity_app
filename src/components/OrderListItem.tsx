@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import Text from './AppText';
 import AppIcon from './AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import { Order } from '../types';

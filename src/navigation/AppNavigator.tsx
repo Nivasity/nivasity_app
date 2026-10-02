@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -42,10 +42,6 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TAB_BAR_BG = '#0B0B0C';
-const TAB_BAR_HEIGHT = 65;
-const TAB_BAR_WIDTH_RATIO = 0.68;
-const TAB_BAR_MAX_WIDTH = 420;
 
 const linking = {
   prefixes: [
@@ -89,76 +85,49 @@ const AuthStack = ({ initialRouteName }: { initialRouteName: 'Welcome' | 'Login'
   );
 };
 
-// Student Tab Navigator
+// Student Tab Navigator: full-width bar with labels; the active tab gets a raised orange pill.
+const TABS: { name: string; label: string; icon: AppIconName; activeIcon: AppIconName; component: React.ComponentType<any> }[] = [
+  { name: 'Dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home', component: StudentDashboardScreen },
+  { name: 'Store', label: 'Store', icon: 'storefront-outline', activeIcon: 'storefront', component: StoreScreen },
+  { name: 'Orders', label: 'Orders', icon: 'receipt-outline', activeIcon: 'receipt', component: OrderHistoryScreen },
+  { name: 'Profile', label: 'Profile', icon: 'person-outline', activeIcon: 'person', component: ProfileScreen },
+];
+
 const StudentTabs = () => {
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
-  const { width: windowWidth } = useWindowDimensions();
-  const tabBarWidth = Math.min(windowWidth * TAB_BAR_WIDTH_RATIO, TAB_BAR_MAX_WIDTH);
-  const sideInset = Math.max((windowWidth - tabBarWidth) / 2, 0);
+  const { colors } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
         tabBarHideOnKeyboard: true,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: colors.text,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontFamily: 'Geist-SemiBold', fontSize: 11, marginTop: 2 },
         tabBarStyle: {
-          position: 'absolute',
-          start: sideInset,
-          end: sideInset,
-          bottom: 10 + insets.bottom,
-          borderRadius: TAB_BAR_HEIGHT / 2,
-          backgroundColor: isDark ? TAB_BAR_BG : colors.surface,
-          borderWidth: 2,
-          borderColor: colors.border,
-          overflow: 'visible',
-          height: TAB_BAR_HEIGHT,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 64 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
           elevation: 0,
-        },
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 18,
         },
       }}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={StudentDashboardScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="home-outline" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Store"
-        component={StoreScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="bag-outline" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Orders"
-        component={OrderHistoryScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="receipt-outline" />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="person-outline" />
-          ),
-        }}
-      />
+      {TABS.map((t) => (
+        <Tab.Screen
+          key={t.name}
+          name={t.name}
+          component={t.component}
+          options={{
+            tabBarLabel: t.label,
+            tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={focused ? t.activeIcon : t.icon} />,
+          }}
+        />
+      ))}
     </Tab.Navigator>
   );
 };
@@ -258,19 +227,28 @@ const AppNavigator = () => {
 };
 
 const TabIcon = ({ focused, icon }: { focused: boolean; icon: AppIconName }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   return (
-    <View style={[styles.tabPill, focused && { backgroundColor: isDark ? colors.accentMuted : colors.accent }]}>
-      <AppIcon name={icon} size={22} color={focused ? colors.onAccent : colors.text} />
+    <View
+      style={[
+        styles.tabPill,
+        focused && {
+          backgroundColor: colors.accent,
+          borderBottomWidth: 3,
+          borderBottomColor: colors.accentLip,
+        },
+      ]}
+    >
+      <AppIcon name={icon} size={20} color={focused ? colors.onAccent : colors.textMuted} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   tabPill: {
-    width: 50,
-    height: 50,
-    borderRadius: 30,
+    width: 52,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },

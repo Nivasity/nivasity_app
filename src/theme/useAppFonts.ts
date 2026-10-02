@@ -1,10 +1,12 @@
 import { useFonts } from 'expo-font';
 
+// Geist, same as the web portal. AppText picks the file from fontWeight.
 export const useAppFonts = () => {
   return useFonts({
-    'SFProDisplay-Regular': require('../../assets/fonts/SFProDisplay-Regular.otf'),
-    'SFProDisplay-Bold': require('../../assets/fonts/SFProDisplay-Bold.otf'),
-    'SFProDisplay-Medium': require('../../assets/fonts/SFProDisplay-Medium.otf'),
-    // Add more weights/styles as needed
+    'Geist-Regular': require('../../assets/fonts/Geist_400Regular.ttf'),
+    'Geist-Medium': require('../../assets/fonts/Geist_500Medium.ttf'),
+    'Geist-SemiBold': require('../../assets/fonts/Geist_600SemiBold.ttf'),
+    'Geist-Bold': require('../../assets/fonts/Geist_700Bold.ttf'),
+    'Geist-ExtraBold': require('../../assets/fonts/Geist_800ExtraBold.ttf'),
   });
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { HelperText } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,6 +12,8 @@ type OtpInputProps = {
   disabled?: boolean;
   secureTextEntry?: boolean;
   variant?: 'otp' | 'pin';
+  /** Called once when the last digit is entered (no confirm button needed). */
+  onComplete?: (value: string) => void;
 };
 
 const digitsOnly = (text: string) => text.replace(/[^\d]/g, '');
@@ -25,12 +27,29 @@ const OtpInput: React.FC<OtpInputProps> = ({
   disabled = false,
   secureTextEntry = false,
   variant = 'otp',
+  onComplete,
 }) => {
   const { colors } = useTheme();
   const inputs = useRef<Array<TextInput | null>>([]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const code = useMemo(() => digitsOnly(value).slice(0, length), [value, length]);
+  // Auto-submit: fire onComplete when the code becomes full; reset when it is cleared or edited.
+  const completedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (code.length === length) {
+      if (completedRef.current !== code) {
+        completedRef.current = code;
+        onComplete?.(code);
+      }
+    } else {
+      completedRef.current = null;
+      // A cleared code (e.g. wrong PIN) goes back to the first box
+      if (code.length === 0 && !disabled) inputs.current[0]?.focus?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, length]);
+
   const cells = useMemo(() => {
     const arr = Array.from({ length }, (_, i) => code[i] || '');
     return arr;
@@ -98,13 +117,12 @@ const OtpInput: React.FC<OtpInputProps> = ({
                 styles.cell,
                 variant === 'pin' && styles.pinCell,
                 {
-                  borderColor: isFocused ? colors.secondary : colors.border,
+                  borderColor: errorText ? colors.danger : isFocused ? colors.accent : colors.border,
                   backgroundColor: variant === 'pin' ? colors.surface : colors.background,
                   color: colors.text,
                   opacity: disabled ? 0.6 : 1,
                 },
-                variant === 'pin' && isFilled && { borderColor: colors.accent },
-                variant === 'pin' && isFocused && { transform: [{ translateY: -1 }] },
+                variant === 'pin' && isFilled && !errorText && { borderColor: colors.accent },
               ]}
               placeholderTextColor={colors.textMuted}
               selectionColor={colors.secondary}
@@ -136,20 +154,23 @@ const styles = StyleSheet.create({
   },
   pinRow: {
     gap: 12,
+    justifyContent: 'center',
   },
   cell: {
     flex: 1,
     height: 54,
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 2,
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 20,
+    fontFamily: 'Geist-Bold',
     paddingHorizontal: 0,
   },
   pinCell: {
+    flex: 0,
+    width: 56,
     height: 62,
-    borderRadius: 20,
+    borderRadius: 18,
     fontSize: 22,
     letterSpacing: 2,
   },
