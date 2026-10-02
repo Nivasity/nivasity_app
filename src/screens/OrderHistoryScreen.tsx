@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
+import { ScreenTitle } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
 import { Order } from '../types';
@@ -60,7 +61,8 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     if (!normalized) return orders;
 
     return orders.filter((order) => {
-      const haystack = `${order.id} ${order.status} ${new Date(order.createdAt).toLocaleDateString()} ${order.total}`.toLowerCase();
+      const names = (order.items || []).map((it) => `${it.name} ${it.courseCode || ''} ${it.materialCode || ''}`).join(' ');
+      const haystack = `${names} ${order.id} ${order.status} ${new Date(order.createdAt).toLocaleDateString()} ${order.total}`.toLowerCase();
       return haystack.includes(normalized);
     });
   }, [orders, query]);
@@ -78,46 +80,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         onPress={() => navigation.navigate('OrderReceipt', { order: item })}
       />
     );
-
-    // Choose icon and color based on status
-    let icon: import('../components/AppIcon').AppIconName = 'checkmark-circle-outline';
-    let iconColor = colors.success;
-    if (item.status === 'processing') {
-      icon = 'time-outline';
-      iconColor = colors.warning;
-    } else if (item.status === 'cancelled' || item.status === 'failed') {
-      icon = 'close-circle-outline';
-      iconColor = colors.danger;
-    } else if (item.status === 'refunded') {
-      icon = 'refresh-circle-outline';
-      iconColor = colors.secondary;
-    }
-    return (
-      <TouchableOpacity
-        onPress={() => navigation.navigate('OrderReceipt', { order: item })}
-        style={[styles.orderCard, { backgroundColor: 'transparent' }]}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={`Open receipt for order ${item.id}`}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <AppIcon name={icon} size={22} color={iconColor} />
-          <View>
-            <Text style={[styles.orderNumber, { color: colors.text }]} numberOfLines={1}>
-              Order #{item.id}
-            </Text>
-            <Text style={[styles.orderMeta, { color: colors.textMuted }]} numberOfLines={1}>
-              {new Date(item.createdAt).toLocaleDateString()} - {item.items.length} item{item.items.length === 1 ? '' : 's'}
-            </Text>
-          </View>
-        </View>
-        <View>
-          <Text style={[styles.orderAmount, { color: colors.text }]} numberOfLines={1}>
-            ₦ {item.total.toLocaleString()}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   if (loading) {
@@ -126,18 +88,11 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
   return (
     <SafeAreaView
-      edges={['top', 'bottom']}
+      edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: colors.text }]}>Order History</Text>
-          <View style={[styles.countPill, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={[styles.countText, { color: colors.text }]}>{totalOrdersLabel}</Text>
-          </View>
-        </View>
-        <View style={[styles.headerIcon, { backgroundColor: 'transparent' }]}>
-        </View>
+        <ScreenTitle title="Orders" subtitle={`Everything you've bought · ${totalOrdersLabel}`} />
       </View>
 
       <View style={styles.searchRow}>
@@ -146,7 +101,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search orders..."
+            placeholder="Search by course code or title"
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.text }]}
             returnKeyType="search"
@@ -170,7 +125,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         data={filteredOrders}
         renderItem={renderOrder}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 130 + insets.bottom }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -200,11 +155,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingTop: 12,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -234,16 +185,15 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     paddingHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
+    marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   searchBar: {
     flex: 1,
-    height: 60,
-    borderRadius: 20,
+    height: 48,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -252,14 +202,14 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Geist-Regular',
     paddingVertical: 0,
   },
   clearButton: {
     width: 48,
     height: 48,
-    borderRadius: 18,
+    borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Text from './AppText';
 import AppIcon from './AppIcon';
+import { CourseTile, IconCircle } from './ui';
 import { useTheme } from '../contexts/ThemeContext';
 import { Order } from '../types';
 
@@ -10,71 +11,74 @@ interface OrderListItemProps {
   onPress?: () => void;
 }
 
+// One order as a raised card. The whole card opens the receipt (no separate Receipt button).
 const OrderListItem: React.FC<OrderListItemProps> = ({ order, onPress }) => {
   const { colors } = useTheme();
-  // Choose icon and color based on status
-  let icon: import('./AppIcon').AppIconName = 'checkmark-circle-outline';
-  let iconColor = colors.success;
-  if (order.status === 'processing') {
-    icon = 'time-outline';
-    iconColor = colors.warning;
-  } else if (order.status === 'cancelled' || order.status === 'failed') {
-    icon = 'close-circle-outline';
-    iconColor = colors.danger;
-  } else if (order.status === 'refunded') {
-    icon = 'refresh-circle-outline';
-    iconColor = colors.secondary;
-  }
+  const first = order.items?.[0];
+  const code = first?.courseCode || first?.materialCode || '';
+  const more = (order.items?.length || 0) - 1;
+
+  const status =
+    order.status === 'processing' || order.status === 'pending'
+      ? { label: 'Pending', fg: colors.warning, bg: colors.warning + '22' }
+      : order.status === 'cancelled' || order.status === 'failed'
+        ? { label: order.status === 'failed' ? 'Failed' : 'Cancelled', fg: colors.danger, bg: colors.dangerSoft }
+        : order.status === 'refunded'
+          ? { label: 'Refunded', fg: colors.secondary, bg: colors.secondary + '22' }
+          : null;
+
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      style={[styles.orderCard, { backgroundColor: 'transparent' }]}
-      activeOpacity={0.85}
       accessibilityRole="button"
-      accessibilityLabel={`Open receipt for order ${order.id}`}
+      accessibilityLabel={`Open receipt for ${first?.name || `order ${order.id}`}`}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderColor: colors.border, borderBottomColor: colors.cardLip },
+      ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <AppIcon name={icon} size={22} color={iconColor} />
-        <View>
-          <Text style={[styles.orderNumber, { color: colors.text }]} numberOfLines={1}>
-            Order #{order.id}
-          </Text>
-          <Text style={[styles.orderMeta, { color: colors.textMuted }]} numberOfLines={1}>
-            {new Date(order.createdAt).toLocaleDateString()} - {order.items.length} item{order.items.length === 1 ? '' : 's'}
-          </Text>
+      {code ? <CourseTile code={code} size={46} /> : <IconCircle icon="receipt-outline" size={46} />}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {first?.name || `Order #${order.id}`}
+          {more > 0 ? ` +${more} more` : ''}
+        </Text>
+        <Text style={[styles.meta, { color: colors.textMuted }]} numberOfLines={1}>
+          {[code, new Date(order.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+        <View style={styles.bottom}>
+          <Text style={[styles.amount, { color: colors.text }]}>₦{order.total.toLocaleString()}</Text>
+          {status ? (
+            <View style={[styles.badge, { backgroundColor: status.bg }]}>
+              <Text style={[styles.badgeText, { color: status.fg }]}>{status.label}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
-      <View>
-        <Text style={[styles.orderAmount, { color: colors.text }]} numberOfLines={1}>
-          ₦ {order.total.toLocaleString()}
-        </Text>
-      </View>
-    </TouchableOpacity>
+      <AppIcon name="chevron-forward" size={18} color={colors.textMuted} />
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  orderCard: {
-    paddingVertical: 10,
-    borderRadius: 18,
-    marginBottom: 12,
+  card: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderBottomWidth: 3,
+    marginBottom: 10,
   },
-  orderNumber: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  orderMeta: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  orderAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
+  title: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  meta: { fontSize: 12, marginTop: 2 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  amount: { fontSize: 15, fontWeight: '800' },
+  badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
 });
 
 export default OrderListItem;
