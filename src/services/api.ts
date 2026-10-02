@@ -1886,3 +1886,48 @@ export const receiptsAPI = {
     return response.data.data?.payments ?? [];
   },
 };
+
+export interface MaterialRequest {
+  id: number;
+  material_code: string;
+  material_title: string;
+  status: string;
+  scope?: string;
+  requester_name?: string;
+  target_faculty_name?: string | null;
+  target_department_name?: string | null;
+  upvote_count: number;
+  expected_buyers_count: number;
+  progress_percent: number;
+  threshold_percent: number;
+  threshold_met: boolean;
+  viewer_has_upvoted: boolean | number | string;
+  share_token: string;
+  created_at?: string;
+}
+
+export type MaterialRequestScope = 'my_department' | 'faculty' | 'school';
+
+/** Ask for a material that is not in the store yet; course mates upvote it. */
+export const materialRequestsAPI = {
+  list: async (token?: string): Promise<{ requests: MaterialRequest[]; highlighted: MaterialRequest | null }> => {
+    const response = await api.get<ApiResponse<{ requests: MaterialRequest[]; highlighted: MaterialRequest | null }>>(
+      `/material-requests/list.php${token ? `?token=${encodeURIComponent(token)}` : ''}`
+    );
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load requests');
+    return { requests: response.data.data?.requests ?? [], highlighted: response.data.data?.highlighted ?? null };
+  },
+  create: async (payload: { material_code: string; material_title: string; scope: MaterialRequestScope }) => {
+    const response = await api.post<ApiResponse<{ status: string; material?: { course_code: string } | null }>>(
+      '/material-requests/create.php',
+      payload
+    );
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not send your request');
+    return { message: response.data.message || '', result: response.data.data };
+  },
+  upvote: async (requestId: number): Promise<string> => {
+    const response = await api.post<ApiResponse<any>>('/material-requests/upvote.php', { request_id: requestId });
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not add your vote');
+    return response.data.message || '';
+  },
+};

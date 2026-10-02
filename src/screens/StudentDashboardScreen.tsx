@@ -208,7 +208,12 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             <View style={styles.walletChip}>
               <Text style={styles.walletChipText}>{hasWallet ? summary?.wallet?.bankName || 'School wallet' : 'Nivasity wallet'}</Text>
             </View>
-            {hasWallet ? <IconButton icon="refresh" tone="onGradient" label="Refresh balance" onPress={onRefresh} /> : null}
+            {hasWallet ? (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <IconButton icon="time-outline" tone="onGradient" label="Wallet history" onPress={() => navigation.navigate('WalletTransactions')} />
+                <IconButton icon="refresh" tone="onGradient" label="Refresh balance" onPress={onRefresh} />
+              </View>
+            ) : null}
           </View>
 
           {hasWallet ? (
@@ -250,7 +255,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         <Card style={styles.actionsCard}>
           <RoundAction icon="storefront" label="Store" color="#F97316" onPress={() => navigation.navigate('Store')} />
           <RoundAction icon="receipt" label="Orders" color="#7A3B73" onPress={() => navigation.navigate('Orders')} />
-          <RoundAction icon="wallet" label="Wallet" color="#2563EB" onPress={() => navigation.navigate('WalletTransactions')} />
+          <RoundAction icon="megaphone" label="Requests" color="#2563EB" onPress={() => navigation.navigate('MaterialRequests')} />
           <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
         </Card>
 

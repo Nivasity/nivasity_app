@@ -38,6 +38,7 @@ import WalletPinScreen from '../screens/WalletPinScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import MaterialRequestsScreen from '../screens/MaterialRequestsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -216,6 +217,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="MaterialRequests"
+              component={MaterialRequestsScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>
