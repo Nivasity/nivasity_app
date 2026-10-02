@@ -184,6 +184,7 @@ const styles = StyleSheet.create({
   },
   section: {
     borderWidth: 1,
+    borderBottomWidth: 3,
     borderRadius: 25,
     overflow: 'hidden',
   },

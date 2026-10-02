@@ -1264,7 +1264,8 @@ const styles = StyleSheet.create({
   },
   settingsList: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderBottomWidth: 3,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   settingsRow: {

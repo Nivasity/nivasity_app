@@ -221,7 +221,8 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderBottomWidth: 3,
+    borderRadius: 24,
     padding: 14,
     marginBottom: 12,
   },
@@ -273,7 +274,8 @@ const styles = StyleSheet.create({
   },
   formCard: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderBottomWidth: 3,
+    borderRadius: 24,
     padding: 14,
   },
 });
