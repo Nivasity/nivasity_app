@@ -21,6 +21,8 @@ import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import OptionPickerDialog from '../components/OptionPickerDialog';
+import EmptyState from '../components/EmptyState';
+import { IconButton } from '../components/ui';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { SupportTicketListItem, supportAPI } from '../services/api';
@@ -196,32 +198,68 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
     }
   };
 
-  const renderItem = ({ item }: { item: SupportTicketListItem }) => {
-    const title = (item.latest_message || item.subject || 'Support').trim();
+  const statusStyle = (status?: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'open':
+        return { label: 'Open', fg: colors.accent, bg: colors.accentSoft };
+      case 'in_progress':
+        return { label: 'In progress', fg: colors.info, bg: colors.infoSoft };
+      case 'resolved':
+        return { label: 'Resolved', fg: colors.success, bg: colors.successSoft };
+      case 'closed':
+        return { label: 'Closed', fg: colors.textMuted, bg: colors.surfaceAlt };
+      default:
+        return null;
+    }
+  };
+
+  const renderItem = ({ item, index }: { item: SupportTicketListItem; index: number }) => {
+    const title = (item.subject || item.latest_message || 'Support').trim();
     const relative = formatRelative(item.updated_at || item.created_at);
-    const sub = `${item.category || 'Support'}${relative ? ` • ${relative}` : ''}`;
-    const avatarLetter = (item.category || 'S').trim().charAt(0).toUpperCase();
+    const sub = [item.latest_message?.trim(), relative].filter(Boolean).join(' · ') || item.category || 'Support';
+    const st = statusStyle(item.status);
+    const first = index === 0;
+    const last = index === tickets.length - 1;
     return (
-      <TouchableOpacity
+      <Pressable
         onPress={() => openTicket(item)}
-        style={[styles.ticketRow, { borderBottomColor: colors.border }]}
-        activeOpacity={0.86}
+        style={({ pressed }) => [
+          styles.ticketRow,
+          {
+            backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
+            borderColor: colors.border,
+            borderTopWidth: first ? 1 : 0,
+            borderTopLeftRadius: first ? 24 : 0,
+            borderTopRightRadius: first ? 24 : 0,
+            borderBottomWidth: last ? 3 : StyleSheet.hairlineWidth,
+            borderBottomColor: last ? colors.cardLip : colors.border,
+            borderBottomLeftRadius: last ? 24 : 0,
+            borderBottomRightRadius: last ? 24 : 0,
+          },
+        ]}
         accessibilityRole="button"
         accessibilityLabel={`Open ticket ${item.code}`}
       >
-        <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <Text style={[styles.avatarText, { color: highlightColor }]}>{avatarLetter}</Text>
+        <View style={[styles.avatar, { backgroundColor: colors.accentSoft }]}>
+          <AppIcon name="chatbubble-ellipses-outline" size={18} color={colors.accent} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.ticketTitle, { color: colors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.ticketTitle, { color: colors.text, flexShrink: 1 }]} numberOfLines={1}>
+              {title}
+            </Text>
+            {st ? (
+              <View style={[styles.badge, { backgroundColor: st.bg }]}>
+                <Text style={[styles.badgeText, { color: st.fg }]}>{st.label}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={[styles.ticketSub, { color: colors.textMuted }]} numberOfLines={1}>
             {sub}
           </Text>
         </View>
-        <AppIcon name="chevron-forward" size={16} color={colors.text} />
-      </TouchableOpacity>
+        <AppIcon name="chevron-forward" size={16} color={colors.textMuted} />
+      </Pressable>
     );
   };
 
@@ -249,25 +287,15 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
   );
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.surface }]}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.iconButton]}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <AppIcon name="chevron-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, alignItems: 'center' }}>
+        <IconButton icon="chevron-back" label="Go back" onPress={() => navigation.goBack()} />
+        <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-            Messages
+            Support
           </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13 }}>We reply by email and here</Text>
         </View>
-
-        <View style={[styles.iconButton, { opacity: 0 }]} />
       </View>
 
       <FlatList
@@ -289,9 +317,16 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
             renderSkeleton()
           ) : (
             <View style={styles.empty}>
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>No support tickets yet</Text>
-              <View style={{ height: 12 }} />
-              <Button title="Create a ticket" onPress={() => setComposeVisible(true)} variant="outline" />
+              <EmptyState
+                icon="chatbubbles-outline"
+                title="No tickets yet"
+                subtitle="Something not right with a payment, material or your account? Open a ticket and we'll help."
+                actionLabel="New ticket"
+                onAction={() => {
+                  resetComposer();
+                  setComposeVisible(true);
+                }}
+              />
             </View>
           )
         }
@@ -306,7 +341,7 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
           styles.fab,
           {
             backgroundColor: colors.accent,
-            borderColor: colors.border,
+            borderBottomColor: colors.accentLip,
             bottom: 18 + insets.bottom,
           },
         ]}
@@ -314,7 +349,8 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
         accessibilityRole="button"
         accessibilityLabel="Create new ticket"
       >
-        <AppIcon name="create-outline" size={22} color={colors.onAccent} />
+        <AppIcon name="add" size={20} color={colors.onAccent} />
+        <Text style={{ color: colors.onAccent, fontWeight: '700', fontSize: 15 }}>New ticket</Text>
       </TouchableOpacity>
 
       <Modal visible={composeVisible} transparent animationType="slide" onRequestClose={() => setComposeVisible(false)}>
@@ -433,15 +469,23 @@ const SupportTicketsScreen: React.FC<SupportTicketsScreenProps> = ({ navigation 
 };
 
 const styles = StyleSheet.create({
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   iconButton: {
     width: 42,
@@ -451,9 +495,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: -0.2,
+    fontSize: 22,
+    fontWeight: '800',
   },
   subtitle: {
     marginTop: 2,
@@ -462,20 +505,21 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 6,
+    paddingHorizontal: 16,
   },
   ticketRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -486,12 +530,11 @@ const styles = StyleSheet.create({
   },
   ticketTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontWeight: '700',
   },
   ticketSub: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 12,
+    marginTop: 2,
   },
   skeletonDot: {
     width: 22,
@@ -504,13 +547,14 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 18,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 1,
+    right: 16,
+    height: 52,
+    paddingHorizontal: 20,
+    borderRadius: 26,
+    borderBottomWidth: 3,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   empty: {
     marginTop: 80,

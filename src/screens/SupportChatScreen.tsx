@@ -230,7 +230,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     const fromMe = myUserId != null && item.user_id != null && Number(item.user_id) === myUserId;
     const role = (item.user_role || '').toLowerCase();
     const fromSupport = !fromMe && (role === 'admin' || /support/i.test(item.user_name || ''));
-    const bubbleBg = fromMe ? colors.accent : colors.surfaceAlt;
+    const bubbleBg = fromMe ? colors.accent : colors.surface;
     const bubbleBorder = fromMe ? 'transparent' : colors.border;
     const textColor = fromMe ? colors.onAccent : colors.text;
     const subColor = fromMe ? (isDark ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.88)') : colors.textMuted;
@@ -345,7 +345,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     inputHeight > 40 ? { alignSelf: 'flex-end' as const } : { alignSelf: 'center' as const };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.surface }]}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -438,7 +438,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
                   style={[
                     styles.sendInline,
                     {
-                      backgroundColor: sending ? colors.surfaceAlt : 'transparent',
+                      backgroundColor: sending ? colors.surfaceAlt : colors.accent,
                     },
                     inlineActionStyle,
                   ]}
@@ -447,7 +447,7 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
                   accessibilityLabel="Send message"
                   disabled={sending}
                 >
-                  <AppIcon name="arrow-up" size={20} color={sending ? colors.textMuted : colors.accent} />
+                  <AppIcon name="arrow-up" size={20} color={sending ? colors.textMuted : colors.onAccent} />
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.actionsInline, inlineActionStyle]}>
