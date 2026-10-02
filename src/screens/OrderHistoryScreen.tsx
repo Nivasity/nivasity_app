@@ -13,6 +13,7 @@ import AppIcon from '../components/AppIcon';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
 import { ScreenTitle } from '../components/ui';
+import BulkPaymentsList from '../components/BulkPaymentsList';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
 import { Order } from '../types';
@@ -28,6 +29,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<'purchases' | 'bulk'>('purchases');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -95,6 +97,35 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         <ScreenTitle title="Orders" subtitle={`Everything you've bought · ${totalOrdersLabel}`} />
       </View>
 
+      {/* My purchases / bulk payments I made for course mates */}
+      <View style={[styles.tabs, { backgroundColor: colors.surfaceAlt }]} accessibilityRole="tablist">
+        {([
+          ['purchases', 'My purchases'],
+          ['bulk', 'Bulk payments'],
+        ] as const).map(([value, label]) => {
+          const active = tab === value;
+          return (
+            <TouchableOpacity
+              key={value}
+              onPress={() => setTab(value)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              activeOpacity={0.85}
+              style={[
+                styles.tab,
+                active && { backgroundColor: colors.accent, borderBottomWidth: 3, borderBottomColor: colors.accentLip },
+              ]}
+            >
+              <Text style={{ color: active ? colors.onAccent : colors.textMuted, fontWeight: '700', fontSize: 14 }}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {tab === 'bulk' ? (
+        <BulkPaymentsList onPayForMates={() => navigation.navigate('BulkPayment')} />
+      ) : (
+      <>
       <View style={styles.searchRow}>
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <AppIcon name="search-outline" size={18} color={colors.textMuted} />
@@ -145,11 +176,28 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
           </View>
         }
       />
+      </>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
   },

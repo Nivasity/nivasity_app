@@ -1841,3 +1841,48 @@ export const noticesAPI = {
     await api.post<ApiResponse<any>>('/surveys/dismiss.php', { survey_id: surveyId });
   },
 };
+
+export interface BulkPaymentRecord {
+  id: number;
+  ref_id: string;
+  manual_id: number;
+  title: string;
+  course_code: string;
+  student_count: number;
+  subtotal: number;
+  fee_amount: number;
+  total_amount: number;
+  status: string;
+  paid_at: string;
+}
+
+/** Official receipt PDFs (same layout and logo as the website) and bulk payment history. */
+export const receiptsAPI = {
+  /** Raw PDF bytes for a payment reference, or one material of it with itemId. */
+  getPdf: async (ref: string, itemId?: string | number): Promise<Uint8Array> => {
+    const params = new URLSearchParams({ ref });
+    if (itemId) params.set('item_id', String(itemId));
+    const response = await api.get<ArrayBuffer>(`/payment/receipt-pdf.php?${params.toString()}`, {
+      responseType: 'arraybuffer',
+    });
+    const bytes = new Uint8Array(response.data);
+    // "%PDF" header; anything else is a JSON error
+    if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) {
+      let message = 'Could not download the receipt';
+      try {
+        const text = typeof TextDecoder !== 'undefined' ? new TextDecoder().decode(bytes) : String.fromCharCode(...Array.from(bytes.slice(0, 2000)));
+        message = JSON.parse(text).message || message;
+      } catch {
+        // keep default
+      }
+      throw new Error(message);
+    }
+    return bytes;
+  },
+
+  bulkHistory: async (): Promise<BulkPaymentRecord[]> => {
+    const response = await api.get<ApiResponse<{ payments: BulkPaymentRecord[] }>>('/materials/bulk/history.php');
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load bulk payments');
+    return response.data.data?.payments ?? [];
+  },
+};

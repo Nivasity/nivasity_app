@@ -17,6 +17,8 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderAPI } from '../services/api';
+import Button from '../components/Button';
+import { downloadAndShareReceipt } from '../utils/receiptPdf';
 import { CartItem, Order } from '../types';
 
 interface OrderReceiptScreenProps {
@@ -85,6 +87,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
 
   const order = resolvedOrder;
   const [working, setWorking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [savedUri, setSavedUri] = useState<string | null>(null);
   const paidBy = useMemo(() => {
     if (order?.payerNameWithMatric?.trim()) return order.payerNameWithMatric.trim();
@@ -141,6 +144,19 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
       appMessage.alert({ title: 'Failed', message: e?.message || 'Could not share receipt' });
     } finally {
       setWorking(false);
+    }
+  };
+
+  // Official receipt PDF (same as the website download), saved and opened in the share sheet.
+  const downloadPdf = async () => {
+    if (!order || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadAndShareReceipt(order.id);
+    } catch (e: any) {
+      appMessage.alert({ title: 'Could not download receipt', message: e?.message || 'Please try again.' });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -282,7 +298,7 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           <View style={styles.totalRow}>
             <AppText style={[styles.totalLabel, { color: colors.textMuted }]}>Total</AppText>
             <AppText style={[styles.totalValue, { color: colors.text }]}>
-              ₦ {order.total.toLocaleString()}
+              ₦{order.total.toLocaleString()}
             </AppText>
           </View>
 
@@ -293,19 +309,10 @@ const OrderReceiptScreen: React.FC<OrderReceiptScreenProps> = ({ navigation, rou
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={shareReceipt}
-          disabled={working}
-          activeOpacity={0.9}
-          accessibilityRole="button"
-          accessibilityLabel="Share receipt"
-          style={[styles.sharePill, { backgroundColor: colors.accent }]}
-        >
-          <AppIcon name="share-social-outline" size={18} color={colors.onAccent} />
-          <AppText style={[styles.sharePillText, { color: colors.onAccent }]}>
-            {working ? 'Preparing…' : 'Share receipt'}
-          </AppText>
-        </TouchableOpacity>
+        <View style={{ gap: 10, marginTop: 16 }}>
+          <Button title={downloading ? 'Preparing PDF…' : 'Download PDF'} icon="download-outline" onPress={downloadPdf} loading={downloading} />
+          <Button title={working ? 'Preparing…' : 'Share as image'} icon="share-social-outline" variant="outline" onPress={shareReceipt} disabled={working} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
