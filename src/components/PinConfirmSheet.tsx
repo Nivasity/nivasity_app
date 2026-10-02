@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import AppText from './AppText';
 import OtpInput from './OtpInput';
 import { IconCircle } from './ui';
@@ -23,6 +24,7 @@ export default function PinConfirmSheet({
   onConfirm: (pin: string) => Promise<void>;
 }) {
   const { colors } = useTheme();
+  const keyboardHeight = useKeyboardHeight();
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +52,9 @@ export default function PinConfirmSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={() => !busy && onClose()}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+      <View style={styles.flex}>
         <Pressable style={styles.backdrop} onPress={() => !busy && onClose()} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: keyboardHeight }]}>
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
           <View style={styles.center}>
             <IconCircle icon="lock-closed-outline" size={48} />
@@ -87,7 +89,7 @@ export default function PinConfirmSheet({
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

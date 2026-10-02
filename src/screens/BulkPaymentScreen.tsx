@@ -14,7 +14,7 @@ import { useWallet } from '../contexts/WalletContext';
 import { bulkAPI, BulkMaterial, BulkPayResult, BulkPreview } from '../services/api';
 import { downloadAndShareReceipt } from '../utils/receiptPdf';
 
-type Props = { navigation: any };
+type Props = { navigation: any; route?: { params?: { manualId?: string | number } } };
 type Step = 0 | 1 | 2;
 const STEPS = ['Students', 'Review', 'Done'];
 const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
@@ -23,7 +23,8 @@ const label = (m: BulkMaterial) => `${m.course_code} · ${m.title} (${naira(m.pr
 // Pay for course mates' copies from the wallet, same flow as the website:
 // 1. material + students (paste or CSV) -> 2. review matches and total, Confirm opens the
 // PIN sheet (confirms on the 4th digit) -> 3. done, with the receipt.
-const BulkPaymentScreen: React.FC<Props> = ({ navigation }) => {
+const BulkPaymentScreen: React.FC<Props> = ({ navigation, route }) => {
+  const preselectId = route?.params?.manualId != null ? Number(route.params.manualId) : null;
   const { colors } = useTheme();
   const { refreshSummary } = useWallet();
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,8 @@ const BulkPaymentScreen: React.FC<Props> = ({ navigation }) => {
       .manuals()
       .then((d) => {
         setMaterials(d.materials);
+        // Opened from a material's details: start with that material selected
+        if (preselectId) setMaterial(d.materials.find((m) => m.id === preselectId) || null);
         setFeePercent(d.fee_percent);
         setWarnings(d.wallet?.warnings || []);
       })

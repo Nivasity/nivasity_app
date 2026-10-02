@@ -364,6 +364,11 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         onShare={() => {
           if (activeMaterial) shareMaterial(activeMaterial);
         }}
+        onPayForMates={() => {
+          if (!activeMaterial) return;
+          setDetailsOpen(false);
+          navigation.navigate('BulkPayment', { manualId: activeMaterial.id });
+        }}
       />
       <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} />
       <PendingClaimsSheet onResolved={loadDashboard} />

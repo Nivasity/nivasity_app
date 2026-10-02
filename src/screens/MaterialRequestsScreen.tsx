@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import AppText from '../components/AppText';
 import AppIcon from '../components/AppIcon';
 import Button from '../components/Button';
@@ -37,6 +37,7 @@ const upvoted = (r: MaterialRequest) => r.viewer_has_upvoted === true || r.viewe
 // expected buyers ask, the request is passed on (same rules as the website).
 const MaterialRequestsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
+  const keyboardHeight = useKeyboardHeight();
   const appMessage = useAppMessage();
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,9 +211,9 @@ const MaterialRequestsScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => !sending && setOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetWrap}>
+        <View style={styles.sheetWrap}>
           <Pressable style={styles.backdrop} onPress={() => !sending && setOpen(false)} accessibilityLabel="Close" />
-          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: keyboardHeight }]}>
             <View style={[styles.handle, { backgroundColor: colors.border }]} />
             <AppText style={[styles.sheetTitle, { color: colors.text }]}>New request</AppText>
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 4 }}>
@@ -232,7 +233,7 @@ const MaterialRequestsScreen: React.FC<Props> = ({ navigation }) => {
               <Button title="Send request" onPress={submit} loading={sending} disabled={!code.trim() || !title.trim()} />
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );

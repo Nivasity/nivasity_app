@@ -452,22 +452,23 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
               ) : (
                 <View style={[styles.actionsInline, inlineActionStyle]}>
                   <TouchableOpacity
-                    onPress={pickPhoto}
-                    style={[styles.gifPill, { borderColor: colors.border }]}
+                    onPress={pickFile}
+                    style={[styles.gifPill, { borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel="Attach GIF"
+                    accessibilityLabel="Attach a file (PDF or image)"
                   >
-                    <Text style={[styles.gifText, { color: colors.textMuted }]}>GIF</Text>
+                    <AppIcon name="attach-outline" size={15} color={colors.textMuted} />
+                    <Text style={[styles.gifText, { color: colors.textMuted }]}>File</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={pickFile}
+                    onPress={pickPhoto}
                     style={[styles.plusButton, { borderColor: colors.border }]}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel="Attach file"
+                    accessibilityLabel="Attach a photo"
                   >
-                    <AppIcon name="add" size={20} color={colors.textMuted} />
+                    <AppIcon name="image-outline" size={18} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
               )}

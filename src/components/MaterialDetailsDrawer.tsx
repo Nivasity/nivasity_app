@@ -13,7 +13,10 @@ type MaterialDetailsDrawerProps = {
   product: Product | null;
   inCart: boolean;
   onClose: () => void;
-  onToggleCart: () => void;
+  /** No longer shown here (the store card's + / − handles the cart); kept for callers. */
+  onToggleCart?: () => void;
+  /** Opens bulk payment with this material selected. */
+  onPayForMates?: () => void;
   onShare: () => void;
 };
 
@@ -41,7 +44,7 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
   product,
   inCart,
   onClose,
-  onToggleCart,
+  onPayForMates,
   onShare,
 }) => {
   const { colors, isDark } = useTheme();
@@ -121,12 +124,9 @@ const MaterialDetailsDrawer: React.FC<MaterialDetailsDrawerProps> = ({
               </View>
 
               <View style={styles.actions}>
-                <Button
-                  title={inCart ? 'Remove from cart' : 'Add to cart'}
-                  onPress={onToggleCart}
-                  variant={inCart ? 'outline' : 'primary'}
-                  style={styles.actionButton}
-                />
+                {onPayForMates ? (
+                  <Button title="Pay for Course Mates" icon="people-outline" onPress={onPayForMates} style={styles.actionButton} />
+                ) : null}
                 <Button title="Share" onPress={onShare} variant="outline" style={styles.actionButton} />
               </View>
             </>

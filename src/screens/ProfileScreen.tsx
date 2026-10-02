@@ -400,11 +400,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView
-      edges={['top', 'bottom']}
-      style={[styles.container, { backgroundColor: colors.secondary }]}
+      edges={[]}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -415,7 +415,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           />
         }
       >
-        <View style={[styles.header, { backgroundColor: colors.secondary }]}>
+        <View style={[styles.header, { backgroundColor: colors.secondary, height: 230 + insets.top, paddingTop: 10 + insets.top }]}>
           <GradientCard style={styles.headerGradient}>
             <View />
           </GradientCard>
@@ -448,7 +448,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.background, paddingBottom: 28 }]}>
           <TouchableOpacity
             onPress={handleAvatarPress}
             activeOpacity={0.88}
@@ -524,7 +524,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Divider />
             <Row icon="megaphone-outline" label="Material requests" value="Ask for a material that isn't in the store" onPress={() => navigation.navigate('MaterialRequests')} />
             <Divider />
-            <Row icon="help-circle-outline" label="Help & Support" onPress={() => setSupportVisible(true)} />
+            <Row icon="help-circle-outline" label="Help & Support" onPress={() => navigation.navigate('SupportTickets')} />
           </View>
 
           <View style={{ height: 14 }} />
@@ -680,6 +680,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.50)',
   },
   sheet: {
+    flexGrow: 1,
     marginTop: -70,
     borderRadius: 30,
     paddingHorizontal: 16,

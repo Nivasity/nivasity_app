@@ -342,6 +342,11 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         onShare={() => {
           if (activeProduct) shareProduct(activeProduct);
         }}
+        onPayForMates={() => {
+          if (!activeProduct) return;
+          setDetailsOpen(false);
+          navigation.navigate('BulkPayment', { manualId: activeProduct.id });
+        }}
       />
     </SafeAreaView>
   );

@@ -78,6 +78,17 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Opening this screen marks everything read. The ones that were unread keep their
+  // highlight for this visit so the student can still see what is new.
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const unread = notifications.filter((n) => !n.readAt).map((n) => n.id);
+    if (unread.length === 0) return;
+    setNewIds((prev) => new Set([...prev, ...unread]));
+    markAllAsRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications]);
+
   const headerSubtitle = useMemo(() => {
     if (permissionStatus === 'denied') return 'Push notifications are off. Enable them in your phone settings.';
     return 'Enable push notifications to get updates even when the app is closed.';
@@ -126,23 +137,17 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
 
     return (
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        <View style={[styles.pushCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.pushCard, { backgroundColor: colors.accent, borderColor: colors.accent, borderBottomColor: colors.accentLip }]}>
           <View style={styles.pushCardTop}>
-            <View style={styles.pushCardIcon}>
-              <AppIcon name="notifications-outline" size={20} color={highlightColor} />
+            <View style={[styles.pushCardIcon, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+              <AppIcon name="notifications" size={20} color="#1A1209" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.pushTitle, { color: colors.text }]}>Push notifications</Text>
-              <Text style={[styles.pushSubtitle, { color: colors.textMuted }]}>{headerSubtitle}</Text>
+              <Text style={[styles.pushTitle, { color: '#1A1209' }]}>Turn on push notifications</Text>
+              <Text style={[styles.pushSubtitle, { color: 'rgba(26,18,9,0.82)' }]}>{headerSubtitle}</Text>
             </View>
           </View>
-          <Button
-            title="Enable"
-            onPress={enablePush}
-            loading={enablingPush}
-            variant="outline"
-            style={{ borderRadius: 16, minHeight: 46 }}
-          />
+          <Button title="Enable notifications" icon="notifications-outline" onPress={enablePush} loading={enablingPush} variant="secondary" />
         </View>
 
         <View style={{ height: 14 }} />
@@ -151,7 +156,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
   };
 
   const renderItem = ({ item }: { item: AppNotification }) => {
-    const unread = !item.readAt;
+    const unread = !item.readAt || newIds.has(item.id);
     const timeLabel = formatListTimestamp(item.createdAt);
     const highlighted = highlightId && item.id === highlightId;
 
@@ -216,10 +221,9 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation, r
             Notifications
           </Text>
           <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+            {newIds.size > 0 ? `${newIds.size} new` : "You're all caught up"}
           </Text>
         </View>
-        {unreadCount > 0 ? <Button title="Mark all read" size="sm" variant="outline" icon="checkmark-done" onPress={() => markAllAsRead()} /> : null}
       </View>
 
       <FlatList
@@ -312,15 +316,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pushTitle: {
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
     letterSpacing: -0.2,
   },
   pushSubtitle: {
     marginTop: 4,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
   card: {
     marginHorizontal: 16,

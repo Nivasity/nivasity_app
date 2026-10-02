@@ -98,7 +98,8 @@ export const darkColors: AppColors = {
   success: '#4ADE80',
   successSoft: '#12291B',
   warning: '#FBBF24',
-  onAccent: '#FFFFFF',
+  /** Dark text on orange in dark mode (easier to read than white on bright orange). */
+  onAccent: '#1A1209',
   onCard: '#A3B3CC',
   gradientFrom: brandColors.gradientFrom,
   gradientVia: brandColors.gradientVia,

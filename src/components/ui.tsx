@@ -46,9 +46,18 @@ export function Card({
 /** Plum-to-orange gradient card (wallet balance). Drawn with SVG so no native module is needed. */
 export function GradientCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
+  // Android does not stretch a "100%" Svg after the first layout, so size it from the card itself.
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
   return (
-    <View style={[styles.gradientCard, style]}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+    <View
+      style={[styles.gradientCard, style]}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        if (Math.abs(width - size.w) > 0.5 || Math.abs(height - size.h) > 0.5) setSize({ w: width, h: height });
+      }}
+    >
+      {size.w > 0 ? (
+      <Svg style={StyleSheet.absoluteFill} width={size.w} height={size.h}>
         <Defs>
           <LinearGradient id="wallet" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={colors.gradientFrom} />
@@ -60,6 +69,7 @@ export function GradientCard({ children, style }: { children: React.ReactNode; s
         <Circle cx="92%" cy="8%" r="90" fill="rgba(255,255,255,0.10)" />
         <Circle cx="98%" cy="70%" r="55" fill="rgba(255,255,255,0.08)" />
       </Svg>
+      ) : null}
       {children}
     </View>
   );

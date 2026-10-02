@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import AppText from './AppText';
 import AppIcon from './AppIcon';
 import Button from './Button';
@@ -32,6 +32,7 @@ const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
 
 export default function SendMoneySheet({ visible, onClose, onSent }: { visible: boolean; onClose: () => void; onSent?: () => void }) {
   const { colors } = useTheme();
+  const keyboardHeight = useKeyboardHeight();
   const { summary, hasWallet, hasPin, refreshSummary } = useWallet();
   const [step, setStep] = useState<Step>('lookup');
   const [identifier, setIdentifier] = useState('');
@@ -124,9 +125,9 @@ export default function SendMoneySheet({ visible, onClose, onSent }: { visible: 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={() => !loading && onClose()}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.wrap}>
+      <View style={styles.wrap}>
         <Pressable style={styles.backdrop} onPress={() => !loading && onClose()} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: keyboardHeight }]}>
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
           <View style={styles.headerRow}>
             {step === 'details' || step === 'pin' ? (
@@ -253,7 +254,7 @@ export default function SendMoneySheet({ visible, onClose, onSent }: { visible: 
             ) : null}
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
