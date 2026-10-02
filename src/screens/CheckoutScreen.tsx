@@ -19,7 +19,8 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useWallet } from '../contexts/WalletContext';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
-import OtpInput from '../components/OtpInput';
+import PinConfirmSheet from '../components/PinConfirmSheet';
+import { CourseTile } from '../components/ui';
 import { cartAPI, orderAPI, paymentAPI } from '../services/api';
 import { CartItem, Order, PaymentChannel } from '../types';
 
@@ -30,7 +31,7 @@ interface CheckoutScreenProps {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const formatMoney = (value: number) => `₦ ${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value: number) => `₦${Number(value || 0).toLocaleString()}`;
 
 const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -53,7 +54,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
   const [walletCanPay, setWalletCanPay] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentChannel>('wallet');
   const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [walletPin, setWalletPin] = useState('');
   const [pricingReady, setPricingReady] = useState(false);
 
   useEffect(() => {
@@ -239,7 +239,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
         appMessage.alert({ title: 'Wallet balance low', message: 'Fund wallet to continue.' });
         return;
       }
-      setWalletPin('');
       setPinModalVisible(true);
       return;
     }
@@ -269,25 +268,17 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
     removeFromCart(itemId);
   };
 
-  const confirmWalletPayment = async () => {
-    if (walletPin.trim().length !== 4) {
-      appMessage.alert({ title: 'Enter your PIN', message: 'Use your 4-digit wallet PIN.' });
-      return;
-    }
-
+  // Called by the PIN sheet on the 4th digit. Throwing keeps the sheet open with the message
+  // (wrong PIN, PIN lockout, materials no longer on sale).
+  const confirmWalletPayment = async (pin: string) => {
     setLoading(true);
-    setPaymentOverlay(true);
-    setPinModalVisible(false);
     try {
-      await runWalletCheckout(walletPin.trim());
+      await runWalletCheckout(pin);
+      setPinModalVisible(false);
     } catch (error: any) {
-      appMessage.alert({
-        title: 'Wallet payment failed',
-        message: error.response?.data?.message || error?.message || 'Please try again.',
-      });
+      throw new Error(error.response?.data?.message || error?.message || 'Wallet payment failed. Please try again.');
     } finally {
       setLoading(false);
-      setPaymentOverlay(false);
     }
   };
 
@@ -406,19 +397,17 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
               key={`${item.id}-${index}`}
               style={[styles.itemRow, { borderColor: colors.border }]}
             >
-              <View style={[styles.itemIcon]}>
-                <AppIcon name="book-outline" size={20} color={highlightColor} />
-              </View>
+              <CourseTile code={item.courseCode || item.materialCode || item.name} size={40} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
-                  {item.courseCode || item.category || item.name}
+                  {item.name}
                 </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  Qty {item.quantity} · ₦ {item.price.toLocaleString()}
+                <Text style={[styles.itemMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                  {[item.courseCode, item.quantity > 1 ? `Qty ${item.quantity}` : ''].filter(Boolean).join(' · ')}
                 </Text>
               </View>
               <Text style={[styles.itemTotal, { color: colors.text }]}>
-                ₦ {(item.price * item.quantity).toLocaleString()}
+                ₦{(item.price * item.quantity).toLocaleString()}
               </Text>
               <TouchableOpacity
                 onPress={() => handleRemoveItem(item.id)}
@@ -433,9 +422,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
           ))}
         </View>
 
-        <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TotalRow label="Subtotal" value={`₦ ${subtotal.toLocaleString()}`} />
-          <TotalRow label={paymentMethod === 'wallet' ? 'Wallet fee' : 'Handling Fee'} value={paymentMethod === 'wallet' ? formatMoney(walletFee) : formatMoney(handlingFee)} />
+        <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border, borderBottomColor: colors.cardLip }]}>
+          <TotalRow label="Subtotal" value={formatMoney(subtotal)} />
+          <TotalRow label={paymentMethod === 'wallet' ? 'Wallet fee' : 'Handling fee'} value={paymentMethod === 'wallet' ? formatMoney(walletFee) : formatMoney(handlingFee)} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <TotalRow label="Total" value={paymentMethod === 'wallet' ? formatMoney(walletTotal || subtotal) : formatMoney(total)} bold />
         </View>
@@ -447,8 +436,8 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
                 ? 'Activate wallet'
                 : !hasPin
                   ? 'Add wallet PIN'
-                  : 'Pay with wallet'
-              : 'Proceed to Payment'
+                  : `Pay ${formatMoney(walletTotal || subtotal)}`
+              : `Pay ${formatMoney(total)}`
           }
           onPress={handlePayment}
           loading={loading}
@@ -478,22 +467,14 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ navigation, route }) =>
         </View>
       ) : null}
 
-      {pinModalVisible ? (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={[styles.pinSheetOverlay, { backgroundColor: 'rgba(0,0,0,0.32)' }]}
-        >
-          <View style={[styles.pinSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.pinSheetTitle, { color: colors.text }]}>Wallet PIN</Text>
-            <Text style={[styles.pinSheetText, { color: colors.textMuted }]}>Confirm to pay {formatMoney(walletTotal || subtotal)}.</Text>
-            <OtpInput value={walletPin} onChange={setWalletPin} length={4} variant="pin" secureTextEntry autoFocus />
-            <Button title="Confirm payment" onPress={confirmWalletPayment} />
-            <TouchableOpacity onPress={() => setPinModalVisible(false)} style={styles.cancel} accessibilityRole="button">
-              <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
+      <PinConfirmSheet
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        title="Confirm payment"
+        description={`${cartItems.length} item${cartItems.length === 1 ? '' : 's'} from your wallet`}
+        amount={formatMoney(walletTotal || subtotal)}
+        onConfirm={confirmWalletPayment}
+      />
     </SafeAreaView>
   );
 };
@@ -607,6 +588,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 14,
     gap: 10,
+    borderBottomWidth: 3,
   },
   methodHeader: {
     flexDirection: 'row',
@@ -687,8 +669,9 @@ const styles = StyleSheet.create({
   },
   totalCard: {
     borderWidth: 1,
-    borderRadius: 22,
-    padding: 14,
+    borderBottomWidth: 3,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: 14,
   },
   totalRow: {
