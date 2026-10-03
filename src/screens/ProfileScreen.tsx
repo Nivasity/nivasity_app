@@ -22,7 +22,7 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
-import { profileAPI, referenceAPI, isDefaultAvatar } from '../services/api';
+import { authAPI, profileAPI, referenceAPI, isDefaultAvatar } from '../services/api';
 import { AppThemeMode } from '../theme/colors';
 import { DashboardStats } from '../types';
 import { GradientCard } from '../components/ui';
@@ -42,6 +42,29 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { colors, isDark, mode, setMode } = useTheme();
   const { hasWallet, hasPin } = useWallet();
   const appMessage = useAppMessage();
+  const isHoc = (user?.role || '').toLowerCase() === 'hoc';
+  const canSwitchRole = ['student', 'hoc'].includes((user?.role || '').toLowerCase());
+
+  // Self-service, like the old website's Profile > Academic Role: no approval needed.
+  const switchRole = () => {
+    const target = isHoc ? 'student' : 'hoc';
+    appMessage.confirm({
+      title: isHoc ? 'Switch to student?' : 'Become a class rep?',
+      message: isHoc
+        ? 'You will no longer see the Class rep page. You can switch back anytime.'
+        : 'Class reps (HOC) can export the list of students in their department who paid for a material. You can switch back anytime.',
+      confirmText: 'Switch',
+      onConfirm: async () => {
+        try {
+          const { user: next, message } = await authAPI.switchRole(target);
+          updateUser({ ...user!, ...next });
+          appMessage.toast({ status: 'success', message });
+        } catch (e: any) {
+          appMessage.toast({ status: 'failed', message: e?.message || 'Could not change your role' });
+        }
+      },
+    });
+  };
   const insets = useSafeAreaInsets();
   const [themeVisible, setThemeVisible] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
@@ -523,6 +546,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Row icon="people-outline" label="Bulk payment" value="Pay for course mates' copies" onPress={() => navigation.navigate('BulkPayment')} />
             <Divider />
             <Row icon="megaphone-outline" label="Material requests" value="Ask for a material that isn't in the store" onPress={() => navigation.navigate('MaterialRequests')} />
+            {isHoc ? (
+              <>
+                <Divider />
+                <Row icon="clipboard-outline" label="Class rep" value="Export paid-student lists for your department" onPress={() => navigation.navigate('ClassRep')} />
+              </>
+            ) : null}
+            {canSwitchRole ? (
+              <>
+                <Divider />
+                <Row icon="swap-horizontal-outline" label="Academic role" value={isHoc ? 'Class rep (HOC) · tap to switch to student' : 'Student · tap to become a class rep'} onPress={switchRole} />
+              </>
+            ) : null}
             <Divider />
             <Row icon="help-circle-outline" label="Help & Support" onPress={() => navigation.navigate('SupportTickets')} />
           </View>

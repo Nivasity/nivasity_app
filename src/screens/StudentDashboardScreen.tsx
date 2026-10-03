@@ -248,7 +248,11 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           <RoundAction icon="storefront" label="Store" color="#F97316" onPress={() => navigation.navigate('Store')} />
           <RoundAction icon="people" label="Bulk pay" color="#7A3B73" onPress={() => navigation.navigate('BulkPayment')} />
           <RoundAction icon="megaphone" label="Requests" color="#2563EB" onPress={() => navigation.navigate('MaterialRequests')} />
-          <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
+          {(user?.role || '').toLowerCase() === 'hoc' ? (
+            <RoundAction icon="clipboard" label="Class rep" color="#059669" onPress={() => navigation.navigate('ClassRep')} />
+          ) : (
+            <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
+          )}
         </Card>
 
         {/* Semester summary */}

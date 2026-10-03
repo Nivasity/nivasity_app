@@ -13,6 +13,8 @@ export interface User {
   deptId?: number | string | null;
   department?: string;
   matricNumber?: string;
+  /** 'student' or 'hoc' (class rep); other account types never sign in to the app */
+  role?: string;
 }
 
 export interface LoginCredentials {

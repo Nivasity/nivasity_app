@@ -201,6 +201,7 @@ const mapLoginUser = (data: LoginSuccessData): User => {
     department: data.dept_name ?? undefined,
     avatar: toUserProfilePicUrl(data.profile_pic),
     schoolId: data.school_id ?? undefined,
+    role: data.role ?? undefined,
   };
 };
 
@@ -637,7 +638,19 @@ export const authAPI = {
       deptId: Number.isFinite(deptIdCandidate) ? deptIdCandidate : undefined,
       department: data.dept_name ?? undefined,
       matricNumber: data.matric_no ?? undefined,
+      role: data.role ?? undefined,
     };
+  },
+
+  /** Switch between Student and Class rep (HOC); the API returns fresh tokens for the new role. */
+  switchRole: async (role: 'student' | 'hoc'): Promise<{ user: User; message: string }> => {
+    const response = await api.post<ApiResponse<LoginSuccessData>>('/profile/switch-role.php', { role });
+    if (response.data.status !== 'success' || !response.data.data?.access_token) {
+      throw new Error(response.data.message || 'Could not change your role');
+    }
+    const user = mapLoginUser(response.data.data);
+    await setSession({ user, accessToken: response.data.data.access_token, refreshToken: response.data.data.refresh_token });
+    return { user, message: response.data.message };
   },
 
   changePassword: async (
@@ -1878,6 +1891,20 @@ export interface BulkPaymentRecord {
 }
 
 /** Official receipt PDFs (same layout and logo as the website) and bulk payment history. */
+// PDF endpoints answer with JSON when something is wrong: return the bytes or throw its message.
+const pdfBytesOrThrow = (data: ArrayBuffer, fallback: string): Uint8Array => {
+  const bytes = new Uint8Array(data);
+  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return bytes; // "%PDF"
+  let message = fallback;
+  try {
+    const text = typeof TextDecoder !== 'undefined' ? new TextDecoder().decode(bytes) : String.fromCharCode(...Array.from(bytes.slice(0, 2000)));
+    message = JSON.parse(text).message || message;
+  } catch {
+    // keep default
+  }
+  throw new Error(message);
+};
+
 export const receiptsAPI = {
   /** Raw PDF bytes for a payment reference, or one material of it with itemId. */
   getPdf: async (ref: string, itemId?: string | number): Promise<Uint8Array> => {
@@ -2029,5 +2056,80 @@ export const bulkAPI = {
     const response = await api.post<ApiResponse<BulkPayResult>>('/materials/bulk/pay.php', { manual_id: manualId, rows, wallet_pin: pin });
     if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Payment failed');
     return response.data.data;
+  },
+};
+
+
+// ─── Class rep (HOC): export paid-student lists for their department ───
+export interface HocMaterial {
+  id: number;
+  title: string;
+  course_code: string;
+  code: string;
+  price: number;
+  active: boolean;
+  managed_by_admin: boolean;
+  sold: number;
+  sold_amount: number;
+  pending_collection: number;
+}
+
+export interface DeptExport {
+  id: number;
+  code: string;
+  manual_title: string;
+  course_code: string;
+  students_count: number;
+  total_amount: number;
+  status: 'granted' | 'pending';
+  exported_at: string;
+  exported_by: string;
+  is_mine: boolean;
+  granted_at: string | null;
+  granted_by: string | null;
+}
+
+/** Same endpoints as the web portal's Class rep page. */
+export interface HocPage {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export const hocAPI = {
+  /** Only materials with students waiting for collection (the ones that can be exported). */
+  getMaterials: async (page = 1): Promise<{ materials: HocMaterial[]; pagination: HocPage }> => {
+    const response = await api.get<ApiResponse<{ materials: HocMaterial[]; pagination: HocPage }>>(`/hoc/materials.php?page=${page}&limit=20`);
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load materials');
+    return { materials: response.data.data?.materials ?? [], pagination: response.data.data!.pagination };
+  },
+
+  /** PDF of students in the HOC's department who paid and haven't collected yet. */
+  exportList: async (manualId: number, rrr?: string): Promise<Uint8Array> => {
+    try {
+      const response = await api.post<ArrayBuffer>('/hoc/export.php', { manual_id: manualId, rrr: rrr || '' }, { responseType: 'arraybuffer' });
+      return pdfBytesOrThrow(response.data, 'Could not export the list');
+    } catch (e: any) {
+      if (e?.response?.data instanceof ArrayBuffer) return pdfBytesOrThrow(e.response.data, 'Could not export the list');
+      throw e;
+    }
+  },
+
+  /** Every export made by the department's class reps, with who made it. */
+  getExports: async (page = 1): Promise<{ exports: DeptExport[]; pagination: HocPage }> => {
+    const response = await api.get<ApiResponse<{ exports: DeptExport[]; pagination: HocPage }>>(`/hoc/granted-exports.php?page=${page}&limit=20`);
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load exports');
+    return { exports: response.data.data?.exports ?? [], pagination: response.data.data!.pagination };
+  },
+
+  exportPdf: async (id: number): Promise<Uint8Array> => {
+    try {
+      const response = await api.get<ArrayBuffer>(`/hoc/granted-exports.php?id=${id}`, { responseType: 'arraybuffer' });
+      return pdfBytesOrThrow(response.data, 'Could not download the export');
+    } catch (e: any) {
+      if (e?.response?.data instanceof ArrayBuffer) return pdfBytesOrThrow(e.response.data, 'Could not download the export');
+      throw e;
+    }
   },
 };

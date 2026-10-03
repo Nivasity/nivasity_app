@@ -39,6 +39,7 @@ import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import MaterialRequestsScreen from '../screens/MaterialRequestsScreen';
+import ClassRepScreen from '../screens/ClassRepScreen';
 import BulkPaymentScreen from '../screens/BulkPaymentScreen';
 
 const Stack = createNativeStackNavigator();
@@ -227,6 +228,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="MaterialRequests"
               component={MaterialRequestsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ClassRep"
+              component={ClassRepScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
