@@ -4,7 +4,6 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -18,6 +17,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { storeAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { shareMaterial } from '../utils/shareMaterial';
 import { Product } from '../types';
 import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
@@ -50,6 +51,7 @@ const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
 }));
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
+  const { user } = useAuth();
   const { colors } = useTheme();
   const appMessage = useAppMessage();
   const { items: cartItems, count: cartCount, total: cartTotal, has, toggle } = useCart();
@@ -186,17 +188,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
     return materials.length < pagination.total;
   }, [materials.length, page, pagination]);
 
-  const shareProduct = async (product: Product) => {
-    try {
-      const materialId = encodeURIComponent(String(product.id));
-      const webUrl = `https://nivasity.com/material/${materialId}`;
-      await Share.share({
-        message: `${product.name}\n${product.description}\nPrice: NGN ${product.price.toLocaleString()}\n\nGet the material here: ${webUrl}`,
-      });
-    } catch {
-      // ignore
-    }
-  };
+  const shareProduct = (product: Product) => shareMaterial(product, user);
 
   const openMaterialDetails = useCallback(async (material: Product) => {
     setActiveProduct(material);

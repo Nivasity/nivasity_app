@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { FlatList, Image, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
 import Text from '../components/AppText';
 import { useAuth } from '../contexts/AuthContext';
+import { shareMaterial as shareMaterialLink } from '../utils/shareMaterial';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
@@ -141,16 +142,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
     }
   }, []);
 
-  const shareMaterial = async (product: Product) => {
-    try {
-      const webUrl = `https://nivasity.com/material/${encodeURIComponent(String(product.id))}`;
-      await Share.share({
-        message: `${product.name}\n${product.description}\nPrice: NGN ${product.price.toLocaleString()}\n\nGet the material here: ${webUrl}`,
-      });
-    } catch {
-      // ignore
-    }
-  };
+  const shareMaterial = (product: Product) => shareMaterialLink(product, user);
 
   const activateWallet = async () => {
     setActivating(true);
