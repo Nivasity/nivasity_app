@@ -18,7 +18,7 @@ import Loading from '../components/Loading';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { SupportTicketDetails, SupportTicketMessage, supportAPI } from '../services/api';
+import { API_BASE_URL, SupportTicketDetails, SupportTicketMessage, supportAPI } from '../services/api';
 
 type SupportChatScreenProps = {
   navigation: any;
@@ -39,7 +39,11 @@ const toMimeType = (uri: string, mimeType?: string | null) => {
 
 const BASE_INPUT_HEIGHT = 32;
 const MAX_INPUT_HEIGHT = 140;
-const SUPPORT_ATTACHMENT_BASE_URL = 'https://funaab.nivasity.com/';
+// Attachments are served by the API (school domains now host the web portal, not the files).
+const supportAttachmentUrl = (pathOrUrl: string) => {
+  const file = pathOrUrl.split('?')[0].split('/').pop() || '';
+  return `${API_BASE_URL}/support/attachment.php?file=${encodeURIComponent(file)}`;
+};
 
 const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
@@ -193,9 +197,12 @@ const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation, route
     const cleaned = raw.trim();
     if (!cleaned) return;
 
-    const url = /^https?:\/\//i.test(cleaned)
-      ? cleaned
-      : `${SUPPORT_ATTACHMENT_BASE_URL}${cleaned.replace(/^\/+/, '')}`;
+    // Full links to other sites open as they are; stored paths (and old links to the school
+    // domain's assets/images/supports/) go through the API.
+    const url =
+      /^https?:\/\//i.test(cleaned) && !/assets\/images\/supports\//i.test(cleaned)
+        ? cleaned
+        : supportAttachmentUrl(cleaned);
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
