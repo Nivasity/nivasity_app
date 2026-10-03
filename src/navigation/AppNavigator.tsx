@@ -105,14 +105,18 @@ const StudentTabs = () => {
         headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarShowLabel: true,
+        // Tablets would put labels beside the icon pill, where they overlap it
+        tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontFamily: 'Geist-SemiBold', fontSize: 11, marginTop: 2 },
+        tabBarIconStyle: { height: 30 },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: 64 + insets.bottom,
+          // Phones without a bottom inset (3-button navigation, web) still get room for labels
+          height: 66 + Math.max(insets.bottom, 8),
           paddingTop: 8,
           paddingBottom: Math.max(insets.bottom, 8),
           elevation: 0,
