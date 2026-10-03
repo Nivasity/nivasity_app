@@ -542,16 +542,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               label="Security"
               onPress={() => navigation.navigate('ProfileSection', { section: 'security' })}
             />
-            <Divider />
-            <Row icon="people-outline" label="Bulk payment" value="Pay for course mates' copies" onPress={() => navigation.navigate('BulkPayment')} />
-            <Divider />
-            <Row icon="megaphone-outline" label="Material requests" value="Ask for a material that isn't in the store" onPress={() => navigation.navigate('MaterialRequests')} />
-            {isHoc ? (
-              <>
-                <Divider />
-                <Row icon="clipboard-outline" label="Class rep" value="Export paid-student lists for your department" onPress={() => navigation.navigate('ClassRep')} />
-              </>
-            ) : null}
             {canSwitchRole ? (
               <>
                 <Divider />
