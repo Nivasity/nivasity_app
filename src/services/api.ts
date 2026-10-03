@@ -2072,6 +2072,8 @@ export interface HocMaterial {
   sold: number;
   sold_amount: number;
   pending_collection: number;
+  exports_count: number;
+  last_exported_at: string | null;
 }
 
 export interface DeptExport {
@@ -2117,8 +2119,10 @@ export const hocAPI = {
   },
 
   /** Every export made by the department's class reps, with who made it. */
-  getExports: async (page = 1): Promise<{ exports: DeptExport[]; pagination: HocPage }> => {
-    const response = await api.get<ApiResponse<{ exports: DeptExport[]; pagination: HocPage }>>(`/hoc/granted-exports.php?page=${page}&limit=20`);
+  /** Exports by any class rep of the department; pass manualId for one material's exports. */
+  getExports: async (page = 1, manualId?: number): Promise<{ exports: DeptExport[]; pagination: HocPage }> => {
+    const q = manualId ? `&manual_id=${manualId}&limit=50` : '&limit=20';
+    const response = await api.get<ApiResponse<{ exports: DeptExport[]; pagination: HocPage }>>(`/hoc/granted-exports.php?page=${page}${q}`);
     if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load exports');
     return { exports: response.data.data?.exports ?? [], pagination: response.data.data!.pagination };
   },
