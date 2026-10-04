@@ -26,8 +26,11 @@ const toSessionLabel = (value?: string) => {
 const toAdmissionYearValue = (sessionOrYear: string) => {
   const trimmed = (sessionOrYear || '').trim();
   if (!trimmed) return '';
-  const match = trimmed.match(/^(\d{4})\/\d{4}$/);
-  if (match) return match[1];
+  if (/^\d{4}\/\d{4}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}$/.test(trimmed)) {
+    const y = Number(trimmed);
+    return Number.isFinite(y) ? `${y}/${y + 1}` : trimmed;
+  }
   return trimmed;
 };
 
