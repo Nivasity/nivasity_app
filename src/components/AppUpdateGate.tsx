@@ -59,13 +59,14 @@ const getInstalledVersion = () => {
 
 const extractConfig = (payload: any): UpdateConfig | null => {
   if (!payload || typeof payload !== 'object') return null;
-  if (Platform.OS === 'android' && payload.android && typeof payload.android === 'object') {
-    return { ...payload, ...payload.android };
+  const root = payload.data && typeof payload.data === 'object' ? payload.data : payload;
+  if (Platform.OS === 'android' && root.android && typeof root.android === 'object') {
+    return { ...root, ...root.android };
   }
-  if (Platform.OS === 'ios' && payload.ios && typeof payload.ios === 'object') {
-    return { ...payload, ...payload.ios };
+  if (Platform.OS === 'ios' && root.ios && typeof root.ios === 'object') {
+    return { ...root, ...root.ios };
   }
-  return payload;
+  return root;
 };
 
 const AppUpdateGate = ({ children }: { children: ReactNode }) => {
