@@ -11,7 +11,7 @@ type WalletContextValue = {
   hasPin: boolean;
   refreshSummary: () => Promise<WalletSummary | null>;
   refreshCreditsAndSummary: () => Promise<WalletSummary | null>;
-  createWallet: () => Promise<WalletSummary | null>;
+  createWallet: (payload?: { phone?: string }) => Promise<WalletSummary | null>;
 };
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
@@ -65,11 +65,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isAuthenticated]);
 
-  const createWallet = useCallback(async () => {
+  const createWallet = useCallback(async (payload?: { phone?: string }) => {
     if (!isAuthenticated) return null;
     setRefreshing(true);
     try {
-      await walletAPI.createWallet();
+      await walletAPI.createWallet(payload);
       const nextSummary = await walletAPI.getSummary();
       setSummary(nextSummary);
       return nextSummary;

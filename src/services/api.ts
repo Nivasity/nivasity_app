@@ -1581,8 +1581,8 @@ export const notificationAPI = {
 };
 
 export const walletAPI = {
-  createWallet: async (): Promise<{ created: boolean; wallet?: WalletAccount }> => {
-    const response = await api.post<ApiResponse<{ created: boolean; wallet?: any }>>('/wallet/create.php', {});
+  createWallet: async (payload?: { phone?: string }): Promise<{ created: boolean; wallet?: WalletAccount }> => {
+    const response = await api.post<ApiResponse<{ created: boolean; wallet?: any }>>('/wallet/create.php', payload || {});
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Failed to create wallet');
     }
