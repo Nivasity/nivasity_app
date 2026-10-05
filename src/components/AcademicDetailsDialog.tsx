@@ -37,7 +37,7 @@ const toAdmissionYearValue = (sessionOrYear: string) => {
 const AcademicDetailsDialog = () => {
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
-  const { user, needsAcademicInfo, updateAcademicInfo, dismissAcademicPrompt } = useAuth();
+  const { user, needsAcademicInfo, updateAcademicInfo, logout } = useAuth();
 
   const admissionSessions = useMemo(() => getAdmissionSessions(2019), []);
 
@@ -135,10 +135,10 @@ const AcademicDetailsDialog = () => {
         visible={visible}
         transparent
         animationType="fade"
-        onRequestClose={dismissAcademicPrompt}
+        onRequestClose={() => undefined}
       >
         <View style={styles.modalRoot}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={dismissAcademicPrompt}>
+          <Pressable style={StyleSheet.absoluteFill} accessible={false}>
             <BlurView intensity={28} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
             <View
               pointerEvents="none"
@@ -208,8 +208,8 @@ const AcademicDetailsDialog = () => {
             />
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity onPress={dismissAcademicPrompt} activeOpacity={0.85}>
-                <AppText style={[styles.actionLink, { color: colors.textMuted }]}>Not now</AppText>
+              <TouchableOpacity onPress={() => logout()} activeOpacity={0.85}>
+                <AppText style={[styles.actionLink, { color: colors.textMuted }]}>Sign out</AppText>
               </TouchableOpacity>
               <Button title={saving ? 'Saving...' : 'Save'} onPress={handleSave} disabled={saving} />
             </View>

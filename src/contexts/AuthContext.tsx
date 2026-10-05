@@ -203,8 +203,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     AsyncStorage.setItem('user', JSON.stringify(updatedUser));
   }, []);
 
+  // Students must have a department and matric number (sign-up does not collect them). The
+  // prompt cannot be skipped; the only way out is signing out.
   const needsAcademicInfo =
-    !!user && (user.deptId == null || user.deptId === '') && !academicPromptDismissed;
+    !!user &&
+    ['student', 'hoc', ''].includes(String(user.role || '').toLowerCase()) &&
+    (user.deptId == null || user.deptId === '' || String(user.matricNumber || '').trim() === '');
 
   const value = useMemo(
     () => ({
