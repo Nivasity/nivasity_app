@@ -22,6 +22,7 @@ import AppIcon from '../components/AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI, cartAPI, paymentAPI } from '../services/api';
 import PinConfirmSheet from '../components/PinConfirmSheet';
+import BellaWalletCard from '../components/BellaWalletCard';
 
 // Support is a chat with Bella (Nivasity's assistant, a Cloudflare Worker). She finds materials,
 // adds them to the cart and shows "Go to checkout"; the student pays there with their PIN.
@@ -254,6 +255,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const renderCard = (card: BellaCard, i: number) => {
+    if (card.type === 'wallet_account') {
+      return <BellaWalletCard key={i} onOpenWallet={() => navigation.navigate('WalletTransactions')} onActivate={() => navigation.navigate('WalletFund')} />;
+    }
     if (card.type === 'pay_wallet') {
       return card.status === 'paid' ? (
         <View key={i} style={[styles.cardBtn, { backgroundColor: 'rgba(5,150,105,0.12)' }]}>

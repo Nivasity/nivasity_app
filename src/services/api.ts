@@ -2148,6 +2148,7 @@ export type BellaCard =
   | { type: 'fund_wallet'; shortfall: number; balance: number; path: string }
   | { type: 'link'; label: string; path: string }
   | { type: 'pay_wallet'; items: number; total: number; status?: 'paid' }
+  | { type: 'wallet_account' }
   | {
       type: 'confirm_change';
       token: string;
