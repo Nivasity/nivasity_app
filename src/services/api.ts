@@ -2158,6 +2158,16 @@ export type BellaMessage = {
   created_at: string;
 };
 
+export type BellaEscalation = {
+  id: number;
+  student_message: string | null;
+  status: 'open' | 'answered' | 'resolved';
+  created_at: string;
+  answered_at: string | null;
+  resolved_at: string | null;
+};
+export type BellaArticle = { id: number; title: string; body: string };
+
 type BellaReply = { status: string; messages: BellaMessage[]; consent_required?: boolean; consent_version?: string };
 
 export class BellaError extends Error {
@@ -2177,6 +2187,20 @@ export const bellaAPI = {
   history: async (after = 0): Promise<BellaReply> => {
     try {
       return (await api.get<BellaReply>(`${BELLA_URL}/chat`, { params: after ? { after } : undefined })).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  escalations: async (): Promise<BellaEscalation[]> => {
+    try {
+      return (await api.get(`${BELLA_URL}/chat/escalations`)).data.escalations || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  articles: async (q = ''): Promise<BellaArticle[]> => {
+    try {
+      return (await api.get(`${BELLA_URL}/chat/articles`, { params: q ? { q } : undefined })).data.articles || [];
     } catch (err) {
       throw bellaError(err);
     }

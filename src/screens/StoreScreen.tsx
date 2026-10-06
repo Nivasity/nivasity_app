@@ -27,6 +27,7 @@ import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
 import { Chip, IconButton, ScreenTitle } from '../components/ui';
 import { SystemAlerts } from '../components/Notices';
+import BellaFab from '../components/BellaFab';
 
 interface StoreScreenProps {
   navigation: any;
@@ -343,6 +344,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           navigation.navigate('BulkPayment', { manualId: activeProduct.id });
         }}
       />
+      <BellaFab onPress={() => navigation.navigate('Bella')} />
     </SafeAreaView>
   );
 };

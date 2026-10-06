@@ -76,10 +76,15 @@ const BellaPrivacyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {since ? ` since ${since}` : ''}
             </Text>
             <View style={styles.switchRow}>
-              <Text style={{ color: colors.text, flex: 1 }}>Also delete my chat history, attachments and the notes Bella keeps about past chats</Text>
-              <Switch value={deleteHistory} onValueChange={setDeleteHistory} trackColor={{ true: colors.accent }} />
+              <Text style={{ color: deleteHistory ? '#dc2626' : colors.text, fontWeight: deleteHistory ? '700' : '400', flex: 1 }}>
+                Also delete my chat history, attachments and the notes Bella keeps about past chats
+              </Text>
+              <Switch value={deleteHistory} onValueChange={setDeleteHistory} trackColor={{ false: colors.border, true: '#dc2626' }} thumbColor="#fff" />
             </View>
-            <Button title={busy ? 'Turning off...' : 'Turn off Bella'} onPress={turnOff} disabled={busy} />
+            <TouchableOpacity onPress={turnOff} disabled={busy} style={[styles.danger, { opacity: busy ? 0.6 : 1 }]} accessibilityRole="button">
+              {busy ? <ActivityIndicator color="#fff" /> : <AppIcon name="power" size={18} color="#fff" />}
+              <Text style={styles.dangerText}>{busy ? 'Turning off…' : deleteHistory ? 'Turn off Bella and delete history' : 'Turn off Bella'}</Text>
+            </TouchableOpacity>
             <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 10 }}>
               You can turn her back on any time from Help & Support. Payments and orders are not affected.
             </Text>
@@ -107,6 +112,8 @@ const styles = StyleSheet.create({
   card: { marginTop: 20, borderWidth: 1, borderRadius: 20, padding: 16 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 14 },
   error: { color: '#dc2626', fontWeight: '600', marginTop: 16 },
+  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 14, backgroundColor: '#dc2626' },
+  dangerText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });
 
 export default BellaPrivacyScreen;

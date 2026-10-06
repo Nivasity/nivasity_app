@@ -21,6 +21,7 @@ import CheckoutFab from '../components/CheckoutFab';
 import EmptyState from '../components/EmptyState';
 import SendMoneySheet from '../components/SendMoneySheet';
 import { PendingClaimsSheet, SurveyCard } from '../components/Notices';
+import BellaFab from '../components/BellaFab';
 import { Card, CourseTile, Divider, GradientCard, IconButton, IconCircle, RoundAction, SectionHeader } from '../components/ui';
 
 interface StudentDashboardScreenProps {
@@ -366,6 +367,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
       />
       <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} />
       <PendingClaimsSheet onResolved={loadDashboard} />
+      <BellaFab onPress={() => navigation.navigate('Bella')} />
     </SafeAreaView>
   );
 };

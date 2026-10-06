@@ -6,9 +6,10 @@ import {
   Image,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
+  Pressable,
   StyleSheet,
-  Switch,
   TextInput,
   TouchableOpacity,
   View,
@@ -59,6 +60,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [consent, setConsent] = useState<{ required: boolean; version: string }>({ required: false, version: '' });
   const [agreed, setAgreed] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lastId = useRef(0);
   const listRef = useRef<FlatList<BellaMessage>>(null);
 
@@ -230,18 +232,42 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-          <AppIcon name={human ? 'headset-outline' : 'sparkles'} size={18} color={colors.onAccent} />
+          <AppIcon name="sparkles" size={18} color={colors.onAccent} />
         </View>
         <View style={styles.flex}>
-          <Text style={[styles.title, { color: colors.text }]}>{human ? 'Nivasity team' : 'Bella'}</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>
-            {status === 'waiting' ? 'A teammate will reply here' : status === 'human' ? "You're chatting with the team" : 'Your Nivasity assistant'}
+          <Text style={[styles.title, { color: colors.text }]}>Bella</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+            {status === 'waiting' ? "Passed to the Nivasity team · they'll reply here" : status === 'human' ? 'The Nivasity team is in this chat' : 'Your Nivasity assistant'}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('SupportTickets')} style={styles.iconBtn}>
-          <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600' }}>Past tickets</Text>
+        <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.iconBtn} accessibilityLabel="Bella menu">
+          <AppIcon name="ellipsis-vertical" size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
+
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {[
+              { icon: 'time-outline' as const, label: 'My handovers & tickets', to: 'BellaHistory' },
+              { icon: 'book-outline' as const, label: 'Help articles', to: 'BellaHelp' },
+              { icon: 'settings-outline' as const, label: 'Bella settings', to: 'BellaPrivacy' },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.to}
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  navigation.navigate(item.to);
+                }}
+              >
+                <AppIcon name={item.icon} size={18} color={colors.accent} />
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {loading ? (
@@ -264,7 +290,14 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text key={t} style={{ color: colors.textMuted, marginTop: 8, lineHeight: 20 }}>{`•  ${t}`}</Text>
               ))}
               <View style={styles.agreeRow}>
-                <Switch value={agreed} onValueChange={setAgreed} trackColor={{ true: colors.accent }} />
+                <TouchableOpacity
+                  onPress={() => setAgreed(!agreed)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreed }}
+                  style={[styles.checkbox, { borderColor: agreed ? colors.accent : colors.textMuted, backgroundColor: agreed ? colors.accent : 'transparent' }]}
+                >
+                  {agreed ? <AppIcon name="checkmark" size={16} color={colors.onAccent} /> : null}
+                </TouchableOpacity>
                 <Text style={{ color: colors.text, flex: 1 }}>
                   I agree to the{' '}
                   <Text style={{ color: colors.accent, fontWeight: '700' }} onPress={() => Linking.openURL(BELLA_TERMS_URL)}>Terms</Text> and{' '}
@@ -376,6 +409,10 @@ const styles = StyleSheet.create({
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, fontSize: 15 },
   consent: { borderWidth: 1, borderRadius: 20, padding: 16 },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  menu: { position: 'absolute', top: 70, right: 12, borderWidth: 1, borderRadius: 16, paddingVertical: 6, minWidth: 240 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
   agreeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
   attachBtn: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
   image: { width: 200, height: 200, borderRadius: 12 },
