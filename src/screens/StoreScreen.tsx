@@ -26,6 +26,7 @@ import CheckoutFab from '../components/CheckoutFab';
 import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
 import { Chip, IconButton, ScreenTitle } from '../components/ui';
+import { SystemAlerts } from '../components/Notices';
 
 interface StoreScreenProps {
   navigation: any;
@@ -238,6 +239,8 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           subtitle="Course materials for your department"
           right={<IconButton icon="cart-outline" label="Go to checkout" badge={cartCount} onPress={goToCheckout} />}
         />
+        {/* System alerts (maintenance, outages) only on the Store */}
+        <SystemAlerts />
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <AppIcon name="search-outline" size={18} color={colors.textMuted} />
           <TextInput
