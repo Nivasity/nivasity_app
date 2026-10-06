@@ -795,6 +795,13 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               />
               <SettingsDivider />
               <SettingsRow
+                icon="sparkles-outline"
+                label="Bella AI assistant"
+                hint="Allow Bella to help you, or turn her off."
+                onPress={() => navigation.navigate('BellaPrivacy')}
+              />
+              <SettingsDivider />
+              <SettingsRow
                 icon="log-out-outline"
                 label="Delete account"
                 hint="Permanently remove your account after confirmation."

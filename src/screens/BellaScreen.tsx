@@ -5,8 +5,10 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
+  Switch,
   TextInput,
   TouchableOpacity,
   View,
@@ -17,7 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import AppIcon from '../components/AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
-import { BellaCard, BellaMessage, bellaAPI } from '../services/api';
+import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI } from '../services/api';
 
 // Support is a chat with Bella (Nivasity's assistant, a Cloudflare Worker). She finds materials,
 // adds them to the cart and shows "Go to checkout"; the student pays there with their PIN.
@@ -54,6 +56,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [file, setFile] = useState<{ uri: string; name: string; type: string; size?: number } | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<{ required: boolean; version: string }>({ required: false, version: '' });
+  const [agreed, setAgreed] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const lastId = useRef(0);
   const listRef = useRef<FlatList<BellaMessage>>(null);
 
@@ -72,6 +77,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       .history()
       .then((r) => {
         setStatus(r.status);
+        setConsent({ required: !!r.consent_required, version: r.consent_version || '' });
         merge(r.messages);
       })
       .catch((e) => setError(e.message))
@@ -124,11 +130,25 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setStatus(r.status);
       merge(r.messages);
     } catch (e: any) {
+      if (e.code === 'consent_required') setConsent((c) => ({ ...c, required: true }));
       setText(body);
       setFile(attach);
       setError(e.message);
     } finally {
       setSending(false);
+    }
+  };
+
+  const accept = async () => {
+    setAccepting(true);
+    setError(null);
+    try {
+      await bellaAPI.consent(consent.version);
+      setConsent((c) => ({ ...c, required: false }));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -228,6 +248,39 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.center}>
             <ActivityIndicator color={colors.accent} />
           </View>
+        ) : consent.required ? (
+          <View style={styles.list}>
+            <View style={[styles.consent, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <AppIcon name="shield-checkmark-outline" size={20} color={colors.accent} />
+                <Text style={[styles.title, { color: colors.text }]}>Before you chat with Bella</Text>
+              </View>
+              {[
+                'Bella is an AI assistant. She can make mistakes, so check items and amounts before you pay.',
+                'To help you, she can look up your profile, cart, wallet, transactions and purchases. Never your PIN or password.',
+                'Messages are processed by our AI provider (Google) and kept for 7 days. The Nivasity team can read them and is alerted when Bella hands your chat over.',
+                'Never share your PIN or password in a chat.',
+              ].map((t) => (
+                <Text key={t} style={{ color: colors.textMuted, marginTop: 8, lineHeight: 20 }}>{`•  ${t}`}</Text>
+              ))}
+              <View style={styles.agreeRow}>
+                <Switch value={agreed} onValueChange={setAgreed} trackColor={{ true: colors.accent }} />
+                <Text style={{ color: colors.text, flex: 1 }}>
+                  I agree to the{' '}
+                  <Text style={{ color: colors.accent, fontWeight: '700' }} onPress={() => Linking.openURL(BELLA_TERMS_URL)}>Terms</Text> and{' '}
+                  <Text style={{ color: colors.accent, fontWeight: '700' }} onPress={() => Linking.openURL(BELLA_PRIVACY_URL)}>Privacy Policy</Text>, including how
+                  Bella handles my data.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={accept}
+                disabled={!agreed || accepting}
+                style={[styles.cardBtn, { backgroundColor: colors.accent, justifyContent: 'center', opacity: !agreed || accepting ? 0.5 : 1 }]}
+              >
+                {accepting ? <ActivityIndicator size="small" color={colors.onAccent} /> : <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>Start chatting</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : (
           <FlatList
             ref={listRef}
@@ -262,7 +315,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
 
         {!!error && <Text style={[styles.error, { color: '#dc2626' }]}>{error}</Text>}
-        {file && (
+        {!consent.required && file && (
           <View style={[styles.filePill, { backgroundColor: colors.surfaceAlt }]}>
             <AppIcon name="attach" size={14} color={colors.text} />
             <Text numberOfLines={1} style={{ color: colors.text, fontSize: 12, fontWeight: '600', flexShrink: 1 }}>{file.name}</Text>
@@ -271,7 +324,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         )}
-        <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
+        <View style={[styles.inputBar, { borderTopColor: colors.border }, consent.required && { display: 'none' }]}>
           <TouchableOpacity onPress={pickFile} style={styles.attachBtn} accessibilityLabel="Attach a photo or PDF">
             <AppIcon name="attach" size={22} color={colors.textMuted} />
           </TouchableOpacity>
@@ -322,6 +375,8 @@ const styles = StyleSheet.create({
   error: { paddingHorizontal: 16, paddingBottom: 6, fontSize: 13, fontWeight: '600' },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, fontSize: 15 },
+  consent: { borderWidth: 1, borderRadius: 20, padding: 16 },
+  agreeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
   attachBtn: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
   image: { width: 200, height: 200, borderRadius: 12 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

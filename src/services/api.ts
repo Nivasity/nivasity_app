@@ -2158,15 +2158,46 @@ export type BellaMessage = {
   created_at: string;
 };
 
-type BellaReply = { status: string; messages: BellaMessage[] };
+type BellaReply = { status: string; messages: BellaMessage[]; consent_required?: boolean; consent_version?: string };
 
-const bellaError = (err: any): Error =>
-  new Error(err?.response?.data?.error || (err?.response ? 'Bella could not answer. Try again.' : 'Could not reach Bella. Check your connection.'));
+export class BellaError extends Error {
+  code?: string;
+}
+const bellaError = (err: any): BellaError => {
+  const e = new BellaError(err?.response?.data?.error || (err?.response ? 'Bella could not answer. Try again.' : 'Could not reach Bella. Check your connection.'));
+  e.code = err?.response?.data?.code;
+  return e;
+};
+
+// Where the Bella terms and privacy sections live
+export const BELLA_TERMS_URL = 'https://nivasity.com/terms';
+export const BELLA_PRIVACY_URL = 'https://nivasity.com/privacy';
 
 export const bellaAPI = {
   history: async (after = 0): Promise<BellaReply> => {
     try {
       return (await api.get<BellaReply>(`${BELLA_URL}/chat`, { params: after ? { after } : undefined })).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  consentStatus: async (): Promise<{ accepted: boolean; accepted_at: string | null; consent_version: string }> => {
+    try {
+      return (await api.get(`${BELLA_URL}/chat/consent`)).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  consent: async (version: string): Promise<{ ok: boolean }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/consent`, { version })).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  withdraw: async (deleteHistory: boolean): Promise<{ ok: boolean; deleted: boolean }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/consent/withdraw`, { delete_history: deleteHistory })).data;
     } catch (err) {
       throw bellaError(err);
     }
