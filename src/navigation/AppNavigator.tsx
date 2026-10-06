@@ -37,6 +37,7 @@ import WalletTransactionReceiptScreen from '../screens/WalletTransactionReceiptS
 import WalletPinScreen from '../screens/WalletPinScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
+import BellaScreen from '../screens/BellaScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import MaterialRequestsScreen from '../screens/MaterialRequestsScreen';
 import ClassRepScreen from '../screens/ClassRepScreen';
@@ -208,6 +209,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="WalletPin"
               component={WalletPinScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Bella"
+              component={BellaScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

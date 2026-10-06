@@ -251,7 +251,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           {(user?.role || '').toLowerCase() === 'hoc' ? (
             <RoundAction icon="clipboard" label="Class rep" color="#059669" onPress={() => navigation.navigate('ClassRep')} />
           ) : (
-            <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('SupportTickets')} />
+            <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('Bella')} />
           )}
         </Card>
 

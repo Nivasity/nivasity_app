@@ -549,7 +549,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </>
             ) : null}
             <Divider />
-            <Row icon="help-circle-outline" label="Help & Support" onPress={() => navigation.navigate('SupportTickets')} />
+            <Row icon="help-circle-outline" label="Help & Support" onPress={() => navigation.navigate('Bella')} />
           </View>
 
           <View style={{ height: 14 }} />

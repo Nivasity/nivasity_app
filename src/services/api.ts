@@ -2137,3 +2137,44 @@ export const hocAPI = {
     }
   },
 };
+
+// ─── Bella (support assistant, Cloudflare Worker) ───────────────
+// Called through `api` so the student's token is attached and refreshed as usual.
+export const BELLA_URL = (process.env.EXPO_PUBLIC_BELLA_URL || 'https://bella.nivasity.com').trim().replace(/\/$/, '');
+
+export type BellaCard =
+  | { type: 'material'; id: number; title: string; course_code: string; price: number; bought: boolean; path: string }
+  | { type: 'checkout'; items: number; total: number; can_pay_with_wallet: boolean; path: string }
+  | { type: 'fund_wallet'; shortfall: number; balance: number; path: string }
+  | { type: 'link'; label: string; path: string };
+
+export type BellaMessage = {
+  id: number;
+  role: 'student' | 'bella' | 'agent' | 'system';
+  content: string;
+  cards: BellaCard[];
+  agent_name: string | null;
+  created_at: string;
+};
+
+type BellaReply = { status: string; messages: BellaMessage[] };
+
+const bellaError = (err: any): Error =>
+  new Error(err?.response?.data?.error || (err?.response ? 'Bella could not answer. Try again.' : 'Could not reach Bella. Check your connection.'));
+
+export const bellaAPI = {
+  history: async (after = 0): Promise<BellaReply> => {
+    try {
+      return (await api.get<BellaReply>(`${BELLA_URL}/chat`, { params: after ? { after } : undefined })).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  send: async (message: string): Promise<BellaReply> => {
+    try {
+      return (await api.post<BellaReply>(`${BELLA_URL}/chat`, { message }, { timeout: 60000 })).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+};
