@@ -216,8 +216,13 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     try {
       const r = await bellaAPI.rate(rating, comment);
+      const updated = new Map(r.messages.map((m) => [m.id, m]));
       setMessages((prev) =>
-        prev.map((m) => (m.id === r.updated_message_id ? { ...m, cards: m.cards.map((c) => (c.type === 'rate_chat' ? { ...c, rating: r.rating } : c)) } : m)),
+        prev.map(
+          (m) =>
+            updated.get(m.id) ??
+            (m.id === r.updated_message_id ? { ...m, cards: m.cards.map((c) => (c.type === 'rate_chat' ? { ...c, rating: r.rating } : c)) } : m),
+        ),
       );
       merge(r.messages);
     } catch (e: any) {
@@ -298,7 +303,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
     }
     if (card.type === 'rate_chat') {
-      return <BellaRateCard key={i} rated={card.rating} onRate={rateChat} />;
+      return <BellaRateCard key={i} rated={card.rating} onRate={rateChat} onExpand={() => listRef.current?.scrollToEnd({ animated: true })} />;
     }
     if (card.type === 'wallet_account') {
       return <BellaWalletCard key={i} onOpenWallet={() => navigation.navigate('WalletTransactions')} onActivate={() => navigation.navigate('WalletFund')} />;
