@@ -20,7 +20,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import AppIcon from '../components/AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
-import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI } from '../services/api';
+import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI, cartAPI, paymentAPI } from '../services/api';
+import PinConfirmSheet from '../components/PinConfirmSheet';
 
 // Support is a chat with Bella (Nivasity's assistant, a Cloudflare Worker). She finds materials,
 // adds them to the cart and shows "Go to checkout"; the student pays there with their PIN.
@@ -189,6 +190,47 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const human = status === 'waiting' || status === 'human';
 
+  // Pay now: refresh the cart so the PIN sheet shows the real amount, then pay from the wallet
+  // straight through the Nivasity API (the PIN never goes to Bella) and let Bella confirm
+  const [pay, setPay] = useState<{ open: boolean; total: number; items: number }>({ open: false, total: 0, items: 0 });
+  const openPay = async () => {
+    setError(null);
+    try {
+      const c = await cartAPI.view();
+      if (!c.totalItems) {
+        setError('Your cart is empty.');
+        return;
+      }
+      setPay({ open: true, total: Number(c.wallet?.walletTotalAmount ?? c.totalAmount ?? 0), items: Number(c.totalItems || 0) });
+    } catch (e: any) {
+      setError(e.message || 'Could not load your cart');
+    }
+  };
+  const payNow = async (pin: string) => {
+    let txRef = '';
+    try {
+      const p = await paymentAPI.initPayment({ paymentChannel: 'wallet', walletPin: pin });
+      txRef = (p.tx_ref || '').trim();
+    } catch (e: any) {
+      throw new Error(e.response?.data?.message || e?.message || 'Payment failed. Please try again.');
+    }
+    setPay((x) => ({ ...x, open: false }));
+    if (!txRef) return;
+    try {
+      const r = await bellaAPI.paid(txRef);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === r.updated_message_id
+            ? { ...m, cards: m.cards.filter((c) => c.type !== 'checkout').map((c) => (c.type === 'pay_wallet' ? { ...c, status: 'paid' as const } : c)) }
+            : m,
+        ),
+      );
+      merge(r.messages);
+    } catch {
+      /* paid; Bella's confirmation is optional */
+    }
+  };
+
   // The student confirms a swap Bella proposed; the card turns into "Swapped" / "Not swapped"
   const [confirming, setConfirming] = useState<string | null>(null);
   const confirmAction = async (token: string) => {
@@ -212,6 +254,20 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const renderCard = (card: BellaCard, i: number) => {
+    if (card.type === 'pay_wallet') {
+      return card.status === 'paid' ? (
+        <View key={i} style={[styles.cardBtn, { backgroundColor: 'rgba(5,150,105,0.12)' }]}>
+          <AppIcon name="checkmark-circle" size={18} color="#059669" />
+          <Text style={[styles.cardBtnText, { color: '#059669' }]}>Paid</Text>
+        </View>
+      ) : (
+        <TouchableOpacity key={i} onPress={openPay} style={[styles.cardBtn, { backgroundColor: colors.accent }]}>
+          <AppIcon name="wallet-outline" size={18} color={colors.onAccent} />
+          <Text style={[styles.cardBtnText, { color: colors.onAccent, flex: 1 }]}>Pay now with wallet</Text>
+          <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>{naira(card.total)}</Text>
+        </TouchableOpacity>
+      );
+    }
     if (card.type === 'confirm_change') {
       const busy = confirming === card.token;
       return (
@@ -464,6 +520,14 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <PinConfirmSheet
+        visible={pay.open}
+        onClose={() => setPay((x) => ({ ...x, open: false }))}
+        title="Confirm payment"
+        description={`${pay.items} item${pay.items === 1 ? '' : 's'} from your wallet`}
+        amount={naira(pay.total)}
+        onConfirm={payNow}
+      />
     </SafeAreaView>
   );
 };

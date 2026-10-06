@@ -2147,6 +2147,7 @@ export type BellaCard =
   | { type: 'checkout'; items: number; total: number; can_pay_with_wallet: boolean; path: string }
   | { type: 'fund_wallet'; shortfall: number; balance: number; path: string }
   | { type: 'link'; label: string; path: string }
+  | { type: 'pay_wallet'; items: number; total: number; status?: 'paid' }
   | {
       type: 'confirm_change';
       token: string;
@@ -2211,6 +2212,14 @@ export const bellaAPI = {
   articles: async (q = ''): Promise<BellaArticle[]> => {
     try {
       return (await api.get(`${BELLA_URL}/chat/articles`, { params: q ? { q } : undefined })).data.articles || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // Paid from the chat's Pay now card: tell Bella the reference so she confirms with the receipt
+  paid: async (txRef: string): Promise<BellaReply & { ok: boolean; updated_message_id: number | null }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/paid`, { tx_ref: txRef })).data;
     } catch (err) {
       throw bellaError(err);
     }
