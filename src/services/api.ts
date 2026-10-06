@@ -2149,6 +2149,7 @@ export type BellaCard =
   | { type: 'link'; label: string; path: string }
   | { type: 'pay_wallet'; items: number; total: number; status?: 'paid' }
   | { type: 'wallet_account' }
+  | { type: 'rate_chat'; rating?: number }
   | {
       type: 'confirm_change';
       token: string;
@@ -2213,6 +2214,14 @@ export const bellaAPI = {
   articles: async (q = ''): Promise<BellaArticle[]> => {
     try {
       return (await api.get(`${BELLA_URL}/chat/articles`, { params: q ? { q } : undefined })).data.articles || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // Rate this chat (1-5) with optional feedback
+  rate: async (rating: number, comment: string): Promise<BellaReply & { ok: boolean; updated_message_id: number | null; rating: number }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/rate`, { rating, comment })).data;
     } catch (err) {
       throw bellaError(err);
     }

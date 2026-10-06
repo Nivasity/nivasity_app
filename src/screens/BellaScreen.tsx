@@ -23,6 +23,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI, cartAPI, paymentAPI } from '../services/api';
 import PinConfirmSheet from '../components/PinConfirmSheet';
 import BellaWalletCard from '../components/BellaWalletCard';
+import BellaRateCard from '../components/BellaRateCard';
 
 // Support is a chat with Bella (Nivasity's assistant, a Cloudflare Worker). She finds materials,
 // adds them to the cart and shows "Go to checkout"; the student pays there with their PIN.
@@ -191,6 +192,20 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const human = status === 'waiting' || status === 'human';
 
+  // Rate this chat: the card turns into the stars they gave
+  const rateChat = async (rating: number, comment: string) => {
+    setError(null);
+    try {
+      const r = await bellaAPI.rate(rating, comment);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === r.updated_message_id ? { ...m, cards: m.cards.map((c) => (c.type === 'rate_chat' ? { ...c, rating: r.rating } : c)) } : m)),
+      );
+      merge(r.messages);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   // Pay now: refresh the cart so the PIN sheet shows the real amount, then pay from the wallet
   // straight through the Nivasity API (the PIN never goes to Bella) and let Bella confirm
   const [pay, setPay] = useState<{ open: boolean; total: number; items: number }>({ open: false, total: 0, items: 0 });
@@ -255,6 +270,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const renderCard = (card: BellaCard, i: number) => {
+    if (card.type === 'rate_chat') {
+      return <BellaRateCard key={i} rated={card.rating} onRate={rateChat} />;
+    }
     if (card.type === 'wallet_account') {
       return <BellaWalletCard key={i} onOpenWallet={() => navigation.navigate('WalletTransactions')} onActivate={() => navigation.navigate('WalletFund')} />;
     }
