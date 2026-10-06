@@ -2219,9 +2219,9 @@ export const bellaAPI = {
       throw bellaError(err);
     }
   },
-  withdraw: async (deleteHistory: boolean): Promise<{ ok: boolean; deleted: boolean }> => {
+  deleteHistory: async (): Promise<{ ok: boolean; deleted: boolean }> => {
     try {
-      return (await api.post(`${BELLA_URL}/chat/consent/withdraw`, { delete_history: deleteHistory })).data;
+      return (await api.post(`${BELLA_URL}/chat/history/delete`, {})).data;
     } catch (err) {
       throw bellaError(err);
     }

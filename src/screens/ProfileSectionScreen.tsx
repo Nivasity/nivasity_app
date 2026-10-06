@@ -796,8 +796,8 @@ const ProfileSectionScreen: React.FC<ProfileSectionScreenProps> = ({ navigation,
               <SettingsDivider />
               <SettingsRow
                 icon="chatbubble-ellipses-outline"
-                label="Bella AI assistant"
-                hint="Allow Bella to help you, or turn her off."
+                label="Bella & your data"
+                hint="What Bella can see, and deleting your chat history."
                 onPress={() => navigation.navigate('BellaPrivacy')}
               />
               <SettingsDivider />
