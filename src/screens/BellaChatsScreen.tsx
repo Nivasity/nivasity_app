@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -91,6 +91,8 @@ export const BellaChatScreen: React.FC<{ navigation: any; route: any }> = ({ nav
   const id = Number(route?.params?.id || 0);
   const [data, setData] = useState<{ session: BellaSession; messages: BellaMessage[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const opened = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -111,7 +113,17 @@ export const BellaChatScreen: React.FC<{ navigation: any; route: any }> = ({ nav
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <Header title={data?.session.preview || 'Chat'} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={[styles.body, { gap: 12 }]}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.body, { gap: 12 }]}
+        onContentSizeChange={() => {
+          // Open at the latest message, like the live chat
+          if (data && !opened.current) {
+            opened.current = true;
+            scrollRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+      >
         {error ? <Text style={{ color: '#dc2626' }}>{error}</Text> : null}
         {!data && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
         {data ? (
