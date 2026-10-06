@@ -2149,6 +2149,7 @@ export type BellaCard =
   | { type: 'link'; label: string; path: string }
   | { type: 'pay_wallet'; items: number; total: number; status?: 'paid' }
   | { type: 'wallet_account' }
+  | { type: 'end_chat'; status?: 'ended' }
   | { type: 'rate_chat'; rating?: number }
   | {
       type: 'confirm_change';
@@ -2178,6 +2179,15 @@ export type BellaEscalation = {
   resolved_at: string | null;
 };
 export type BellaArticle = { id: number; title: string; body: string };
+export type BellaSession = {
+  id: number;
+  preview: string | null;
+  started_at: string;
+  ended_at: string | null;
+  end_reason: string | null;
+  rating: number | null;
+  messages?: number;
+};
 
 type BellaReply = { status: string; messages: BellaMessage[]; consent_required?: boolean; consent_version?: string };
 
@@ -2218,10 +2228,33 @@ export const bellaAPI = {
       throw bellaError(err);
     }
   },
-  // Rate this chat (1-5) with optional feedback
-  rate: async (rating: number, comment: string): Promise<BellaReply & { ok: boolean; updated_message_id: number | null; rating: number }> => {
+  // End the current session (the End chat button)
+  end: async (): Promise<BellaReply & { ok: boolean; updated_message_id: number | null }> => {
     try {
-      return (await api.post(`${BELLA_URL}/chat/rate`, { rating, comment })).data;
+      return (await api.post(`${BELLA_URL}/chat/end`, {})).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // Chat history
+  sessions: async (): Promise<BellaSession[]> => {
+    try {
+      return (await api.get(`${BELLA_URL}/chat/sessions`)).data.sessions || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  session: async (id: number): Promise<{ session: BellaSession; messages: BellaMessage[] }> => {
+    try {
+      return (await api.get(`${BELLA_URL}/chat/sessions/${id}`)).data;
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // Rate a chat (1-5) with optional feedback; sessionId for one opened from Chat history
+  rate: async (rating: number, comment: string, sessionId?: number): Promise<BellaReply & { ok: boolean; updated_message_id: number | null; rating: number }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/rate`, { rating, comment, ...(sessionId ? { session_id: sessionId } : {}) })).data;
     } catch (err) {
       throw bellaError(err);
     }

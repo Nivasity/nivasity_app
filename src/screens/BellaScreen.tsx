@@ -192,6 +192,25 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const human = status === 'waiting' || status === 'human';
 
+  // End chat: only the student's tap ends the session; then the divider and rating card arrive
+  const [ending, setEnding] = useState(false);
+  const endChat = async () => {
+    setEnding(true);
+    setError(null);
+    try {
+      const r = await bellaAPI.end();
+      setStatus(r.status);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === r.updated_message_id ? { ...m, cards: m.cards.map((c) => (c.type === 'end_chat' ? { ...c, status: 'ended' as const } : c)) } : m)),
+      );
+      merge(r.messages);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setEnding(false);
+    }
+  };
+
   // Rate this chat: the card turns into the stars they gave
   const rateChat = async (rating: number, comment: string) => {
     setError(null);
@@ -270,6 +289,14 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const renderCard = (card: BellaCard, i: number) => {
+    if (card.type === 'end_chat') {
+      if (card.status === 'ended') return null;
+      return (
+        <TouchableOpacity key={i} onPress={endChat} disabled={ending} style={[styles.cardBtn, { borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface, justifyContent: 'center' }]}>
+          {ending ? <ActivityIndicator size="small" color={colors.accent} /> : <Text style={[styles.cardBtnText, { color: colors.text }]}>End chat</Text>}
+        </TouchableOpacity>
+      );
+    }
     if (card.type === 'rate_chat') {
       return <BellaRateCard key={i} rated={card.rating} onRate={rateChat} />;
     }
@@ -411,6 +438,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
           <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {[
+              { icon: 'chatbubbles-outline' as const, label: 'Chat history', to: 'BellaChats' },
               { icon: 'time-outline' as const, label: 'My handovers & tickets', to: 'BellaHistory' },
               { icon: 'book-outline' as const, label: 'Help articles', to: 'BellaHelp' },
               { icon: 'settings-outline' as const, label: 'Bella settings', to: 'BellaPrivacy' },

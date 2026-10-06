@@ -41,6 +41,7 @@ import BellaScreen from '../screens/BellaScreen';
 import BellaPrivacyScreen from '../screens/BellaPrivacyScreen';
 import BellaHistoryScreen from '../screens/BellaHistoryScreen';
 import BellaHelpScreen from '../screens/BellaHelpScreen';
+import { BellaChatScreen, BellaChatsScreen } from '../screens/BellaChatsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import MaterialRequestsScreen from '../screens/MaterialRequestsScreen';
 import ClassRepScreen from '../screens/ClassRepScreen';
@@ -232,6 +233,16 @@ const AppNavigator = () => {
             <Stack.Screen
               name="BellaHelp"
               component={BellaHelpScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BellaChats"
+              component={BellaChatsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BellaChat"
+              component={BellaChatScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
