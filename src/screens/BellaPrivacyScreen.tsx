@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   card: { marginTop: 20, borderWidth: 1, borderRadius: 20, padding: 16 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 14 },
   error: { color: '#dc2626', fontWeight: '600', marginTop: 16 },
-  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 14, backgroundColor: '#dc2626' },
+  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 14, backgroundColor: '#4b5563' },
   dangerText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });
 

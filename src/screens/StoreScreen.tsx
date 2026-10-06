@@ -242,6 +242,17 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         />
         {/* System alerts (maintenance, outages) only on the Store */}
         <SystemAlerts />
+        {/* Buy with Bella: she finds the materials and fills the cart; the student pays at checkout */}
+        <TouchableOpacity onPress={() => navigation.navigate('Bella')} activeOpacity={0.9} style={styles.bellaCard} accessibilityRole="button">
+          <View style={styles.bellaIcon}>
+            <AppIcon name="sparkles" size={22} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>Buy with Bella</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>Tell Bella your course codes. She finds your materials and fills your cart.</Text>
+          </View>
+          <AppIcon name="chevron-forward" size={18} color="#fff" />
+        </TouchableOpacity>
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <AppIcon name="search-outline" size={18} color={colors.textMuted} />
           <TextInput
@@ -365,6 +376,19 @@ const StoreCardShimmer = () => {
 };
 
 const styles = StyleSheet.create({
+  bellaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 0,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 20,
+    backgroundColor: '#a21caf',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  bellaIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)' },
   container: {
     flex: 1,
   },
