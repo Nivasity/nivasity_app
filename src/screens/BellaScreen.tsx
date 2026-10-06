@@ -68,7 +68,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (!incoming?.length) return;
     setMessages((prev) => {
       const seen = new Set(prev.map((m) => m.id));
-      const next = [...prev, ...incoming.filter((m) => !seen.has(m.id))];
+      // Once the saved copy of the student's message arrives, drop the on-screen placeholder
+      const base = incoming.some((m) => m.role === 'student') ? prev.filter((m) => m.id > 0) : prev;
+      const next = [...base, ...incoming.filter((m) => !seen.has(m.id))];
       const real = next.filter((m) => m.id > 0);
       lastId.current = real.length ? real[real.length - 1].id : 0;
       return next;
@@ -87,20 +89,33 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       .finally(() => setLoading(false));
   }, [merge]);
 
-  // A teammate may reply: check for new messages while the chat is open
+  // Live updates: keep one long-poll open while the chat is on screen, so team replies and status
+  // changes show within about 2 seconds
+  const statusRef = useRef(status);
+  statusRef.current = status;
   useEffect(() => {
-    const t = setInterval(() => {
-      if (sending || AppState.currentState !== 'active') return;
-      bellaAPI
-        .history(lastId.current)
-        .then((r) => {
+    let alive = true;
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      while (alive) {
+        if (AppState.currentState !== 'active' || !lastId.current) {
+          await pause(2000);
+          continue;
+        }
+        try {
+          const r = await bellaAPI.history(lastId.current, { wait: 20, status: statusRef.current });
+          if (!alive) break;
           setStatus(r.status);
           merge(r.messages);
-        })
-        .catch(() => undefined);
-    }, status === 'waiting' || status === 'human' ? 8000 : 30000);
-    return () => clearInterval(t);
-  }, [status, sending, merge]);
+        } catch {
+          await pause(5000);
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [merge]);
 
   useEffect(() => {
     const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);

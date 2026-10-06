@@ -2192,9 +2192,11 @@ export const BELLA_TERMS_URL = 'https://nivasity.com/terms';
 export const BELLA_PRIVACY_URL = 'https://nivasity.com/privacy';
 
 export const bellaAPI = {
-  history: async (after = 0): Promise<BellaReply> => {
+  // With live, the request stays open (up to live.wait seconds) until a new message or status change
+  history: async (after = 0, live?: { wait: number; status: string }): Promise<BellaReply> => {
     try {
-      return (await api.get<BellaReply>(`${BELLA_URL}/chat`, { params: after ? { after } : undefined })).data;
+      const params = after ? { after, ...(live ? { wait: live.wait, status: live.status } : {}) } : undefined;
+      return (await api.get<BellaReply>(`${BELLA_URL}/chat`, { params, timeout: live ? (live.wait + 15) * 1000 : undefined })).data;
     } catch (err) {
       throw bellaError(err);
     }
