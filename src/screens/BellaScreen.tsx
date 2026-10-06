@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   AppState,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -12,6 +13,8 @@ import {
 } from 'react-native';
 import Text from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import AppIcon from '../components/AppIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import { BellaCard, BellaMessage, bellaAPI } from '../services/api';
@@ -48,6 +51,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [status, setStatus] = useState('bella');
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
+  const [file, setFile] = useState<{ uri: string; name: string; type: string; size?: number } | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastId = useRef(0);
@@ -94,18 +98,34 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return () => clearTimeout(t);
   }, [messages.length, sending]);
 
-  const send = async (msg: string) => {
+  const pickFile = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.[0]) return;
+    const a = res.assets[0];
+    if ((a.size || 0) > 5 * 1024 * 1024) {
+      setError('That file is too big. The limit is 5 MB.');
+      return;
+    }
+    const ext = (a.name.split('.').pop() || '').toLowerCase();
+    const type = a.mimeType || (ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+    setError(null);
+    setFile({ uri: a.uri, name: a.name, type, size: a.size });
+  };
+
+  const send = async (msg: string, attach: typeof file = null) => {
     const body = msg.trim();
-    if (!body || sending) return;
+    if ((!body && !attach) || sending) return;
     setSending(true);
     setError(null);
     setText('');
+    setFile(null);
     try {
-      const r = await bellaAPI.send(body);
+      const r = await bellaAPI.send(body, attach ? { uri: attach.uri, name: attach.name, type: attach.type } : null);
       setStatus(r.status);
       merge(r.messages);
     } catch (e: any) {
       setText(body);
+      setFile(attach);
       setError(e.message);
     } finally {
       setSending(false);
@@ -162,7 +182,19 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderBottomLeftRadius: 6 },
             ]}
           >
-            <Text style={{ color: mine ? colors.onAccent : colors.text, fontSize: 15 }}>{m.content}</Text>
+            {!!m.content && <Text style={{ color: mine ? colors.onAccent : colors.text, fontSize: 15 }}>{m.content}</Text>}
+            {m.attachment && (
+              <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(m.attachment!.url)} style={{ marginTop: m.content ? 8 : 0 }}>
+                {m.attachment.type.startsWith('image/') ? (
+                  <Image source={{ uri: m.attachment.url }} style={styles.image} resizeMode="cover" />
+                ) : (
+                  <View style={styles.fileRow}>
+                    <AppIcon name="document-attach-outline" size={16} color={mine ? colors.onAccent : colors.accent} />
+                    <Text numberOfLines={1} style={{ color: mine ? colors.onAccent : colors.accent, fontWeight: '600', flexShrink: 1 }}>{m.attachment.name}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
           {m.cards.length > 0 && <View style={styles.cards}>{m.cards.map(renderCard)}</View>}
           <Text style={[styles.time, { color: colors.textMuted }]}>{when(m.created_at)}</Text>
@@ -230,7 +262,19 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
 
         {!!error && <Text style={[styles.error, { color: '#dc2626' }]}>{error}</Text>}
+        {file && (
+          <View style={[styles.filePill, { backgroundColor: colors.surfaceAlt }]}>
+            <AppIcon name="attach" size={14} color={colors.text} />
+            <Text numberOfLines={1} style={{ color: colors.text, fontSize: 12, fontWeight: '600', flexShrink: 1 }}>{file.name}</Text>
+            <TouchableOpacity onPress={() => setFile(null)} accessibilityLabel="Remove attachment">
+              <AppIcon name="close" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={[styles.inputBar, { borderTopColor: colors.border }]}>
+          <TouchableOpacity onPress={pickFile} style={styles.attachBtn} accessibilityLabel="Attach a photo or PDF">
+            <AppIcon name="attach" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -241,9 +285,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceAlt }]}
           />
           <TouchableOpacity
-            onPress={() => send(text)}
-            disabled={sending || !text.trim()}
-            style={[styles.sendBtn, { backgroundColor: colors.accent, opacity: sending || !text.trim() ? 0.5 : 1 }]}
+            onPress={() => send(text, file)}
+            disabled={sending || (!text.trim() && !file)}
+            style={[styles.sendBtn, { backgroundColor: colors.accent, opacity: sending || (!text.trim() && !file) ? 0.5 : 1 }]}
             accessibilityLabel="Send"
           >
             {sending ? <ActivityIndicator size="small" color={colors.onAccent} /> : <AppIcon name="send" size={18} color={colors.onAccent} />}
@@ -278,6 +322,10 @@ const styles = StyleSheet.create({
   error: { paddingHorizontal: 16, paddingBottom: 6, fontSize: 13, fontWeight: '600' },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, fontSize: 15 },
+  attachBtn: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
+  image: { width: 200, height: 200, borderRadius: 12 },
+  fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  filePill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginHorizontal: 12, marginBottom: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, maxWidth: '90%' },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });
 

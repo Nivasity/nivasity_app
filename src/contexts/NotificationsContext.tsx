@@ -379,6 +379,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     if (action === 'order_receipt' || action === 'payment_receipt' || action === 'payment_success') {
       return openReceipt(anyData.tx_ref ?? anyData.txRef ?? anyData.order_id ?? anyData.orderId ?? anyData.ref);
     }
+    if (action === 'bella_chat') {
+      navigate('Bella');
+      return true;
+    }
     if (action === 'support_ticket' || action === 'open_ticket' || action === 'ticket') {
       return openSupport({
         ticketId: anyData.ticket_id ?? anyData.ticketId ?? anyData.id,

@@ -2153,6 +2153,7 @@ export type BellaMessage = {
   role: 'student' | 'bella' | 'agent' | 'system';
   content: string;
   cards: BellaCard[];
+  attachment: { name: string; type: string; size: number; url: string } | null;
   agent_name: string | null;
   created_at: string;
 };
@@ -2170,8 +2171,14 @@ export const bellaAPI = {
       throw bellaError(err);
     }
   },
-  send: async (message: string): Promise<BellaReply> => {
+  send: async (message: string, file?: { uri: string; name: string; type: string } | null): Promise<BellaReply> => {
     try {
+      if (file) {
+        const form = new FormData();
+        form.append('message', message);
+        form.append('file', file as any);
+        return (await api.post<BellaReply>(`${BELLA_URL}/chat`, form, { timeout: 90000, headers: { 'Content-Type': 'multipart/form-data' } })).data;
+      }
       return (await api.post<BellaReply>(`${BELLA_URL}/chat`, { message }, { timeout: 60000 })).data;
     } catch (err) {
       throw bellaError(err);
