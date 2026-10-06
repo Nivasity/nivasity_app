@@ -12,7 +12,7 @@ const BellaFab: React.FC<{ onPress: () => void; bottom?: number }> = ({ onPress,
     accessibilityRole="button"
     accessibilityLabel="Ask Bella, your Nivasity assistant"
   >
-    <AppIcon name="sparkles" size={18} color="#fff" />
+    <AppIcon name="chatbubble-ellipses" size={18} color="#fff" />
     <Text style={styles.label}>Ask Bella</Text>
   </TouchableOpacity>
 );

@@ -232,7 +232,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-          <AppIcon name="sparkles" size={18} color={colors.onAccent} />
+          <AppIcon name="chatbubble-ellipses" size={18} color={colors.onAccent} />
         </View>
         <View style={styles.flex}>
           <Text style={[styles.title, { color: colors.text }]}>Bella</Text>

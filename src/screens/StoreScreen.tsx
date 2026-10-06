@@ -26,8 +26,7 @@ import CheckoutFab from '../components/CheckoutFab';
 import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
 import { Chip, IconButton, ScreenTitle } from '../components/ui';
-import { SystemAlerts } from '../components/Notices';
-import BellaFab from '../components/BellaFab';
+
 
 interface StoreScreenProps {
   navigation: any;
@@ -240,12 +239,10 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           subtitle="Course materials for your department"
           right={<IconButton icon="cart-outline" label="Go to checkout" badge={cartCount} onPress={goToCheckout} />}
         />
-        {/* System alerts (maintenance, outages) only on the Store */}
-        <SystemAlerts />
         {/* Buy with Bella: she finds the materials and fills the cart; the student pays at checkout */}
         <TouchableOpacity onPress={() => navigation.navigate('Bella')} activeOpacity={0.9} style={styles.bellaCard} accessibilityRole="button">
           <View style={styles.bellaIcon}>
-            <AppIcon name="sparkles" size={22} color="#fff" />
+            <AppIcon name="chatbubble-ellipses" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>Buy with Bella</Text>
@@ -355,7 +352,6 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           navigation.navigate('BulkPayment', { manualId: activeProduct.id });
         }}
       />
-      <BellaFab onPress={() => navigation.navigate('Bella')} />
     </SafeAreaView>
   );
 };

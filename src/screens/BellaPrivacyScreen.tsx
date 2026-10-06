@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Text from '../components/AppText';
@@ -75,15 +75,30 @@ const BellaPrivacyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Text style={{ color: '#059669', fontWeight: '800' }}>On</Text>
               {since ? ` since ${since}` : ''}
             </Text>
-            <View style={styles.switchRow}>
-              <Text style={{ color: deleteHistory ? '#dc2626' : colors.text, fontWeight: deleteHistory ? '700' : '400', flex: 1 }}>
-                Also delete my chat history, attachments and the notes Bella keeps about past chats
-              </Text>
-              <Switch value={deleteHistory} onValueChange={setDeleteHistory} trackColor={{ false: colors.border, true: '#dc2626' }} thumbColor="#fff" />
-            </View>
-            <TouchableOpacity onPress={turnOff} disabled={busy} style={[styles.danger, { opacity: busy ? 0.6 : 1 }]} accessibilityRole="button">
-              {busy ? <ActivityIndicator color="#fff" /> : <AppIcon name="power" size={18} color="#fff" />}
-              <Text style={styles.dangerText}>{busy ? 'Turning off…' : deleteHistory ? 'Turn off Bella and delete history' : 'Turn off Bella'}</Text>
+            <TouchableOpacity
+              onPress={() => setDeleteHistory(!deleteHistory)}
+              style={styles.checkRow}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: deleteHistory }}
+            >
+              <View style={[styles.checkbox, { borderColor: deleteHistory ? '#dc2626' : colors.textMuted, backgroundColor: deleteHistory ? '#dc2626' : 'transparent' }]}>
+                {deleteHistory ? <AppIcon name="checkmark" size={16} color="#fff" /> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text }}>Also delete my chat history, attachments and the notes Bella keeps about past chats</Text>
+                {deleteHistory ? (
+                  <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '700', marginTop: 4 }}>Your chat history will be deleted. This can't be undone.</Text>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={turnOff}
+              disabled={busy}
+              style={[styles.offBtn, { backgroundColor: colors.text, opacity: busy ? 0.6 : 1 }]}
+              accessibilityRole="button"
+            >
+              {busy ? <ActivityIndicator color={colors.background} /> : <AppIcon name="power" size={18} color={colors.background} />}
+              <Text style={[styles.offText, { color: colors.background }]}>{busy ? 'Turning off…' : 'Turn off Bella'}</Text>
             </TouchableOpacity>
             <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 10 }}>
               You can turn her back on any time from Help & Support. Payments and orders are not affected.
@@ -110,10 +125,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700' },
   body: { padding: 16 },
   card: { marginTop: 20, borderWidth: 1, borderRadius: 20, padding: 16 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 14 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginVertical: 14 },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   error: { color: '#dc2626', fontWeight: '600', marginTop: 16 },
-  danger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 14, backgroundColor: '#4b5563' },
-  dangerText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  offBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 14 },
+  offText: { fontWeight: '800', fontSize: 15 },
 });
 
 export default BellaPrivacyScreen;

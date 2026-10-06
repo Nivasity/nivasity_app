@@ -20,7 +20,7 @@ import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
 import EmptyState from '../components/EmptyState';
 import SendMoneySheet from '../components/SendMoneySheet';
-import { PendingClaimsSheet, SurveyCard } from '../components/Notices';
+import { PendingClaimsSheet, SurveyCard, SystemAlerts } from '../components/Notices';
 import BellaFab from '../components/BellaFab';
 import { Card, CourseTile, Divider, GradientCard, IconButton, IconCircle, RoundAction, SectionHeader } from '../components/ui';
 
@@ -192,6 +192,9 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           </View>
           <IconButton icon="notifications-outline" label="Open notifications" badge={unreadCount} onPress={() => navigation.navigate('Notifications')} />
         </View>
+
+        {/* System alerts (maintenance, outages) only on Home */}
+        <SystemAlerts />
 
         {/* Wallet */}
         <GradientCard>

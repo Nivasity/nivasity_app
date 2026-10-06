@@ -67,7 +67,7 @@ const BellaHelpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
         </View>
         <TouchableOpacity onPress={() => navigation.navigate('Bella')} style={[styles.ask, { backgroundColor: colors.accent }]}>
-          <AppIcon name="sparkles" size={18} color={colors.onAccent} />
+          <AppIcon name="chatbubble-ellipses" size={18} color={colors.onAccent} />
           <Text style={{ color: colors.onAccent, fontWeight: '800' }}>Didn't find it? Ask Bella</Text>
         </TouchableOpacity>
       </ScrollView>
