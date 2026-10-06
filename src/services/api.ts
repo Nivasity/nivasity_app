@@ -2146,7 +2146,15 @@ export type BellaCard =
   | { type: 'material'; id: number; title: string; course_code: string; price: number; bought: boolean; path: string }
   | { type: 'checkout'; items: number; total: number; can_pay_with_wallet: boolean; path: string }
   | { type: 'fund_wallet'; shortfall: number; balance: number; path: string }
-  | { type: 'link'; label: string; path: string };
+  | { type: 'link'; label: string; path: string }
+  | {
+      type: 'confirm_change';
+      token: string;
+      from: { title: string; course_code: string };
+      to: { title: string; course_code: string };
+      price: number;
+      status?: 'done' | 'failed';
+    };
 
 export type BellaMessage = {
   id: number;
@@ -2201,6 +2209,14 @@ export const bellaAPI = {
   articles: async (q = ''): Promise<BellaArticle[]> => {
     try {
       return (await api.get(`${BELLA_URL}/chat/articles`, { params: q ? { q } : undefined })).data.articles || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // The student confirms an action Bella proposed (a material swap)
+  action: async (token: string): Promise<BellaReply & { ok: boolean; updated_message_id: number | null }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/action`, { token }, { timeout: 60000 })).data;
     } catch (err) {
       throw bellaError(err);
     }

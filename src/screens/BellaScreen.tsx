@@ -156,7 +156,58 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const human = status === 'waiting' || status === 'human';
 
+  // The student confirms a swap Bella proposed; the card turns into "Swapped" / "Not swapped"
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const confirmAction = async (token: string) => {
+    setConfirming(token);
+    setError(null);
+    try {
+      const r = await bellaAPI.action(token);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === r.updated_message_id
+            ? { ...m, cards: m.cards.map((c) => (c.type === 'confirm_change' && c.token === token ? { ...c, token: '', status: r.ok ? 'done' : 'failed' } : c)) }
+            : m,
+        ),
+      );
+      merge(r.messages);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setConfirming(null);
+    }
+  };
+
   const renderCard = (card: BellaCard, i: number) => {
+    if (card.type === 'confirm_change') {
+      const busy = confirming === card.token;
+      return (
+        <View key={i} style={[styles.swapCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }}>SWAP MATERIAL</Text>
+          <Text style={{ color: colors.textMuted, marginTop: 8, textDecorationLine: 'line-through' }}>{card.from.course_code} · {card.from.title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <AppIcon name="arrow-forward" size={16} color={colors.accent} />
+            <Text style={{ color: colors.text, fontWeight: '700', flexShrink: 1 }}>{card.to.course_code} · {card.to.title}</Text>
+          </View>
+          {card.status === 'done' ? (
+            <Text style={{ color: '#059669', fontWeight: '800', marginTop: 10 }}>Swapped</Text>
+          ) : card.status === 'failed' ? (
+            <Text style={{ color: colors.textMuted, fontWeight: '800', marginTop: 10 }}>Not swapped</Text>
+          ) : (
+            <>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 8 }}>Same price, nothing to pay. A purchase can only be swapped once.</Text>
+              <TouchableOpacity
+                onPress={() => confirmAction(card.token)}
+                disabled={!!confirming}
+                style={[styles.cardBtn, { backgroundColor: colors.accent, justifyContent: 'center', marginTop: 10, opacity: confirming ? 0.6 : 1 }]}
+              >
+                {busy ? <ActivityIndicator size="small" color={colors.onAccent} /> : <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>Confirm swap</Text>}
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      );
+    }
     const press = () => openPath(navigation, card.path);
     if (card.type === 'checkout') {
       return (
@@ -409,6 +460,7 @@ const styles = StyleSheet.create({
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, fontSize: 15 },
   consent: { borderWidth: 1, borderRadius: 20, padding: 16 },
+  swapCard: { borderWidth: 1, borderRadius: 18, padding: 14 },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   menu: { position: 'absolute', top: 70, right: 12, borderWidth: 1, borderRadius: 16, paddingVertical: 6, minWidth: 240 },
