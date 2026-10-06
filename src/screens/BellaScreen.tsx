@@ -69,7 +69,8 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setMessages((prev) => {
       const seen = new Set(prev.map((m) => m.id));
       const next = [...prev, ...incoming.filter((m) => !seen.has(m.id))];
-      lastId.current = next.length ? next[next.length - 1].id : 0;
+      const real = next.filter((m) => m.id > 0);
+      lastId.current = real.length ? real[real.length - 1].id : 0;
       return next;
     });
   }, []);
@@ -127,11 +128,28 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     setText('');
     setFile(null);
+    // Show the student's message right away; the saved copy replaces it when Bella answers
+    const tempId = -Date.now();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        role: 'student',
+        content: body,
+        cards: [],
+        attachment: attach ? { name: attach.name, type: attach.type, size: attach.size || 0, url: attach.uri } : null,
+        agent_name: null,
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      },
+    ]);
+    const dropTemp = () => setMessages((prev) => prev.filter((m) => m.id !== tempId));
     try {
       const r = await bellaAPI.send(body, attach ? { uri: attach.uri, name: attach.name, type: attach.type } : null);
+      dropTemp();
       setStatus(r.status);
       merge(r.messages);
     } catch (e: any) {
+      dropTemp();
       if (e.code === 'consent_required') setConsent((c) => ({ ...c, required: true }));
       setText(body);
       setFile(attach);
@@ -335,7 +353,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {[
                 'Bella is an AI assistant. She can make mistakes, so check items and amounts before you pay.',
                 'To help you, she can look up your profile, cart, wallet, transactions and purchases. Never your PIN or password.',
-                'Messages are processed by our AI provider (Google) and kept for 7 days. The Nivasity team can read them and is alerted when Bella hands your chat over.',
+                'Messages and the photos or PDFs you attach are processed by our AI provider (Google) and kept for 7 days. The Nivasity team can read them and is alerted when Bella hands your chat over.',
                 'Never share your PIN or password in a chat.',
               ].map((t) => (
                 <Text key={t} style={{ color: colors.textMuted, marginTop: 8, lineHeight: 20 }}>{`•  ${t}`}</Text>
