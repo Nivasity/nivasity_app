@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -33,6 +33,7 @@ const when = (v: string) => {
   const d = new Date(v.replace(' ', 'T') + 'Z');
   return `${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}, ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 };
+const SINGLE_CARDS = new Set(['checkout', 'fund_wallet', 'pay_wallet', 'wallet_account']);
 const SUGGESTIONS = ['Find my course materials', "What's in my cart?", 'Where is my receipt?', 'How do I fund my wallet?'];
 
 // Bella's links are web routes; open the matching app screen.
@@ -191,6 +192,14 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const human = status === 'waiting' || status === 'human';
+
+  // Cart and wallet buttons show only on the latest message that has them (older copies hide)
+  const latestCardOwner = useMemo(() => {
+    const owner: Record<string, number> = {};
+    for (const m of messages) for (const c of m.cards) if (SINGLE_CARDS.has(c.type)) owner[c.type] = m.id;
+    return owner;
+  }, [messages]);
+  const visibleCards = (m: BellaMessage) => m.cards.filter((c) => !SINGLE_CARDS.has(c.type) || latestCardOwner[c.type] === m.id);
 
   // End chat: only the student's tap ends the session; then the divider and rating card arrive
   const [ending, setEnding] = useState(false);
@@ -412,7 +421,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             )}
           </View>
-          {m.cards.length > 0 && <View style={styles.cards}>{m.cards.map(renderCard)}</View>}
+          {visibleCards(m).length > 0 && <View style={styles.cards}>{visibleCards(m).map(renderCard)}</View>}
           <Text style={[styles.time, { color: colors.textMuted }]}>{when(m.created_at)}</Text>
         </View>
       </View>
@@ -513,6 +522,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <FlatList
             ref={listRef}
             data={messages}
+            extraData={latestCardOwner}
             keyExtractor={(m) => String(m.id)}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
