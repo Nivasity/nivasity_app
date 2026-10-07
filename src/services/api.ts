@@ -2150,7 +2150,7 @@ export type BellaCard =
   | { type: 'pay_wallet'; items: number; total: number; status?: 'paid' }
   | { type: 'wallet_account' }
   | { type: 'end_chat'; status?: 'ended' }
-  | { type: 'rate_chat'; rating?: number }
+  | { type: 'rate_chat'; rating?: number; ends?: boolean; by?: 'team'; dismissed?: boolean }
   | {
       type: 'confirm_change';
       token: string;
@@ -2224,6 +2224,14 @@ export const bellaAPI = {
   articles: async (q = ''): Promise<BellaArticle[]> => {
     try {
       return (await api.get(`${BELLA_URL}/chat/articles`, { params: q ? { q } : undefined })).data.articles || [];
+    } catch (err) {
+      throw bellaError(err);
+    }
+  },
+  // Not yet: hide Bella's goodbye rating card and keep chatting
+  notYet: async (messageId: number): Promise<BellaReply & { ok: boolean; updated_message_id: number | null }> => {
+    try {
+      return (await api.post(`${BELLA_URL}/chat/dismiss`, { message_id: messageId })).data;
     } catch (err) {
       throw bellaError(err);
     }

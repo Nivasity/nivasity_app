@@ -200,7 +200,22 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     for (const m of messages) for (const c of m.cards) if (SINGLE_CARDS.has(c.type)) owner[c.type] = m.id;
     return owner;
   }, [messages]);
-  const visibleCards = (m: BellaMessage) => m.cards.filter((c) => !SINGLE_CARDS.has(c.type) || latestCardOwner[c.type] === m.id);
+  const lastStudentId = useMemo(() => messages.reduce((id, m) => (m.role === 'student' ? m.id : id), 0), [messages]);
+  const visibleCards = (m: BellaMessage) =>
+    m.cards.filter((c) => {
+      if (SINGLE_CARDS.has(c.type)) return latestCardOwner[c.type] === m.id;
+      // Goodbye rating card: gone once they tap Not yet or keep chatting
+      if (c.type === 'rate_chat' && c.ends && !c.rating) return !c.dismissed && !(lastStudentId > m.id || lastStudentId < 0);
+      return true;
+    });
+  // The chat ended (rated, or resolved by the team): no more messages in it, only a new chat
+  const ended = status === 'resolved' && messages.length > 0;
+
+  // Not yet: Bella's goodbye rating card goes away and the chat carries on
+  const notYet = (messageId: number) => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, cards: m.cards.map((c) => (c.type === 'rate_chat' ? { ...c, dismissed: true } : c)) } : m)));
+    bellaAPI.notYet(messageId).catch(() => {});
+  };
 
   // End chat: only the student's tap ends the session; then the divider and rating card arrive
   const [ending, setEnding] = useState(false);
@@ -226,6 +241,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setError(null);
     try {
       const r = await bellaAPI.rate(rating, comment);
+      setStatus(r.status);
       const updated = new Map(r.messages.map((m) => [m.id, m]));
       setMessages((prev) =>
         prev.map(
@@ -303,7 +319,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
-  const renderCard = (card: BellaCard, i: number) => {
+  const renderCard = (card: BellaCard, i: number, messageId: number) => {
     if (card.type === 'end_chat') {
       if (card.status === 'ended') return null;
       return (
@@ -313,7 +329,16 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
     }
     if (card.type === 'rate_chat') {
-      return <BellaRateCard key={i} rated={card.rating} onRate={rateChat} onExpand={() => listRef.current?.scrollToEnd({ animated: true })} />;
+      return (
+        <BellaRateCard
+          key={i}
+          rated={card.rating}
+          onRate={rateChat}
+          onExpand={() => listRef.current?.scrollToEnd({ animated: true })}
+          title={card.by === 'team' ? 'How did the Nivasity team do?' : 'How did Bella do?'}
+          onLater={card.ends && !card.rating ? () => notYet(messageId) : undefined}
+        />
+      );
     }
     if (card.type === 'wallet_account') {
       return <BellaWalletCard key={i} onOpenWallet={() => navigation.navigate('WalletTransactions')} onActivate={() => navigation.navigate('WalletFund')} />;
@@ -422,7 +447,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             )}
           </View>
-          {visibleCards(m).length > 0 && <View style={styles.cards}>{visibleCards(m).map(renderCard)}</View>}
+          {visibleCards(m).length > 0 && <View style={styles.cards}>{visibleCards(m).map((c, i) => renderCard(c, i, m.id))}</View>}
           <Text style={[styles.time, { color: colors.textMuted }]}>{when(m.created_at)}</Text>
         </View>
       </View>
@@ -563,7 +588,23 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         )}
-        <View style={[styles.inputBar, { borderTopColor: colors.border }, consent.required && { display: 'none' }]}>
+        {ended && !consent.required ? (
+          <View style={[styles.endedBar, { borderTopColor: colors.border }]}>
+            <Text style={{ color: colors.textMuted, flex: 1 }}>This chat has ended.</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setError(null);
+                setMessages([]);
+              }}
+              style={[styles.newChatBtn, { backgroundColor: colors.accent }]}
+              accessibilityLabel="Start a new chat"
+            >
+              <AppIcon name="chatbubble-ellipses" size={16} color={colors.onAccent} />
+              <Text style={{ color: colors.onAccent, fontWeight: '800' }}>Start a new chat</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        <View style={[styles.inputBar, { borderTopColor: colors.border }, (consent.required || ended) && { display: 'none' }]}>
           <TouchableOpacity onPress={pickFile} style={styles.attachBtn} accessibilityLabel="Attach a photo or PDF">
             <AppIcon name="attach" size={22} color={colors.textMuted} />
           </TouchableOpacity>
@@ -599,6 +640,8 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  endedBar: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  newChatBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18 },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },

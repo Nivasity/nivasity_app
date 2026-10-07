@@ -6,11 +6,14 @@ import { useTheme } from '../contexts/ThemeContext';
 
 // Rate this chat. Tapping a star saves the rating at once; feedback is an optional second step
 // that updates the same rating. onExpand lets the chat scroll the feedback box into view.
+// onLater (Bella's goodbye card only): a small Not yet button for students who aren't done.
 const BellaRateCard: React.FC<{
   rated?: number;
   onRate: (rating: number, comment: string) => Promise<void>;
   onExpand?: () => void;
-}> = ({ rated, onRate, onExpand }) => {
+  title?: string;
+  onLater?: () => void;
+}> = ({ rated, onRate, onExpand, title = 'How did Bella do?', onLater }) => {
   const { colors } = useTheme();
   const [phase, setPhase] = useState<'stars' | 'feedback' | 'done'>(rated ? 'done' : 'stars');
   const [rating, setRating] = useState(rated || 0);
@@ -61,8 +64,15 @@ const BellaRateCard: React.FC<{
 
   return (
     <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-      <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>{phase === 'stars' ? 'How did Bella do?' : 'Thanks! Your rating is saved.'}</Text>
-      {stars(phase === 'stars' ? 28 : 20, phase === 'stars')}
+      <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>{phase === 'stars' ? title : 'Thanks! Your rating is saved.'}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        {stars(phase === 'stars' ? 28 : 20, phase === 'stars')}
+        {phase === 'stars' && onLater ? (
+          <TouchableOpacity onPress={onLater} disabled={busy} style={[styles.later, { borderColor: colors.border }]} accessibilityLabel="Not yet">
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '700' }}>Not yet</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {busy && phase === 'stars' ? <ActivityIndicator color={colors.accent} style={{ marginTop: 8, alignSelf: 'flex-start' }} /> : null}
       {phase === 'feedback' ? (
         <>
@@ -97,6 +107,7 @@ const BellaRateCard: React.FC<{
 const styles = StyleSheet.create({
   box: { borderWidth: 1, borderRadius: 18, padding: 14 },
   input: { marginTop: 12, minHeight: 60, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, textAlignVertical: 'top' },
+  later: { borderWidth: 1, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   skip: { borderWidth: 1, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center' },
   send: { flex: 1, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
 });
