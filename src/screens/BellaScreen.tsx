@@ -590,7 +590,12 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: isDark ? 'rgba(107,45,116,0.16)' : 'rgba(107,45,116,0.06)' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} accessibilityLabel="Back">
+        <TouchableOpacity
+          // Opened from a notification or link: nothing to go back to, so go Home
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('StudentMain', { screen: 'Dashboard' }))}
+          style={styles.iconBtn}
+          accessibilityLabel="Back"
+        >
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <BellaAvatar size={40} />
