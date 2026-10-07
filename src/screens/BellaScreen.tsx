@@ -76,7 +76,7 @@ const openPath = (navigation: any, path: string) => {
   if (a === 'store') return navigation.navigate('StudentMain', { screen: 'Store' });
   if (a === 'material' && b) return navigation.navigate('StudentMain', { screen: 'Store', params: { materialId: decodeURIComponent(b) } });
   if (a === 'orders' && b) return navigation.navigate('OrderReceipt', { txRef: decodeURIComponent(b) });
-  if (a === 'orders') return navigation.navigate('StudentMain', { screen: 'Orders', params: /tab=paid/.test(path) ? { tab: 'paid' } : undefined });
+  if (a === 'orders') return navigation.navigate('StudentMain', { screen: 'Orders', params: /tab=(paid|bulk)/.test(path) ? { tab: (path.match(/tab=(paid|bulk)/) || [])[1] } : undefined });
   if (a === 'wallet' && b === 'fund') return navigation.navigate('WalletFund');
   if (a === 'wallet' && b === 'pin') return navigation.navigate('WalletPin');
   if (a === 'wallet') return navigation.navigate('WalletTransactions');
