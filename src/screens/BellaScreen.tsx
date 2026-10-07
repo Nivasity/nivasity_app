@@ -128,27 +128,45 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       .finally(() => setLoading(false));
   }, [merge]);
 
-  // Live updates: keep one long-poll open while the chat is on screen, so team replies and status
-  // changes show within about 2 seconds
+  // Live updates. Bella's own replies come back with each message, so waiting is only needed for
+  // the team: while they have the chat, one long-poll stays open (replies show in ~2 s). With
+  // Bella, a check about once a minute catches rare events (a teammate joining, the chat ending).
+  // No checks once the chat has ended, or after 15 minutes without a tap or keypress (any
+  // interaction resumes them). Keeps Worker requests down.
   const statusRef = useRef(status);
   statusRef.current = status;
+  const lastActive = useRef(Date.now());
+  useEffect(() => {
+    lastActive.current = Date.now();
+  }, [text, messages.length]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') lastActive.current = Date.now();
+    });
+    return () => sub.remove();
+  }, []);
   useEffect(() => {
     let alive = true;
     const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
     (async () => {
       while (alive) {
-        if (AppState.currentState !== 'active' || !lastId.current) {
+        const st = statusRef.current;
+        const idle = Date.now() - lastActive.current > 15 * 60_000;
+        if (AppState.currentState !== 'active' || !lastId.current || st === 'resolved' || idle) {
           await pause(2000);
           continue;
         }
         try {
-          const r = await bellaAPI.history(lastId.current, { wait: 20, status: statusRef.current });
+          const r = await bellaAPI.history(lastId.current, { wait: 20, status: st });
           if (!alive) break;
           setStatus(r.status);
+          statusRef.current = r.status;
           merge(r.messages);
         } catch {
           await pause(5000);
         }
+        // With Bella: rest about a minute between checks (cut short if the team takes over)
+        for (let t = 0; alive && t < 40_000 && statusRef.current === 'bella'; t += 2000) await pause(2000);
       }
     })();
     return () => {
