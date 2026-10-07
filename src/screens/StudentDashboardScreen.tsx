@@ -13,15 +13,14 @@ import { useCart } from '../contexts/CartContext';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { useWallet } from '../contexts/WalletContext';
 import Loading from '../components/Loading';
-import { orderAPI, storeAPI, isDefaultAvatar } from '../services/api';
-import { DashboardStats, Order, Product } from '../types';
+import { orderAPI, storeAPI, walletAPI, isDefaultAvatar } from '../services/api';
+import { DashboardStats, Order, Product, WalletTransaction } from '../types';
 import StoreCard from '../components/StoreCard';
 import MaterialDetailsDrawer from '../components/MaterialDetailsDrawer';
 import CheckoutFab from '../components/CheckoutFab';
 import EmptyState from '../components/EmptyState';
 import SendMoneySheet from '../components/SendMoneySheet';
 import { PendingClaimsSheet, SurveyCard, SystemAlerts } from '../components/Notices';
-import BellaFab from '../components/BellaFab';
 import { Card, CourseTile, Divider, GradientCard, IconButton, IconCircle, RoundAction, SectionHeader } from '../components/ui';
 
 interface StudentDashboardScreenProps {
@@ -49,6 +48,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   const { summary, hasWallet, hasPin, refreshCreditsAndSummary, createWallet } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentTx, setRecentTx] = useState<WalletTransaction[]>([]);
   const [topMaterials, setTopMaterials] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,11 +70,13 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
   };
 
   const loadDashboard = useCallback(async () => {
-    const [ordersRes, materialsRes] = await Promise.allSettled([
+    const [ordersRes, materialsRes, , txRes] = await Promise.allSettled([
       orderAPI.getOrders({ page: 1, limit: 20 }),
       storeAPI.getMaterials({ page: 1, limit: 6, sort: 'recommended' }),
       refreshCreditsAndSummary(),
+      walletAPI.getTransactions({ page: 1 }),
     ]);
+    setRecentTx(txRes.status === 'fulfilled' ? (txRes.value.transactions || []).slice(0, 4) : []);
 
     const nextOrders = ordersRes.status === 'fulfilled' ? ordersRes.value || [] : [];
     const nextMaterials = materialsRes.status === 'fulfilled' ? materialsRes.value.materials || [] : [];
@@ -253,7 +255,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           {(user?.role || '').toLowerCase() === 'hoc' ? (
             <RoundAction icon="clipboard" label="Class rep" color="#059669" onPress={() => navigation.navigate('ClassRep')} />
           ) : (
-            <RoundAction icon="chatbubble-ellipses" label="Help" color="#059669" onPress={() => navigation.navigate('Bella')} />
+            <RoundAction icon="lock-closed" label="Wallet PIN" color="#0F766E" onPress={() => navigation.navigate('WalletPin')} />
           )}
         </Card>
 
@@ -268,6 +270,51 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
             <Metric icon="time-outline" color="#A21CAF" label="Pending" value={String(stats?.pendingOrders ?? 0)} />
           </View>
         </Card>
+
+        {/* Recent transactions: the wallet's history lives here now (See all opens the full list) */}
+        {hasWallet ? (
+          <View>
+            <SectionHeader title="Recent transactions" action="See all" onAction={() => navigation.navigate('WalletTransactions')} />
+            {recentTx.length > 0 ? (
+              <Card padded={false}>
+                {recentTx.map((tx, i) => {
+                  const credit = tx.direction === 'credit';
+                  const d = new Date((tx.createdAt || '').replace(' ', 'T'));
+                  const date = tx.displayDate || (Number.isNaN(d.getTime()) ? tx.createdAt : d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }));
+                  return (
+                    <View key={`${tx.id}-${i}`}>
+                      {i > 0 ? <Divider /> : null}
+                      <Pressable
+                        onPress={() => navigation.navigate('WalletTransactionReceipt', { transaction: tx })}
+                        style={({ pressed }) => [styles.orderRow, pressed && { backgroundColor: colors.surfaceAlt }]}
+                        accessibilityRole="button"
+                      >
+                        <IconCircle
+                          icon={credit ? 'arrow-down' : 'arrow-up'}
+                          size={40}
+                          color={credit ? colors.success : colors.accent}
+                          background={credit ? colors.successSoft : colors.accentSoft}
+                        />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text numberOfLines={1} style={[styles.orderTitle, { color: colors.text }]}>
+                            {tx.description || (credit ? 'Money in' : 'Payment')}
+                          </Text>
+                          <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 12 }}>{date}</Text>
+                        </View>
+                        <Text style={[styles.orderAmount, { color: credit ? colors.success : colors.text }]}>
+                          {credit ? '+' : '−'}
+                          {money(tx.amount)}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </Card>
+            ) : (
+              <EmptyState icon="swap-vertical-outline" title="No transactions yet" subtitle="Money in and out of your wallet will show up here." />
+            )}
+          </View>
+        ) : null}
 
         <SurveyCard />
 
@@ -370,7 +417,6 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
       />
       <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} />
       <PendingClaimsSheet onResolved={loadDashboard} />
-      <BellaFab onPress={() => navigation.navigate('Bella')} />
     </SafeAreaView>
   );
 };

@@ -26,6 +26,7 @@ import CheckoutFab from '../components/CheckoutFab';
 import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
 import { Chip, IconButton, ScreenTitle } from '../components/ui';
+import BellaAvatar from '../components/BellaAvatar';
 
 
 interface StoreScreenProps {
@@ -53,7 +54,7 @@ const SHIMMER_ITEMS: StoreListItem[] = Array.from({ length: 6 }, (_, idx) => ({
 
 const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
   const { items: cartItems, count: cartCount, total: cartTotal, has, toggle } = useCart();
   const [materials, setMaterials] = useState<Product[]>([]);
@@ -239,16 +240,23 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
           subtitle="Course materials for your department"
           right={<IconButton icon="cart-outline" label="Go to checkout" badge={cartCount} onPress={goToCheckout} />}
         />
-        {/* Buy with Bella: she finds the materials and fills the cart; the student pays at checkout */}
-        <TouchableOpacity onPress={() => navigation.navigate('Bella')} activeOpacity={0.9} style={styles.bellaCard} accessibilityRole="button">
-          <View style={styles.bellaIcon}>
-            <AppIcon name="chatbubble-ellipses" size={22} color="#fff" />
+        {/* Buy with Bella: a slim strip with a still avatar; the Ask Bella tab is the main way in */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Bella')}
+          activeOpacity={0.85}
+          style={[
+            styles.bellaCard,
+            isDark ? { backgroundColor: 'rgba(107,45,116,0.28)', borderColor: 'rgba(168,85,199,0.45)' } : { backgroundColor: '#f6ecf8', borderColor: '#e3c6ea' },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Buy with Bella"
+        >
+          <BellaAvatar size={38} animated={false} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 14 }}>Buy with Bella</Text>
+            <Text numberOfLines={1} style={{ color: isDark ? '#e2bdee' : '#6b2d74', fontSize: 12, marginTop: 1 }}>Send your course codes, she fills your cart</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>Buy with Bella</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>Tell Bella your course codes. She finds your materials and fills your cart.</Text>
-          </View>
-          <AppIcon name="chevron-forward" size={18} color="#fff" />
+          <AppIcon name="chevron-forward" size={18} color={isDark ? '#f0d4f7' : '#6b2d74'} />
         </TouchableOpacity>
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <AppIcon name="search-outline" size={18} color={colors.textMuted} />
@@ -378,13 +386,12 @@ const styles = StyleSheet.create({
     gap: 12,
     marginHorizontal: 0,
     marginBottom: 12,
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: '#a21caf',
+    paddingVertical: 9,
+    paddingLeft: 10,
+    paddingRight: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
-  bellaIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)' },
   container: {
     flex: 1,
   },

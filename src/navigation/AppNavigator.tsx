@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Text from '../components/AppText';
+import BellaAvatar from '../components/BellaAvatar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -49,6 +51,22 @@ import BulkPaymentScreen from '../screens/BulkPaymentScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// The Ask Bella tab opens the Bella chat (a stack screen without the tab bar); this is never shown
+const AskBellaPlaceholder = () => null;
+
+// Ask Bella: raised in the middle of the tab bar, with Bella's animated avatar
+const BellaTabButton: React.FC<{ onPress?: (e: any) => void }> = ({ onPress }) => {
+  const { colors } = useTheme();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Ask Bella" style={{ flex: 1, alignItems: 'center' }}>
+      <View style={{ marginTop: -26, padding: 4, borderRadius: 40, backgroundColor: colors.surface, shadowColor: '#6b2d74', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+        <BellaAvatar size={56} />
+      </View>
+      <Text style={{ fontFamily: 'Geist-SemiBold', fontSize: 11, marginTop: 2, color: colors.text }}>Ask Bella</Text>
+    </Pressable>
+  );
+};
 
 
 const linking = {
@@ -129,7 +147,29 @@ const StudentTabs = () => {
         },
       }}
     >
-      {TABS.map((t) => (
+      {TABS.slice(0, 2).map((t) => (
+        <Tab.Screen
+          key={t.name}
+          name={t.name}
+          component={t.component}
+          options={{
+            tabBarLabel: t.label,
+            tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={focused ? t.activeIcon : t.icon} />,
+          }}
+        />
+      ))}
+      <Tab.Screen
+        name="AskBella"
+        component={AskBellaPlaceholder}
+        options={{ tabBarButton: (props) => <BellaTabButton onPress={props.onPress as any} /> }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('Bella');
+          },
+        })}
+      />
+      {TABS.slice(2).map((t) => (
         <Tab.Screen
           key={t.name}
           name={t.name}
