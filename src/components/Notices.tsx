@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking, Modal, Pressable, StyleSheet, View } from 'react-native';
 import AppText from './AppText';
 import AppIcon from './AppIcon';
@@ -11,17 +12,37 @@ import { ActiveSurvey, BulkClaim, claimsAPI, noticesAPI, SystemAlert } from '../
 // Same notices as the web portal: admin alerts, the survey card and pending claims
 // (materials someone paid for on the student's behalf).
 
-/** Active system alerts; the student can close each one for this session. */
+// How many times this device closed each alert. Closed once: hidden until the app restarts.
+// Closed twice: never shown again (on this device).
+const ALERT_CLOSES = 'alertCloses';
+const ALERT_MAX_CLOSES = 2;
+
+/** Active system alerts; the student can close each one (gone for good after the 2nd close). */
 export function SystemAlerts() {
   const { colors } = useTheme();
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [closed, setClosed] = useState<number[]>([]);
+  const [closes, setCloses] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     noticesAPI.getAlerts().then(setAlerts).catch(() => setAlerts([]));
+    AsyncStorage.getItem(ALERT_CLOSES)
+      .then((v) => setCloses(v ? JSON.parse(v) : {}))
+      .catch(() => setCloses({}));
   }, []);
 
-  const visible = alerts.filter((a) => !closed.includes(a.id));
+  const close = (id: number) => {
+    setClosed((c) => [...c, id]);
+    setCloses((prev) => {
+      const next = { ...(prev || {}), [String(id)]: ((prev || {})[String(id)] || 0) + 1 };
+      AsyncStorage.setItem(ALERT_CLOSES, JSON.stringify(next)).catch(() => undefined);
+      return next;
+    });
+  };
+
+  // Wait for the saved counts so an alert closed twice never flashes
+  if (closes === null) return null;
+  const visible = alerts.filter((a) => !closed.includes(a.id) && (closes[String(a.id)] || 0) < ALERT_MAX_CLOSES);
   if (visible.length === 0) return null;
 
   return (
@@ -40,7 +61,7 @@ export function SystemAlerts() {
               <AppText style={[styles.alertTitle, { color: tone.fg }]}>{a.title}</AppText>
               <AppText style={[styles.alertBody, { color: colors.text }]}>{a.message}</AppText>
             </View>
-            <Pressable onPress={() => setClosed((c) => [...c, a.id])} hitSlop={10} accessibilityLabel="Close alert">
+            <Pressable onPress={() => close(a.id)} hitSlop={10} accessibilityLabel="Close alert">
               <AppIcon name="close" size={18} color={colors.textMuted} />
             </Pressable>
           </View>
@@ -50,7 +71,7 @@ export function SystemAlerts() {
   );
 }
 
-/** Survey invitation as a card. Closing counts as a dismissal (server hides it after 5). */
+/** Survey invitation as a card. Closing counts as a dismissal (server hides it after 2). */
 export function SurveyCard() {
   const { colors } = useTheme();
   const [survey, setSurvey] = useState<ActiveSurvey | null>(null);
