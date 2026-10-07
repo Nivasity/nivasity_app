@@ -2,13 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Clipboard from 'expo-clipboard';
 import AppIcon from '../components/AppIcon';
 import AppText from '../components/AppText';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
-import SendMoneySheet from '../components/SendMoneySheet';
-import { Card, Chip, Divider, GradientCard, IconButton, IconCircle } from '../components/ui';
+import { Card, Chip, Divider, IconButton, IconCircle } from '../components/ui';
 import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
@@ -40,7 +38,7 @@ const shortDate = (item: WalletTransaction) => {
 const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
   const appMessage = useAppMessage();
-  const { summary, hasWallet, hasPin, refreshCreditsAndSummary, createWallet } = useWallet();
+  const { summary, hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -51,8 +49,6 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
-  const [sendOpen, setSendOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [activating, setActivating] = useState(false);
 
   const fetchPage = useCallback(
@@ -117,14 +113,6 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
     }
   };
 
-  const copyAccount = async () => {
-    const number = summary?.wallet?.accountNumber;
-    if (!number) return;
-    await Clipboard.setStringAsync(number);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const activate = async () => {
     setActivating(true);
     try {
@@ -138,7 +126,6 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
     }
   };
 
-  const wallet = summary?.wallet;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
@@ -159,7 +146,7 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
       >
         <View style={styles.topBar}>
           <IconButton icon="chevron-back" label="Back" onPress={() => navigation.goBack()} />
-          <AppText style={[styles.topTitle, { color: colors.text }]}>Wallet</AppText>
+          <AppText style={[styles.topTitle, { color: colors.text }]}>Transactions</AppText>
           <View style={{ width: 42 }} />
         </View>
 
@@ -176,41 +163,6 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
           </Card>
         ) : (
           <>
-            {/* Balance */}
-            <GradientCard>
-              <AppText style={styles.balanceLabel}>Available balance</AppText>
-              <AppText style={styles.balance}>{money(wallet?.balance ?? 0, true)}</AppText>
-              {!hasPin ? (
-                <Pressable onPress={() => navigation.navigate('WalletPin')}>
-                  <AppText style={styles.hint}>
-                    Create a Wallet PIN to pay and send. <AppText style={styles.hintLink}>Create PIN</AppText>
-                  </AppText>
-                </Pressable>
-              ) : null}
-              <View style={styles.heroActions}>
-                <HeroButton label="Add" icon="add" primary onPress={() => navigation.navigate('WalletFund')} />
-                <HeroButton label="Send" icon="paper-plane-outline" onPress={() => setSendOpen(true)} />
-                <HeroButton label="PIN" icon="key-outline" onPress={() => navigation.navigate('WalletPin')} />
-              </View>
-            </GradientCard>
-
-            {/* Funding account */}
-            {wallet?.accountNumber ? (
-              <Card style={{ gap: 10 }}>
-                <AppText style={[styles.cardTitle, { color: colors.text }]}>Add money by bank transfer</AppText>
-                <View style={[styles.account, { backgroundColor: colors.surfaceAlt }]}>
-                  <View style={{ flex: 1 }}>
-                    <AppText style={{ color: colors.textMuted, fontSize: 12 }}>{wallet.bankName}</AppText>
-                    <AppText style={[styles.accountNumber, { color: colors.text }]}>{wallet.accountNumber}</AppText>
-                    <AppText numberOfLines={1} style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>
-                      {wallet.accountName}
-                    </AppText>
-                  </View>
-                  <Button title={copied ? 'Copied' : 'Copy'} icon={copied ? 'checkmark' : 'copy-outline'} size="sm" variant={copied ? 'outline' : 'primary'} onPress={copyAccount} />
-                </View>
-              </Card>
-            ) : null}
-
             {/* History */}
             <Card padded={false}>
               <View style={styles.historyHead}>
@@ -301,37 +253,9 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
           </>
         )}
       </ScrollView>
-      <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} onSent={() => load({ silent: true })} />
     </SafeAreaView>
   );
 };
-
-const HeroButton = ({
-  label,
-  icon,
-  primary,
-  onPress,
-}: {
-  label: string;
-  icon: React.ComponentProps<typeof AppIcon>['name'];
-  primary?: boolean;
-  onPress: () => void;
-}) => (
-  <Pressable
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityLabel={label}
-    style={({ pressed }) => [
-      styles.heroButton,
-      primary
-        ? { backgroundColor: '#FFFFFF', borderBottomWidth: pressed ? 1 : 3, borderBottomColor: 'rgba(0,0,0,0.18)' }
-        : { backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.16)' },
-    ]}
-  >
-    <AppIcon name={icon} size={17} color={primary ? '#4E2149' : '#FFFFFF'} />
-    <AppText style={{ color: primary ? '#4E2149' : '#FFFFFF', fontWeight: '700', fontSize: 14 }}>{label}</AppText>
-  </Pressable>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

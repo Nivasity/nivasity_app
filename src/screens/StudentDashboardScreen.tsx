@@ -255,7 +255,7 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
           {(user?.role || '').toLowerCase() === 'hoc' ? (
             <RoundAction icon="clipboard" label="Class rep" color="#059669" onPress={() => navigation.navigate('ClassRep')} />
           ) : (
-            <RoundAction icon="lock-closed" label="Wallet PIN" color="#0F766E" onPress={() => navigation.navigate('WalletPin')} />
+            <RoundAction icon="swap-vertical" label="Transactions" color="#059669" onPress={() => navigation.navigate('WalletTransactions')} />
           )}
         </Card>
 
