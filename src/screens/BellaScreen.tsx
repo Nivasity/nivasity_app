@@ -49,6 +49,7 @@ const openPath = (navigation: any, path: string) => {
   if (a === 'wallet') return navigation.navigate('WalletTransactions');
   if (a === 'profile' && b === 'edit') return navigation.navigate('ProfileEdit');
   if (a === 'notifications') return navigation.navigate('Notifications');
+  if (a === 'material-requests') return navigation.navigate('MaterialRequests');
   return navigation.navigate('StudentMain', { screen: 'Profile' });
 };
 
