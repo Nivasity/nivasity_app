@@ -358,7 +358,7 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === r.updated_message_id
-            ? { ...m, cards: m.cards.map((c) => (c.type === 'confirm_change' && c.token === token ? { ...c, token: '', status: r.ok ? 'done' : 'failed' } : c)) }
+            ? { ...m, cards: m.cards.map((c) => ((c.type === 'confirm_change' || c.type === 'confirm_claim') && c.token === token ? { ...c, token: '', status: r.ok ? 'done' : 'failed' } : c)) }
             : m,
         ),
       );
@@ -406,6 +406,32 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={[styles.cardBtnText, { color: colors.onAccent, flex: 1 }]}>Pay with PIN</Text>
           <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>{naira(card.total)}</Text>
         </TouchableOpacity>
+      );
+    }
+    if (card.type === 'confirm_claim') {
+      const busy = confirming === card.token;
+      return (
+        <View key={i} style={[styles.swapCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }}>PAID FOR YOU</Text>
+          <Text style={{ color: colors.text, fontWeight: '700', marginTop: 8 }}>
+            {card.course_code}
+            {card.title && card.title !== card.course_code ? ` · ${card.title}` : ''}
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>By {card.payer}</Text>
+          {card.status === 'done' ? (
+            <Text style={{ color: '#059669', fontWeight: '800', marginTop: 10 }}>Approved</Text>
+          ) : card.status === 'failed' ? (
+            <Text style={{ color: colors.textMuted, fontWeight: '800', marginTop: 10 }}>Not approved</Text>
+          ) : (
+            <TouchableOpacity
+              onPress={() => confirmAction(card.token)}
+              disabled={!!confirming}
+              style={[styles.cardBtn, { backgroundColor: colors.accent, justifyContent: 'center', marginTop: 10, opacity: confirming ? 0.6 : 1 }]}
+            >
+              {busy ? <ActivityIndicator size="small" color={colors.onAccent} /> : <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>Approve</Text>}
+            </TouchableOpacity>
+          )}
+        </View>
       );
     }
     if (card.type === 'confirm_change') {

@@ -2158,7 +2158,8 @@ export type BellaCard =
       to: { title: string; course_code: string };
       price: number;
       status?: 'done' | 'failed';
-    };
+    }
+  | { type: 'confirm_claim'; token: string; course_code: string; title: string; payer: string; status?: 'done' | 'failed' };
 
 export type BellaMessage = {
   id: number;

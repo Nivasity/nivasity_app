@@ -129,6 +129,8 @@ export function PendingClaimsSheet({ onResolved }: { onResolved?: () => void }) 
   const [claims, setClaims] = useState<BulkClaim[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // "Not mine" asks once more before rejecting (it then stops showing; Bella can undo it for 14 days)
+  const [askReject, setAskReject] = useState<string | null>(null);
   const { user } = useAuth();
 
   const load = useCallback(async () => {
@@ -195,15 +197,20 @@ export function PendingClaimsSheet({ onResolved }: { onResolved?: () => void }) 
                   </AppText>
                 </View>
               </View>
+              {askReject === `${c.source}-${c.id}` ? (
+                <AppText style={{ color: colors.text, fontSize: 13, textAlign: 'center' }}>
+                  Sure {c.course_code} isn't yours? It won't show here again. Changed your mind within 14 days? Ask Bella to bring it back.
+                </AppText>
+              ) : null}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button
-                  title="Not mine"
+                  title={askReject === `${c.source}-${c.id}` ? 'Yes, not mine' : 'Not mine'}
                   variant="outline"
                   size="sm"
                   style={{ flex: 1 }}
                   loading={busy === `${c.source}-${c.id}-reject`}
                   disabled={!!busy}
-                  onPress={() => resolve(c, 'reject')}
+                  onPress={() => (askReject === `${c.source}-${c.id}` ? resolve(c, 'reject') : setAskReject(`${c.source}-${c.id}`))}
                 />
                 <Button
                   title="Accept"
