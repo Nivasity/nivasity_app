@@ -38,7 +38,6 @@ const when = (v: string) => {
   return `${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}, ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 };
 const SINGLE_CARDS = new Set(['checkout', 'fund_wallet', 'pay_wallet', 'wallet_account']);
-const QUICK_REPLIES = ["What's in my cart?", 'Fund my wallet', 'My receipts'];
 const PLUM = { border: 'rgba(168,85,199,0.45)', fill: 'rgba(107,45,116,0.14)', text: '#6b2d74', textDark: '#f0d4f7' };
 
 // Three dots that bounce while Bella writes
@@ -761,20 +760,6 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         ) : null}
-        {!consent.required && !ended && !human && messages.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.quickRow}>
-            {QUICK_REPLIES.map((q) => (
-              <TouchableOpacity
-                key={q}
-                disabled={sending}
-                onPress={() => send(q)}
-                style={[styles.quick, { borderColor: PLUM.border, backgroundColor: PLUM.fill, opacity: sending ? 0.5 : 1 }]}
-              >
-                <Text style={{ color: isDark ? PLUM.textDark : PLUM.text, fontSize: 13, fontWeight: '700' }}>{q}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : null}
         <View style={[styles.inputBar, { borderTopColor: colors.border }, (consent.required || ended) && { display: 'none' }]}>
           <TouchableOpacity onPress={pickFile} style={[styles.attachBtn, { backgroundColor: colors.surfaceAlt }]} accessibilityLabel="Attach a photo or PDF">
             <AppIcon name="add" size={22} color={colors.textMuted} />
@@ -853,8 +838,6 @@ const styles = StyleSheet.create({
   resultTile: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   payCard: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 10 },
   typingBubble: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 12 },
-  quickRow: { gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
-  quick: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
   image: { width: 200, height: 200, borderRadius: 12 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   filePill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginHorizontal: 12, marginBottom: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, maxWidth: '90%' },
