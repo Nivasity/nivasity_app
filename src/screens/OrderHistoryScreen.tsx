@@ -14,8 +14,9 @@ import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
 import { ScreenTitle } from '../components/ui';
 import BulkPaymentsList from '../components/BulkPaymentsList';
+import PaidForMeList from '../components/PaidForMeList';
 import { useTheme } from '../contexts/ThemeContext';
-import { orderAPI } from '../services/api';
+import { claimsAPI, orderAPI } from '../services/api';
 import { Order } from '../types';
 import OrderListItem from '../components/OrderListItem';
 
@@ -23,13 +24,26 @@ interface OrderHistoryScreenProps {
   navigation: any;
 }
 
-const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) => {
+const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation, route }: any) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<'purchases' | 'bulk'>('purchases');
+  const [tab, setTab] = useState<'purchases' | 'bulk' | 'paid'>('purchases');
+  // Bella's "Paid for me" button (and links) open that tab
+  useEffect(() => {
+    const t = route?.params?.tab;
+    if (t === 'paid' || t === 'bulk' || t === 'purchases') setTab(t);
+  }, [route?.params?.tab]);
+  // Payments a class rep made for this student, waiting for approval (badge on the tab)
+  const [waitingCount, setWaitingCount] = useState(0);
+  const refreshWaiting = useCallback(() => {
+    claimsAPI.getPending(20).then((c) => setWaitingCount(c.length)).catch(() => setWaitingCount(0));
+  }, []);
+  useEffect(() => {
+    refreshWaiting();
+  }, [refreshWaiting, tab]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -101,6 +115,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
       <View style={[styles.tabs, { backgroundColor: colors.surfaceAlt }]} accessibilityRole="tablist">
         {([
           ['purchases', 'My purchases'],
+          ['paid', 'Paid for me'],
           ['bulk', 'Bulk payments'],
         ] as const).map(([value, label]) => {
           const active = tab === value;
@@ -116,7 +131,10 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                 active && { backgroundColor: colors.accent, borderBottomWidth: 3, borderBottomColor: colors.accentLip },
               ]}
             >
-              <Text style={{ color: active ? colors.onAccent : colors.textMuted, fontWeight: '700', fontSize: 14 }}>{label}</Text>
+              <Text style={{ color: active ? colors.onAccent : colors.textMuted, fontWeight: '700', fontSize: 13 }}>
+                {label}
+                {value === 'paid' && waitingCount > 0 ? ` (${waitingCount})` : ''}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -124,6 +142,13 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
       {tab === 'bulk' ? (
         <BulkPaymentsList onPayForMates={() => navigation.navigate('BulkPayment')} />
+      ) : tab === 'paid' ? (
+        <PaidForMeList
+          onChanged={() => {
+            refreshWaiting();
+            loadOrders();
+          }}
+        />
       ) : (
       <>
       <View style={styles.searchRow}>

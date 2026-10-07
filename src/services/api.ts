@@ -1799,7 +1799,28 @@ export const claimsAPI = {
     if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not update this claim');
     return response.data.message || '';
   },
+  /** Payments rejected with "Not mine" in the last 14 days (they can be brought back). */
+  getRejected: async (): Promise<RejectedClaim[]> => {
+    const response = await api.get<ApiResponse<{ claims: RejectedClaim[] }>>('/materials/claims/rejected.php');
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not load rejected payments');
+    return response.data.data?.claims ?? [];
+  },
+  restore: async (claim: { id: number; source: string }): Promise<string> => {
+    const response = await api.post<ApiResponse<any>>('/materials/claims/restore.php', { student_row_id: claim.id, source: claim.source });
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not bring this payment back');
+    return response.data.message || '';
+  },
 };
+
+export interface RejectedClaim {
+  id: number;
+  source: string;
+  title: string;
+  course_code: string;
+  payer_name: string;
+  paid_at: string;
+  rejected_at: string;
+}
 
 export interface TransferRecipient {
   user_id: number;
