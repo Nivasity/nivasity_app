@@ -11,6 +11,7 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
 import { walletAPI } from '../services/api';
+import DepositRefundSheet from '../components/DepositRefundSheet';
 import { WalletTransaction } from '../types';
 
 type WalletTransactionsScreenProps = {
@@ -35,7 +36,12 @@ const shortDate = (item: WalletTransaction) => {
 
 // Wallet: balance card (Add money, Send, PIN), funding account and the history with
 // in/out filter, search and paging. Same layout as the web portal.
-const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ navigation }) => {
+const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ navigation, route }: any) => {
+  // Bella's "Refund my last deposit" button opens this screen with the refund sheet
+  const [refundOpen, setRefundOpen] = useState(!!route?.params?.refund);
+  useEffect(() => {
+    if (route?.params?.refund) setRefundOpen(true);
+  }, [route?.params?.refund]);
   const { colors } = useTheme();
   const appMessage = useAppMessage();
   const { summary, hasWallet, refreshCreditsAndSummary, createWallet } = useWallet();
@@ -147,7 +153,7 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
         <View style={styles.topBar}>
           <IconButton icon="chevron-back" label="Back" onPress={() => navigation.goBack()} />
           <AppText style={[styles.topTitle, { color: colors.text }]}>Transactions</AppText>
-          <View style={{ width: 42 }} />
+          <IconButton icon="return-down-back-outline" label="Refund my last deposit" onPress={() => setRefundOpen(true)} />
         </View>
 
         {loading && !hasWallet ? (
@@ -253,6 +259,7 @@ const WalletTransactionsScreen: React.FC<WalletTransactionsScreenProps> = ({ nav
           </>
         )}
       </ScrollView>
+      <DepositRefundSheet visible={refundOpen} onClose={() => setRefundOpen(false)} onDone={() => load({ silent: true })} />
     </SafeAreaView>
   );
 };

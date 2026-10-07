@@ -1580,7 +1580,27 @@ export const notificationAPI = {
   },
 };
 
+export interface DepositRefundState {
+  deposit: { id: number; amount: number; date: string; provider: string } | null;
+  balance: number;
+  eligible: boolean;
+  reason: string | null;
+  message: string;
+  refunds: { reference: string; amount: number; status: string; failure_reason: string | null; created_at: string; completed_at: string | null }[];
+}
+
 export const walletAPI = {
+  /** Refund my last deposit (full amount, back to the bank it came from). */
+  getDepositRefund: async (): Promise<DepositRefundState> => {
+    const response = await api.get<ApiResponse<DepositRefundState>>('/wallet/deposit-refund.php');
+    if (response.data.status !== 'success' || !response.data.data) throw new Error(response.data.message || 'Could not load your deposits');
+    return response.data.data;
+  },
+  requestDepositRefund: async (fundingId: number, reason: string, walletPin: string): Promise<string> => {
+    const response = await api.post<ApiResponse<any>>('/wallet/deposit-refund.php', { funding_id: fundingId, reason, wallet_pin: walletPin });
+    if (response.data.status !== 'success') throw new Error(response.data.message || 'Could not start the refund');
+    return response.data.message || 'Refund started';
+  },
   createWallet: async (payload?: { phone?: string }): Promise<{ created: boolean; wallet?: WalletAccount }> => {
     const response = await api.post<ApiResponse<{ created: boolean; wallet?: any }>>('/wallet/create.php', payload || {});
     if (response.data.status !== 'success' || !response.data.data) {

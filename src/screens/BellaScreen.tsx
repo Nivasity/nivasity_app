@@ -79,6 +79,7 @@ const openPath = (navigation: any, path: string) => {
   if (a === 'orders') return navigation.navigate('StudentMain', { screen: 'Orders', params: /tab=(paid|bulk)/.test(path) ? { tab: (path.match(/tab=(paid|bulk)/) || [])[1] } : undefined });
   if (a === 'wallet' && b === 'fund') return navigation.navigate('WalletFund');
   if (a === 'wallet' && b === 'pin') return navigation.navigate('WalletPin');
+  if (a === 'transactions') return navigation.navigate('WalletTransactions', /refund=1/.test(path) ? { refund: true } : undefined);
   if (a === 'wallet') return navigation.navigate('WalletTransactions');
   if (a === 'profile' && b === 'edit') return navigation.navigate('ProfileEdit');
   if (a === 'notifications') return navigation.navigate('Notifications');
