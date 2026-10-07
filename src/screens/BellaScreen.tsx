@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   AppState,
   FlatList,
   Image,
@@ -9,6 +11,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -24,6 +27,7 @@ import { BELLA_PRIVACY_URL, BELLA_TERMS_URL, BellaCard, BellaMessage, bellaAPI, 
 import PinConfirmSheet from '../components/PinConfirmSheet';
 import BellaWalletCard from '../components/BellaWalletCard';
 import BellaRateCard from '../components/BellaRateCard';
+import BellaAvatar, { BellaGradient } from '../components/BellaAvatar';
 
 // Support is a chat with Bella (Nivasity's assistant, a Cloudflare Worker). She finds materials,
 // adds them to the cart and shows "Go to checkout"; the student pays there with their PIN.
@@ -34,6 +38,36 @@ const when = (v: string) => {
   return `${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}, ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 };
 const SINGLE_CARDS = new Set(['checkout', 'fund_wallet', 'pay_wallet', 'wallet_account']);
+const QUICK_REPLIES = ["What's in my cart?", 'Fund my wallet', 'My receipts'];
+const PLUM = { border: 'rgba(168,85,199,0.45)', fill: 'rgba(107,45,116,0.14)', text: '#6b2d74', textDark: '#f0d4f7' };
+
+// Three dots that bounce while Bella writes
+const TypingDots: React.FC<{ color: string }> = ({ color }) => {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1200, easing: Easing.linear, useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
+  return (
+    <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center', height: 12 }}>
+      {[0, 0.12, 0.24].map((d) => (
+        <Animated.View
+          key={d}
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: color,
+            opacity: v.interpolate({ inputRange: [0, d, d + 0.25, d + 0.5, 1], outputRange: [0.4, 0.4, 1, 0.4, 0.4] }),
+            transform: [{ translateY: v.interpolate({ inputRange: [0, d, d + 0.25, d + 0.5, 1], outputRange: [0, 0, -4, 0, 0] }) }],
+          }}
+        />
+      ))}
+    </View>
+  );
+};
+
 const SUGGESTIONS = ['Find my course materials', "What's in my cart?", 'Where is my receipt?', 'How do I fund my wallet?'];
 
 // Bella's links are web routes; open the matching app screen.
@@ -54,7 +88,7 @@ const openPath = (navigation: any, path: string) => {
 };
 
 const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [messages, setMessages] = useState<BellaMessage[]>([]);
   const [status, setStatus] = useState('bella');
   const [loading, setLoading] = useState(true);
@@ -350,9 +384,9 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={[styles.cardBtnText, { color: '#059669' }]}>Paid</Text>
         </View>
       ) : (
-        <TouchableOpacity key={i} onPress={openPay} style={[styles.cardBtn, { backgroundColor: colors.accent }]}>
-          <AppIcon name="wallet-outline" size={18} color={colors.onAccent} />
-          <Text style={[styles.cardBtnText, { color: colors.onAccent, flex: 1 }]}>Pay now with wallet</Text>
+        <TouchableOpacity key={i} onPress={openPay} style={[styles.cardBtn, { backgroundColor: colors.accent, paddingVertical: 13 }]}>
+          <AppIcon name="lock-closed" size={17} color={colors.onAccent} />
+          <Text style={[styles.cardBtnText, { color: colors.onAccent, flex: 1 }]}>Pay with PIN</Text>
           <Text style={[styles.cardBtnText, { color: colors.onAccent }]}>{naira(card.total)}</Text>
         </TouchableOpacity>
       );
@@ -416,21 +450,88 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     );
   };
 
-  const renderItem = ({ item: m }: { item: BellaMessage }) => {
-    if (m.role === 'system') {
-      return <Text style={[styles.system, { color: colors.textMuted }]}>{m.content}</Text>;
+  // Handover: amber pill. Resolved / ended: a divider. Anything else: small centred text.
+  const renderSystem = (text: string) => {
+    if (/^Handed to the Nivasity team/.test(text)) {
+      return (
+        <View style={[styles.notePill, { borderColor: 'rgba(251,191,36,0.35)', backgroundColor: 'rgba(251,191,36,0.10)' }]}>
+          <AppIcon name="people-outline" size={12} color="#d97706" />
+          <Text style={{ color: '#d97706', fontSize: 11, fontWeight: '700' }}>{text}</Text>
+        </View>
+      );
     }
+    const resolved = /^Marked as resolved/.test(text);
+    if (resolved || /^Chat ended/.test(text)) {
+      return (
+        <View style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          {resolved ? <AppIcon name="checkmark-circle" size={13} color={colors.success} /> : null}
+          <Text style={{ color: resolved ? colors.success : colors.textMuted, fontSize: 11, fontWeight: '700' }}>{resolved ? 'Resolved by the Nivasity team' : text}</Text>
+          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+        </View>
+      );
+    }
+    return <Text style={[styles.system, { color: colors.textMuted }]}>{text}</Text>;
+  };
+
+  // Search results: one card with a row per material
+  const renderMaterials = (cards: BellaCard[]) => (
+    <View style={[styles.resultCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+      {cards.map((c, i) =>
+        c.type === 'material' ? (
+          <TouchableOpacity
+            key={i}
+            onPress={() => openPath(navigation, c.path)}
+            style={[styles.resultRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+          >
+            <View style={[styles.resultTile, { backgroundColor: colors.accentSoft }]}>
+              <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '900' }}>{(c.course_code || '').split(/\s+/)[0].slice(0, 4)}</Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ color: colors.text, fontWeight: '800', fontSize: 13 }}>{c.course_code}</Text>
+              <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 12 }}>{c.title}</Text>
+            </View>
+            {c.bought ? (
+              <Text style={{ color: colors.success, fontWeight: '700', fontSize: 12 }}>Bought</Text>
+            ) : (
+              <Text style={{ color: colors.text, fontWeight: '800', fontSize: 13 }}>{naira(c.price)}</Text>
+            )}
+          </TouchableOpacity>
+        ) : null,
+      )}
+    </View>
+  );
+
+  const renderItem = ({ item: m }: { item: BellaMessage }) => {
+    if (m.role === 'system') return renderSystem(m.content);
     const mine = m.role === 'student';
+    const cards = visibleCards(m);
+    const materials = cards.filter((c) => c.type === 'material');
+    const hasPay = cards.some((c) => c.type === 'pay_wallet');
+    const rest = cards.filter((c) => c.type !== 'material' && c.type !== 'pay_wallet' && !(c.type === 'checkout' && hasPay));
     return (
-      <View style={[styles.row, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
-        <View style={{ maxWidth: '85%', alignItems: mine ? 'flex-end' : 'flex-start' }}>
+      <View style={[styles.row, { justifyContent: mine ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }]}>
+        {!mine ? (
+          <View style={{ marginBottom: 20 }}>
+            {m.role === 'agent' ? (
+              <View style={[styles.agentIcon, { backgroundColor: colors.successSoft }]}>
+                <AppIcon name="headset-outline" size={14} color={colors.success} />
+              </View>
+            ) : (
+              <BellaAvatar size={28} animated={false} />
+            )}
+          </View>
+        ) : null}
+        <View style={{ maxWidth: '82%', alignItems: mine ? 'flex-end' : 'flex-start' }}>
           {m.role === 'agent' && <Text style={[styles.agent, { color: colors.textMuted }]}>{m.agent_name || 'Nivasity team'}</Text>}
           <View
             style={[
               styles.bubble,
               mine
                 ? { backgroundColor: colors.accent, borderBottomRightRadius: 6 }
-                : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderBottomLeftRadius: 6 },
+                : m.role === 'agent'
+                  ? { backgroundColor: colors.successSoft, borderColor: 'rgba(16,185,129,0.35)', borderWidth: 1, borderBottomLeftRadius: 6 }
+                  : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderBottomLeftRadius: 6 },
             ]}
           >
             {!!m.content && <Text style={{ color: mine ? colors.onAccent : colors.text, fontSize: 15 }}>{m.content}</Text>}
@@ -447,7 +548,22 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             )}
           </View>
-          {visibleCards(m).length > 0 && <View style={styles.cards}>{visibleCards(m).map((c, i) => renderCard(c, i, m.id))}</View>}
+          {cards.length > 0 && (
+            <View style={styles.cards}>
+              {materials.length > 0 ? renderMaterials(materials) : null}
+              {hasPay ? (
+                <View style={[styles.payCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  {cards.filter((c) => c.type === 'pay_wallet').map((c, i) => renderCard(c, i, m.id))}
+                  {cards.some((c) => c.type === 'checkout') ? (
+                    <TouchableOpacity onPress={() => navigation.navigate('Checkout')} style={{ alignItems: 'center', paddingTop: 2 }}>
+                      <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Review in checkout</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+              {rest.map((c, i) => renderCard(c, i, m.id))}
+            </View>
+          )}
           <Text style={[styles.time, { color: colors.textMuted }]}>{when(m.created_at)}</Text>
         </View>
       </View>
@@ -456,18 +572,27 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: isDark ? 'rgba(107,45,116,0.16)' : 'rgba(107,45,116,0.06)' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} accessibilityLabel="Back">
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-          <AppIcon name="chatbubble-ellipses" size={18} color={colors.onAccent} />
-        </View>
+        <BellaAvatar size={40} />
         <View style={styles.flex}>
           <Text style={[styles.title, { color: colors.text }]}>Bella</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-            {status === 'waiting' ? "Passed to the Nivasity team · they'll reply here" : status === 'human' ? 'The Nivasity team is in this chat' : 'Your Nivasity assistant'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {status !== 'resolved' ? (
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: human ? '#fbbf24' : '#4ade80' }} />
+            ) : null}
+            <Text style={{ color: colors.textMuted, fontSize: 12, flexShrink: 1 }} numberOfLines={1}>
+              {status === 'waiting'
+                ? "Passed to the Nivasity team · they'll reply here"
+                : status === 'human'
+                  ? 'The Nivasity team is in this chat'
+                  : status === 'resolved'
+                    ? 'Nivasity assistant'
+                    : 'Nivasity assistant · replies in seconds'}
+            </Text>
+          </View>
         </View>
         <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.iconBtn} accessibilityLabel="Bella menu">
           <AppIcon name="ellipsis-vertical" size={20} color={colors.text} />
@@ -554,14 +679,15 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             contentContainerStyle={styles.list}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Text style={[styles.hello, { color: colors.text }]}>Hi, I'm Bella 👋</Text>
+                <BellaAvatar size={64} style={{ marginBottom: 12 }} />
+                <Text style={[styles.hello, { color: colors.text }]}>Hi, I'm Bella</Text>
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 6 }}>
                   I can find your materials, add them to your cart, and help with your wallet, orders and receipts.
                 </Text>
                 <View style={styles.chips}>
                   {SUGGESTIONS.map((s) => (
-                    <TouchableOpacity key={s} onPress={() => send(s)} style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                      <Text style={{ color: colors.text, fontSize: 13 }}>{s}</Text>
+                    <TouchableOpacity key={s} onPress={() => send(s)} style={[styles.chip, { borderColor: PLUM.border, backgroundColor: PLUM.fill }]}>
+                      <Text style={{ color: isDark ? PLUM.textDark : PLUM.text, fontSize: 13, fontWeight: '700' }}>{s}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -569,10 +695,19 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
             ListFooterComponent={
               sending ? (
-                <View style={styles.typing}>
-                  <ActivityIndicator size="small" color={colors.textMuted} />
-                  <Text style={{ color: colors.textMuted, fontSize: 12 }}>{human ? 'Sending…' : 'Bella is typing…'}</Text>
-                </View>
+                human ? (
+                  <View style={styles.typing}>
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                    <Text style={{ color: colors.textMuted, fontSize: 12 }}>Sending…</Text>
+                  </View>
+                ) : (
+                  <View style={styles.typing} accessibilityLabel="Bella is typing">
+                    <BellaAvatar size={28} animated={false} />
+                    <View style={[styles.typingBubble, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                      <TypingDots color={colors.textMuted} />
+                    </View>
+                  </View>
+                )
               ) : null
             }
           />
@@ -590,28 +725,46 @@ const BellaScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
         {ended && !consent.required ? (
           <View style={[styles.endedBar, { borderTopColor: colors.border }]}>
-            <Text style={{ color: colors.textMuted, flex: 1 }}>This chat has ended.</Text>
+            <Text style={{ color: colors.textMuted, flex: 1, fontSize: 13 }}>This chat has ended. Need something else?</Text>
             <TouchableOpacity
               onPress={() => {
                 setError(null);
                 setMessages([]);
               }}
-              style={[styles.newChatBtn, { backgroundColor: colors.accent }]}
+              accessibilityRole="button"
               accessibilityLabel="Start a new chat"
             >
-              <AppIcon name="chatbubble-ellipses" size={16} color={colors.onAccent} />
-              <Text style={{ color: colors.onAccent, fontWeight: '800' }}>Start a new chat</Text>
+              <BellaGradient width={176} height={46} radius={23}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <AppIcon name="add" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '800' }}>Start a new chat</Text>
+                </View>
+              </BellaGradient>
             </TouchableOpacity>
           </View>
         ) : null}
+        {!consent.required && !ended && !human && messages.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.quickRow}>
+            {QUICK_REPLIES.map((q) => (
+              <TouchableOpacity
+                key={q}
+                disabled={sending}
+                onPress={() => send(q)}
+                style={[styles.quick, { borderColor: PLUM.border, backgroundColor: PLUM.fill, opacity: sending ? 0.5 : 1 }]}
+              >
+                <Text style={{ color: isDark ? PLUM.textDark : PLUM.text, fontSize: 13, fontWeight: '700' }}>{q}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : null}
         <View style={[styles.inputBar, { borderTopColor: colors.border }, (consent.required || ended) && { display: 'none' }]}>
-          <TouchableOpacity onPress={pickFile} style={styles.attachBtn} accessibilityLabel="Attach a photo or PDF">
-            <AppIcon name="attach" size={22} color={colors.textMuted} />
+          <TouchableOpacity onPress={pickFile} style={[styles.attachBtn, { backgroundColor: colors.surfaceAlt }]} accessibilityLabel="Attach a photo or PDF">
+            <AppIcon name="add" size={22} color={colors.textMuted} />
           </TouchableOpacity>
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={human ? 'Write to the team…' : 'Ask Bella…'}
+            placeholder={human ? 'Write to the team…' : 'Message Bella'}
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={1500}
@@ -650,7 +803,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700' },
   list: { padding: 16, gap: 14, flexGrow: 1 },
   row: { flexDirection: 'row' },
-  bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+  bubble: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
   agent: { fontSize: 11, fontWeight: '600', marginBottom: 4, marginLeft: 4 },
   time: { fontSize: 10, marginTop: 4, marginHorizontal: 4 },
   system: { textAlign: 'center', fontSize: 11, fontWeight: '600' },
@@ -672,7 +825,18 @@ const styles = StyleSheet.create({
   menu: { position: 'absolute', top: 70, right: 12, borderWidth: 1, borderRadius: 16, paddingVertical: 6, minWidth: 240 },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
   agreeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
-  attachBtn: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
+  attachBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  notePill: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  agentIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  resultCard: { borderWidth: 1, borderRadius: 16, overflow: 'hidden' },
+  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  resultTile: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  payCard: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 10 },
+  typingBubble: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 12 },
+  quickRow: { gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
+  quick: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
   image: { width: 200, height: 200, borderRadius: 12 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   filePill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginHorizontal: 12, marginBottom: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, maxWidth: '90%' },

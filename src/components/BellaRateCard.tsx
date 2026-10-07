@@ -63,7 +63,7 @@ const BellaRateCard: React.FC<{
   }
 
   return (
-    <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+    <View style={[styles.box, { borderColor: 'rgba(168,85,199,0.45)', backgroundColor: colors.surface }]}>
       <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>{phase === 'stars' ? title : 'Thanks! Your rating is saved.'}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         {stars(phase === 'stars' ? 28 : 20, phase === 'stars')}

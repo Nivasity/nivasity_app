@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import Text from '../components/AppText';
 import AppIcon from '../components/AppIcon';
 import BellaRateCard from '../components/BellaRateCard';
+import BellaAvatar from '../components/BellaAvatar';
 import { useTheme } from '../contexts/ThemeContext';
 import { BellaMessage, BellaSession, bellaAPI } from '../services/api';
 
@@ -27,10 +28,17 @@ const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack
   );
 };
 
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'team', label: 'With the team' },
+  { key: 'ended', label: 'Ended' },
+] as const;
+
 export const BellaChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
   const [items, setItems] = useState<BellaSession[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
 
   useFocusEffect(
     useCallback(() => {
@@ -51,36 +59,83 @@ export const BellaChatsScreen: React.FC<{ navigation: any }> = ({ navigation }) 
     <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <Header title="Chat history" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.body}>
-        <Text style={{ color: colors.textMuted, marginBottom: 14 }}>Your chats from the last 7 days. Ended chats are read-only.</Text>
-        <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          {items === null ? (
-            <ActivityIndicator color={colors.accent} style={{ margin: 20 }} />
-          ) : items.length === 0 ? (
-            <Text style={{ color: colors.textMuted, padding: 16 }}>{error || 'No chats yet.'}</Text>
-          ) : (
-            items.map((s, i) => {
+        <View style={styles.filters}>
+          {FILTERS.map((f) => {
+            const on = filter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                accessibilityState={{ selected: on }}
+                style={[styles.filter, on ? { backgroundColor: colors.text, borderColor: colors.text } : { borderColor: colors.border, backgroundColor: colors.surface }]}
+              >
+                <Text style={{ color: on ? colors.background : colors.text, fontWeight: '800', fontSize: 13 }}>{f.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {items === null ? (
+          <ActivityIndicator color={colors.accent} style={{ margin: 20 }} />
+        ) : (
+          (() => {
+            const shown = items.filter((s) =>
+              filter === 'team' ? s.end_reason === 'resolved' : filter === 'ended' ? !!s.ended_at && s.end_reason !== 'resolved' : true,
+            );
+            if (!shown.length) {
+              return (
+                <View style={[styles.item, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Text style={{ color: colors.textMuted }}>{error || 'No chats here yet.'}</Text>
+                </View>
+              );
+            }
+            return shown.map((s) => {
               const open = !s.ended_at;
+              const team = s.end_reason === 'resolved';
               return (
                 <TouchableOpacity
                   key={s.id}
                   onPress={() => (open ? navigation.navigate('Bella') : navigation.navigate('BellaChat', { id: s.id }))}
-                  style={[styles.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+                  style={[
+                    styles.item,
+                    open
+                      ? { borderColor: 'rgba(168,85,199,0.45)', backgroundColor: 'rgba(107,45,116,0.12)' }
+                      : { borderColor: colors.border, backgroundColor: colors.surface },
+                  ]}
                 >
-                  <AppIcon name="chatbubble-ellipses-outline" size={20} color={colors.accent} />
-                  <View style={{ flex: 1 }}>
-                    <Text numberOfLines={1} style={{ color: colors.text, fontWeight: '600' }}>{s.preview || 'Chat'}</Text>
-                    <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 3 }}>
-                      <Text style={{ color: open ? '#059669' : colors.textMuted, fontWeight: '800' }}>{open ? 'Current chat' : 'Ended'}</Text>
-                      {` · ${when(s.started_at)}`}
-                      {s.rating ? ` · ★ ${s.rating}/5` : ''}
-                    </Text>
+                  {team ? (
+                    <View style={[styles.teamIcon, { backgroundColor: 'rgba(251,191,36,0.15)' }]}>
+                      <AppIcon name="people-outline" size={20} color="#d97706" />
+                    </View>
+                  ) : (
+                    <BellaAvatar size={44} animated={false} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                      <Text numberOfLines={1} style={{ color: colors.text, fontWeight: '800', flexShrink: 1 }}>{s.preview || 'Chat'}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>{when(s.started_at)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <View style={[styles.tag, { backgroundColor: open || team ? colors.successSoft : colors.surfaceAlt }]}>
+                        <Text style={{ color: open || team ? colors.success : colors.textMuted, fontSize: 11, fontWeight: '800' }}>
+                          {open ? 'Open' : team ? 'Resolved by team' : 'Ended'}
+                        </Text>
+                      </View>
+                      {s.rating ? (
+                        <Text style={{ color: '#f59e0b', fontSize: 12, fontWeight: '800' }}>★ {s.rating}</Text>
+                      ) : !open ? (
+                        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700' }}>Not rated</Text>
+                      ) : null}
+                    </View>
                   </View>
                   <AppIcon name="chevron-forward" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               );
-            })
-          )}
-        </View>
+            });
+          })()
+        )}
+        <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 8 }}>
+          Ended chats are read-only and kept for 7 days. You can delete your history in Bella settings.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -176,6 +231,11 @@ export const BellaChatScreen: React.FC<{ navigation: any; route: any }> = ({ nav
 };
 
 const styles = StyleSheet.create({
+  filters: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  filter: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 10 },
+  teamIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  tag: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   flex: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   back: { padding: 6 },
