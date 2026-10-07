@@ -7,6 +7,7 @@ import Button from './Button';
 import { Card, CourseTile, IconCircle } from './ui';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAppMessage } from '../contexts/AppMessageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ActiveSurvey, BulkClaim, claimsAPI, noticesAPI, SystemAlert } from '../services/api';
 
 // Same notices as the web portal: admin alerts, the survey card and pending claims
@@ -128,6 +129,7 @@ export function PendingClaimsSheet({ onResolved }: { onResolved?: () => void }) 
   const [claims, setClaims] = useState<BulkClaim[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -139,9 +141,12 @@ export function PendingClaimsSheet({ onResolved }: { onResolved?: () => void }) 
     }
   }, []);
 
+  // Claims are matched on school, department, matric number and name. A new student only has
+  // those after the name and academic-details prompts, so check again whenever they change
+  // (otherwise a purchase made for them before sign-up is missed until the app restarts).
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, user?.deptId, user?.matricNumber, user?.firstName, user?.lastName]);
 
   const resolve = async (claim: BulkClaim, action: 'confirm' | 'reject') => {
     setBusy(`${claim.source}-${claim.id}-${action}`);
