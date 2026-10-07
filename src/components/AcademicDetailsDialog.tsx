@@ -11,6 +11,7 @@ import { useAppMessage } from '../contexts/AppMessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { referenceAPI } from '../services/api';
+import { nameNeedsFix } from './NameDetailsDialog';
 
 const toSessionLabel = (value?: string) => {
   const trimmed = (value || '').trim();
@@ -56,7 +57,8 @@ const AcademicDetailsDialog = () => {
   }>({ deptId: null, deptName: '', admissionYear: '', matricNo: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
 
-  const visible = needsAcademicInfo;
+  // The name prompt (NameDetailsDialog) comes first
+  const visible = needsAcademicInfo && !nameNeedsFix(user?.firstName, user?.lastName);
 
   useEffect(() => {
     if (!visible) return;

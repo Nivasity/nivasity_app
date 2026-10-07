@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { createNavigationTheme } from '../theme/navigationTheme';
 import { flushPendingNavigation, navigationRef } from './navigationRef';
 import Loading from '../components/Loading';
+import NameDetailsDialog from '../components/NameDetailsDialog';
 import AcademicDetailsDialog from '../components/AcademicDetailsDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { referenceAPI } from '../services/api';
@@ -316,6 +317,7 @@ const AppNavigator = () => {
               options={{ headerShown: false }}
             />
           </Stack.Navigator>
+          <NameDetailsDialog />
           <AcademicDetailsDialog />
         </>
       )}
