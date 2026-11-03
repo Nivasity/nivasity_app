@@ -27,6 +27,7 @@ import { ShimmerBlock } from '../components/Shimmer';
 import EmptyState from '../components/EmptyState';
 import { Chip, IconButton, ScreenTitle } from '../components/ui';
 import BellaAvatar from '../components/BellaAvatar';
+import { BULK_PAYMENT_ENABLED } from '../config/features';
 
 
 interface StoreScreenProps {
@@ -354,11 +355,15 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         onShare={() => {
           if (activeProduct) shareProduct(activeProduct);
         }}
-        onPayForMates={() => {
-          if (!activeProduct) return;
-          setDetailsOpen(false);
-          navigation.navigate('BulkPayment', { manualId: activeProduct.id });
-        }}
+        onPayForMates={
+          BULK_PAYMENT_ENABLED
+            ? () => {
+                if (!activeProduct) return;
+                setDetailsOpen(false);
+                navigation.navigate('BulkPayment', { manualId: activeProduct.id });
+              }
+            : undefined
+        }
       />
     </SafeAreaView>
   );

@@ -14,6 +14,7 @@ import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
 import { ScreenTitle } from '../components/ui';
 import BulkPaymentsList from '../components/BulkPaymentsList';
+import { BULK_PAYMENT_ENABLED } from '../config/features';
 import PaidForMeList from '../components/PaidForMeList';
 import { useTheme } from '../contexts/ThemeContext';
 import { claimsAPI, orderAPI } from '../services/api';
@@ -141,7 +142,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation, rou
       </View>
 
       {tab === 'bulk' ? (
-        <BulkPaymentsList onPayForMates={() => navigation.navigate('BulkPayment')} />
+        <BulkPaymentsList onPayForMates={BULK_PAYMENT_ENABLED ? () => navigation.navigate('BulkPayment') : undefined} />
       ) : tab === 'paid' ? (
         <PaidForMeList
           onChanged={() => {

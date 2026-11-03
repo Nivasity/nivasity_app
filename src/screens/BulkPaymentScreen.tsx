@@ -12,6 +12,7 @@ import { Card, Chip, CourseTile, Divider, IconButton, IconCircle } from '../comp
 import { useTheme } from '../contexts/ThemeContext';
 import { useWallet } from '../contexts/WalletContext';
 import { bulkAPI, BulkMaterial, BulkPayResult, BulkPreview } from '../services/api';
+import { BULK_PAYMENT_ENABLED } from '../config/features';
 import { downloadAndShareReceipt } from '../utils/receiptPdf';
 
 type Props = { navigation: any; route?: { params?: { manualId?: string | number } } };
@@ -43,11 +44,15 @@ const BulkPaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discontinued, setDiscontinued] = useState(!BULK_PAYMENT_ENABLED);
 
   useEffect(() => {
     bulkAPI
       .manuals()
       .then((d) => {
+        if (d.is_enabled === false) {
+          setDiscontinued(true);
+        }
         setMaterials(d.materials);
         // Opened from a material's details: start with that material selected
         if (preselectId) setMaterial(d.materials.find((m) => m.id === preselectId) || null);
@@ -161,7 +166,15 @@ const BulkPaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ marginTop: 30 }} />
         ) : step === 0 ? (
-          materials.length === 0 ? (
+          discontinued ? (
+            <EmptyState
+              icon="people-outline"
+              title="Bulk payment is discontinued"
+              subtitle="New bulk payments cannot be issued at this time. Past bulk payments you made can still be viewed in your order history."
+              actionLabel="View orders"
+              onAction={() => navigation.navigate('Orders')}
+            />
+          ) : materials.length === 0 ? (
             <EmptyState
               icon="book-outline"
               title="No materials to pay for yet"

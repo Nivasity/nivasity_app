@@ -2065,13 +2065,14 @@ export interface BulkPayResult {
 }
 
 export const bulkAPI = {
-  manuals: async (): Promise<{ materials: BulkMaterial[]; fee_percent: number; wallet: { ready: boolean; warnings?: string[] } }> => {
+  manuals: async (): Promise<{ is_enabled?: boolean; materials: BulkMaterial[]; fee_percent: number; wallet: { ready: boolean; warnings?: string[] } }> => {
     const response = await api.get<ApiResponse<any>>('/materials/bulk/manuals.php');
     if (response.data.status !== 'success' || !response.data.data) {
       throw new Error(response.data.message || 'Bulk payment is not available right now');
     }
     const d = response.data.data;
     return {
+      is_enabled: d.is_enabled !== false,
       materials: (d.materials || []).map((m: any) => ({ ...m, id: Number(m.id), price: Number(m.price) })),
       fee_percent: Number(d.fee_percent ?? 5),
       wallet: d.wallet || { ready: false },

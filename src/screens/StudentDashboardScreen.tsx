@@ -22,6 +22,7 @@ import EmptyState from '../components/EmptyState';
 import SendMoneySheet from '../components/SendMoneySheet';
 import { PendingClaimsSheet, SurveyCard, SystemAlerts } from '../components/Notices';
 import { Card, CourseTile, Divider, GradientCard, IconButton, IconCircle, RoundAction, SectionHeader } from '../components/ui';
+import { BULK_PAYMENT_ENABLED } from '../config/features';
 
 interface StudentDashboardScreenProps {
   navigation: any;
@@ -250,7 +251,11 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         {/* Quick actions */}
         <Card style={styles.actionsCard}>
           <RoundAction icon="storefront" label="Store" color="#F97316" onPress={() => navigation.navigate('Store')} />
-          <RoundAction icon="people" label="Bulk pay" color="#7A3B73" onPress={() => navigation.navigate('BulkPayment')} />
+          {BULK_PAYMENT_ENABLED ? (
+            <RoundAction icon="people" label="Bulk pay" color="#7A3B73" onPress={() => navigation.navigate('BulkPayment')} />
+          ) : (
+            <RoundAction icon="receipt-outline" label="Orders" color="#7A3B73" onPress={() => navigation.navigate('Orders')} />
+          )}
           <RoundAction icon="megaphone" label="Requests" color="#2563EB" onPress={() => navigation.navigate('MaterialRequests')} />
           {(user?.role || '').toLowerCase() === 'hoc' ? (
             <RoundAction icon="clipboard" label="Class rep" color="#059669" onPress={() => navigation.navigate('ClassRep')} />
@@ -409,11 +414,15 @@ const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ navigat
         onShare={() => {
           if (activeMaterial) shareMaterial(activeMaterial);
         }}
-        onPayForMates={() => {
-          if (!activeMaterial) return;
-          setDetailsOpen(false);
-          navigation.navigate('BulkPayment', { manualId: activeMaterial.id });
-        }}
+        onPayForMates={
+          BULK_PAYMENT_ENABLED
+            ? () => {
+                if (!activeMaterial) return;
+                setDetailsOpen(false);
+                navigation.navigate('BulkPayment', { manualId: activeMaterial.id });
+              }
+            : undefined
+        }
       />
       <SendMoneySheet visible={sendOpen} onClose={() => setSendOpen(false)} />
       <PendingClaimsSheet onResolved={loadDashboard} />
