@@ -58,6 +58,10 @@ export interface Product {
   hostFacultyName?: string;
   level?: string;
   deadlineAt?: string;
+  /** The student owns a copy; with canRebuy the store shows Rebuy instead of add-to-cart. */
+  isPurchased?: boolean;
+  boughtId?: number;
+  canRebuy?: boolean;
 }
 
 export interface CartItem extends Product {

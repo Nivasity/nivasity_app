@@ -14,6 +14,8 @@ interface StoreCardProps {
   onPress?: () => void;
   onAdd?: () => void;
   onShare?: () => void;
+  /** The student already owns this material: show Rebuy instead of the add button. */
+  onRebuy?: () => void;
   /** In the cart: the + becomes a − that removes it. */
   marked?: boolean;
 }
@@ -25,9 +27,9 @@ const breakable = (code: string) => code.replace(/([/&])/g, '$1​');
 
 // Store item like the web portal: coloured course cover, title, level, price and a round
 // add/remove button with the raised lip. No shadows.
-export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level, price, onPress, onAdd, onShare, marked }) => {
+export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level, price, onPress, onAdd, onShare, onRebuy, marked }) => {
   const { colors } = useTheme();
-  const unavailable = status === 'Unavailable' || !onAdd;
+  const unavailable = !onRebuy && (status === 'Unavailable' || !onAdd);
   const cover = courseColor(code);
 
   return (
@@ -68,6 +70,17 @@ export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level,
                 <AppIcon name="share-social-outline" size={18} color={colors.textMuted} />
               </Pressable>
             ) : null}
+            {onRebuy ? (
+              <Pressable
+                onPress={onRebuy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Rebuy ${code}`}
+                style={[styles.rebuy, { borderColor: colors.accent }]}
+              >
+                <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 13 }}>Rebuy</Text>
+              </Pressable>
+            ) : (
             <Pressable
               onPress={onAdd}
               disabled={unavailable}
@@ -89,6 +102,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level,
             >
               <AppIcon name={marked ? 'remove' : 'add'} size={22} color={marked ? colors.accent : colors.onAccent} />
             </Pressable>
+            )}
           </View>
         </View>
       </View>
@@ -97,6 +111,14 @@ export const StoreCard: React.FC<StoreCardProps> = ({ code, name, status, level,
 };
 
 const styles = StyleSheet.create({
+  rebuy: {
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   card: {
     flexDirection: 'row',
     gap: 12,

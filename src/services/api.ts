@@ -966,6 +966,8 @@ type MaterialListItem = {
   host_faculty_name?: string;
   seller_name?: string;
   is_purchased?: boolean;
+  bought_id?: number;
+  can_rebuy?: boolean;
   created_at?: string;
 };
 
@@ -1001,6 +1003,9 @@ const mapMaterialToProduct = (item: MaterialListItem): Product => ({
   hostFacultyName: item.host_faculty_name || item.faculty_name,
   level: String((item as any).level ?? (item as any).host_level ?? '').trim() || undefined,
   deadlineAt: item.due_date,
+  isPurchased: !!item.is_purchased,
+  boughtId: item.bought_id ? Number(item.bought_id) : undefined,
+  canRebuy: !!item.can_rebuy,
 });
 
 const mapCartViewItemToCartItem = (item: CartViewItem): CartItem => ({
@@ -1075,6 +1080,15 @@ type MaterialsPagination = {
 
 // Product/Store APIs (Materials)
 export const storeAPI = {
+  /** Mark a purchased copy as lost (once per material) so it can be bought again. */
+  markLost: async (boughtId: number): Promise<string> => {
+    const response = await api.post<ApiResponse<any>>('/materials/mark-lost.php', { bought_id: boughtId });
+    if (response.data.status !== 'success') {
+      throw new Error(response.data.message || 'Could not mark this copy as lost');
+    }
+    return response.data.message;
+  },
+
   getMaterials: async (args?: {
     search?: string;
     sort?: 'recommended' | 'low-high' | 'high-low';
@@ -1097,8 +1111,9 @@ export const storeAPI = {
       throw new Error(response.data.message || 'Failed to load materials');
     }
 
-    // Hide materials already purchased by the current user.
-    const availableMaterials = (response.data.data.materials || []).filter((item) => !item.is_purchased);
+    // Hide materials already purchased by the current user, unless they can still rebuy them
+    // (mark the copy lost, once, and buy again).
+    const availableMaterials = (response.data.data.materials || []).filter((item) => !item.is_purchased || item.can_rebuy);
     return {
       materials: availableMaterials.map(mapMaterialToProduct),
       pagination: response.data.data.pagination,

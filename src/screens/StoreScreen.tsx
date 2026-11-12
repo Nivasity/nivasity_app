@@ -57,7 +57,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
   const appMessage = useAppMessage();
-  const { items: cartItems, count: cartCount, total: cartTotal, has, toggle } = useCart();
+  const { items: cartItems, count: cartCount, total: cartTotal, has, toggle, add } = useCart();
   const [materials, setMaterials] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<{
     total: number;
@@ -210,6 +210,30 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
     }
   }, []);
 
+  // Rebuy = mark the copy you already own as lost (once per material), then buy it again at today's price.
+  const rebuy = (material: Product) => {
+    if (!material.boughtId) return;
+    appMessage.confirm({
+      title: 'Buy this material again?',
+      message:
+        `${material.name} (${material.courseCode || ''}). This marks the copy you bought before as lost and adds a new one to your cart at today's price (₦${material.price.toLocaleString()}).\n\n` +
+        'You can only do this once for each material; after that, contact the Nivasity team. Your old copy can no longer be collected or granted, and your old receipt stays in your order history. Copies can only be marked as lost 48 hours after purchase.',
+      confirmText: 'Mark as lost & rebuy',
+      onConfirm: async () => {
+        try {
+          await storeAPI.markLost(material.boughtId as number);
+          setMaterials((current) =>
+            current.map((m) => (m.id === material.id ? { ...m, isPurchased: false, canRebuy: false, boughtId: undefined } : m))
+          );
+          add({ ...material, isPurchased: false, canRebuy: false, boughtId: undefined });
+          appMessage.toast({ status: 'success', message: `${material.courseCode || 'Material'} is in your cart` });
+        } catch (e: any) {
+          appMessage.toast({ status: 'failed', message: e?.message || 'Could not rebuy this material' });
+        }
+      },
+    });
+  };
+
   const renderProduct = (material: Product) => {
     const inCart = has(material.id);
     const isAvailable = material.available !== false;
@@ -222,6 +246,7 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ navigation, route }) => {
         price={`₦${material.price.toLocaleString()}`}
         marked={inCart}
         onAdd={isAvailable ? () => toggle(material) : undefined}
+        onRebuy={material.isPurchased && material.canRebuy ? () => rebuy(material) : undefined}
         onShare={() => shareProduct(material)}
         onPress={() => {
           void openMaterialDetails(material);
